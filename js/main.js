@@ -654,36 +654,30 @@ console.log(rows, cols, users, weapons, monsters);
     });
   });
 
-createCharacterForm.addEventListener('submit', (e) => {
+  createCharacterForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    console.log("Form submitted!");
-
     const formData = new FormData(createCharacterForm);
-    console.log([...formData.entries()]); // Log form data
-
     let owner = currentUser;
     if (isDM()) {
-        owner = formData.get('owner') || currentUser;
-        if (!users.includes(owner)) owner = "DM";
+      owner = formData.get('owner') || owner;
+      if (!users.includes(owner)) owner = "DM";
     }
-    console.log("Owner:", owner);
-
     const newChar = {
-        id: nextCharacterId++,
-        owner: owner,
-        name: formData.get('name') || "Unnamed",
-        class: formData.get('class') || "Unknown",
-        level: parseInt(formData.get('level'), 10) || 1,
-        HP: parseInt(formData.get('HP'), 10) || 10,
-        AC: parseInt(formData.get('AC'), 10) || 10,
-        STR: parseInt(formData.get('STR'), 10) || 10,
-        DEX: parseInt(formData.get('DEX'), 10) || 10,
-        CON: parseInt(formData.get('CON'), 10) || 10,
-        INT: parseInt(formData.get('INT'), 10) || 10,
-        WIS: parseInt(formData.get('WIS'), 10) || 10,
-        CHA: parseInt(formData.get('CHA'), 10) || 10,
-        placed: false,
-        attacks: []
+      id: nextCharacterId++,
+      owner: owner,
+      name: formData.get('name'),
+      class: formData.get('class'),
+      level: parseInt(formData.get('level'),10),
+      HP: parseInt(formData.get('HP'),10),
+      AC: parseInt(formData.get('AC'),10),
+      STR: parseInt(formData.get('STR'),10),
+      DEX: parseInt(formData.get('DEX'),10),
+      CON: parseInt(formData.get('CON'),10),
+      INT: parseInt(formData.get('INT'),10),
+      WIS: parseInt(formData.get('WIS'),10),
+      CHA: parseInt(formData.get('CHA'),10),
+      placed: false,
+      attacks: []
     };
     console.log("New Character:", newChar);
 
