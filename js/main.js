@@ -190,17 +190,6 @@ console.log(rows, cols, users, weapons, monsters);
     }
   });
 
-  function showContextMenu(x,y) {
-    contextMenu.style.display = 'block';
-    contextMenu.style.left = x + 'px';
-    contextMenu.style.top = y + 'px';
-    contextMenuVisible = true;
-  }
-
-  function hideContextMenu() {
-    contextMenu.style.display = 'none';
-    contextMenuVisible = false;
-  }
 
   // Dice and chat
   const logEl = document.getElementById('log');
