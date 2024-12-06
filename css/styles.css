@@ -1,0 +1,221 @@
+  body {
+    font-family: sans-serif;
+    display: flex;
+    flex-direction: row;
+    margin: 10px;
+  }
+
+  #sidebar {
+    display: flex;
+    flex-direction: column;
+    margin-right: 20px;
+  }
+
+  #grid {
+    border-collapse: collapse;
+    position: relative;
+  }
+
+  #grid td {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #333;
+    text-align: center;
+    vertical-align: middle;
+    font-size: 24px;
+    user-select: none;
+    position: relative;
+  }
+
+  #grid td.selected {
+    outline: 2px solid blue;
+  }
+
+  #selection-marquee {
+    position: absolute;
+    border: 1px dashed #00f;
+    background: rgba(0,0,255,0.1);
+    display: none;
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  #controls {
+    min-width: 300px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #log {
+    margin-top: 10px;
+    background: #f4f4f4;
+    padding: 10px;
+    height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    font-size: 14px;
+    white-space: pre-wrap;
+  }
+
+  h2 {
+    margin-top: 0;
+  }
+
+  #command-input {
+    width: 100%;
+    padding: 5px;
+    box-sizing: border-box;
+    margin-top: 10px;
+  }
+
+  #character-sheet-modal, #create-character-modal, #monster-sheet-modal {
+    display: none; 
+    position: fixed; 
+    z-index: 999; 
+    left: 0;
+    top: 0;
+    width: 100%; 
+    height: 100%; 
+    overflow: auto; 
+    background-color: rgba(0,0,0,0.4);
+  }
+
+  .modal-content {
+    background-color: #fff;
+    margin: 5% auto; 
+    padding: 20px;
+    border: 1px solid #888;
+    width: 300px;
+    border-radius: 5px;
+    position: relative;
+  }
+
+  .close-modal {
+    float: right;
+    cursor: pointer;
+    font-weight: bold;
+  }
+
+  #character-details table, #monster-details table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 14px;
+    border: 2px solid #000;
+  }
+
+  #character-details th, #character-details td, #monster-details th, #monster-details td {
+    border: 1px solid #ccc;
+    padding: 4px 6px;
+  }
+
+  #character-details th, #monster-details th {
+    background: #ddd;
+  }
+
+  #dice-roller {
+    margin-bottom: 10px;
+  }
+
+  #dice-expression {
+    width: 120px;
+  }
+
+  #assign-owner-field {
+    display: none; 
+  }
+
+  .context-menu {
+    position: absolute;
+    background: #fff;
+    border: 1px solid #aaa;
+    z-index: 1000;
+    display: none;
+    font-size: 14px;
+  }
+
+  .context-menu ul {
+    list-style: none;
+    margin: 0;
+    padding: 5px 0;
+  }
+
+  .context-menu ul li {
+    padding: 5px 10px;
+    cursor: pointer;
+  }
+
+  .context-menu ul li:hover {
+    background: #eee;
+  }
+
+  #character-list, #monster-list {
+    margin-top: 20px;
+    background: #fafafa;
+    padding: 10px;
+    border: 1px solid #ccc;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  #character-list h3, #monster-list h3 {
+    margin-top: 0;
+  }
+
+  .character-list-item, .monster-list-item {
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+  }
+
+  .character-list-item button, .monster-list-item button {
+    margin-left: 10px;
+  }
+
+  .drag-icon {
+    margin-right: 10px;
+    cursor: grab;
+  }
+
+  .drag-icon[draggable="false"] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  #monster-filter {
+    margin-bottom: 10px;
+    width: 100%;
+  }
+
+  #create-character-form label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+  }
+
+  #create-character-form input, #create-character-form select {
+    margin-top: 4px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  #attack-creation-section {
+    margin-top: 10px;
+    background: #f0f0f0;
+    padding: 5px;
+    border: 1px solid #ccc;
+  }
+
+  #attack-creation-section h4 {
+    margin: 5px 0;
+  }
+
+  .attack-input-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+  }
+
+  .attack-input-row select, .attack-input-row input {
+    margin-right: 5px;
+  }
