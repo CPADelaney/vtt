@@ -706,23 +706,6 @@ createCharacterForm.addEventListener('submit', (e) => {
     renderCharacterList();
 });
 
-    const weaponSelects = createCharacterForm.querySelectorAll('.attack-weapon-select');
-    const customMods = createCharacterForm.querySelectorAll('.attack-custom-mod');
-    for (let i=0; i<weaponSelects.length; i++) {
-      const wid = parseInt(weaponSelects[i].value,10);
-      if (!isNaN(wid)) {
-        const cmod = parseInt(customMods[i].value,10) || 0;
-        newChar.attacks.push({weaponId:wid, customMod:cmod});
-      }
-    }
-
-    characters.push(newChar);
-    createCharacterModal.style.display = "none";
-    createCharacterForm.reset();
-    attackCreationList.innerHTML = '';
-    renderCharacterList();
-  });
-
   // Drag from lists
   let draggedCharId = null;
   let draggedMonsterId = null;
