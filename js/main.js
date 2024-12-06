@@ -1,3 +1,8 @@
+import { initializeUI } from './ui.js';
+
+// Call the function to initialize the UI
+initializeUI();
+
 // main.js
 import { 
   rows, 
