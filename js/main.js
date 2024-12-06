@@ -616,89 +616,129 @@ console.log(rows, cols, users, weapons, monsters);
     monsterSheetModal.style.display = "block";
   }
 
-  // Create Character Modal
-  const createCharacterModal = document.getElementById('create-character-modal');
-  const closeCreateCharacter = document.getElementById('close-create-character');
-  const createCharacterForm = document.getElementById('create-character-form');
-  const attackCreationList = document.getElementById('attack-creation-list');
-  const addAttackBtn = document.getElementById('add-attack-btn');
-  const assignOwnerField = document.getElementById('assign-owner-field');
-  const createCharacterBtn = document.getElementById('create-character-btn');
+// Create Character Modal
+const createCharacterModal = document.getElementById('create-character-modal');
+const closeCreateCharacter = document.getElementById('close-create-character');
+const createCharacterForm = document.getElementById('create-character-form');
+const attackCreationList = document.getElementById('attack-creation-list');
+const addAttackBtn = document.getElementById('add-attack-btn');
+const assignOwnerField = document.getElementById('assign-owner-field');
+const createCharacterBtn = document.getElementById('create-character-btn');
 
+// Ensure the button to open the modal exists before adding the event listener
+if (createCharacterBtn) {
   createCharacterBtn.addEventListener('click', () => {
+    // Show or hide the "Assign Owner" field based on the current user
     if (isDM()) {
       assignOwnerField.style.display = "block";
     } else {
       assignOwnerField.style.display = "none";
     }
+    // Open the modal
     createCharacterModal.style.display = "block";
   });
+} else {
+  console.warn('Create Character Button (create-character-btn) not found!');
+}
 
-  closeCreateCharacter.onclick = () => createCharacterModal.style.display = "none";
+// Close modal logic
+if (closeCreateCharacter) {
+  closeCreateCharacter.onclick = () => {
+    createCharacterModal.style.display = "none";
+  };
+} else {
+  console.warn('Close Create Character Button (close-create-character) not found!');
+}
 
+// Adding attack rows dynamically
+if (addAttackBtn) {
   addAttackBtn.addEventListener('click', () => {
     const row = document.createElement('div');
     row.className = 'attack-input-row';
     row.innerHTML = `
       <select class="attack-weapon-select" required>
         <option value="">--Select Weapon--</option>
-        ${weapons.map(w=>`<option value="${w.id}">${w.name}</option>`).join('')}
+        ${weapons.map(w => `<option value="${w.id}">${w.name}</option>`).join('')}
       </select>
       <input type="number" class="attack-custom-mod" value="0" style="width:50px;" title="Custom modifier" />
       <button type="button" class="remove-attack">X</button>
     `;
     attackCreationList.appendChild(row);
-    const removeBtn = row.querySelector('.remove-attack');
-    removeBtn.addEventListener('click', () => {
-      row.remove();
-    });
-  });
 
+    // Remove attack row logic
+    const removeBtn = row.querySelector('.remove-attack');
+    if (removeBtn) {
+      removeBtn.addEventListener('click', () => {
+        row.remove();
+      });
+    }
+  });
+} else {
+  console.warn('Add Attack Button (add-attack-btn) not found!');
+}
+
+// Form submission and character creation
+if (createCharacterForm) {
   createCharacterForm.addEventListener('submit', (e) => {
     e.preventDefault();
+    console.log("Form submitted!");
+
     const formData = new FormData(createCharacterForm);
+    console.log([...formData.entries()]); // Log form data
+
+    // Assign owner based on current user or "DM"
     let owner = currentUser;
     if (isDM()) {
-      owner = formData.get('owner') || owner;
+      owner = formData.get('owner') || currentUser;
       if (!users.includes(owner)) owner = "DM";
     }
+    console.log("Owner:", owner);
+
+    // Create new character object
     const newChar = {
       id: nextCharacterId++,
       owner: owner,
-      name: formData.get('name'),
-      class: formData.get('class'),
-      level: parseInt(formData.get('level'),10),
-      HP: parseInt(formData.get('HP'),10),
-      AC: parseInt(formData.get('AC'),10),
-      STR: parseInt(formData.get('STR'),10),
-      DEX: parseInt(formData.get('DEX'),10),
-      CON: parseInt(formData.get('CON'),10),
-      INT: parseInt(formData.get('INT'),10),
-      WIS: parseInt(formData.get('WIS'),10),
-      CHA: parseInt(formData.get('CHA'),10),
+      name: formData.get('name') || "Unnamed",
+      class: formData.get('class') || "Unknown",
+      level: parseInt(formData.get('level'), 10) || 1,
+      HP: parseInt(formData.get('HP'), 10) || 10,
+      AC: parseInt(formData.get('AC'), 10) || 10,
+      STR: parseInt(formData.get('STR'), 10) || 10,
+      DEX: parseInt(formData.get('DEX'), 10) || 10,
+      CON: parseInt(formData.get('CON'), 10) || 10,
+      INT: parseInt(formData.get('INT'), 10) || 10,
+      WIS: parseInt(formData.get('WIS'), 10) || 10,
+      CHA: parseInt(formData.get('CHA'), 10) || 10,
       placed: false,
       attacks: []
     };
+
     console.log("New Character:", newChar);
 
+    // Process attacks from form inputs
     const weaponSelects = createCharacterForm.querySelectorAll('.attack-weapon-select');
     const customMods = createCharacterForm.querySelectorAll('.attack-custom-mod');
     for (let i = 0; i < weaponSelects.length; i++) {
-        const wid = parseInt(weaponSelects[i].value, 10);
-        if (!isNaN(wid)) {
-            const cmod = parseInt(customMods[i].value, 10) || 0;
-            newChar.attacks.push({ weaponId: wid, customMod: cmod });
-        }
+      const wid = parseInt(weaponSelects[i].value, 10);
+      if (!isNaN(wid)) {
+        const cmod = parseInt(customMods[i].value, 10) || 0;
+        newChar.attacks.push({ weaponId: wid, customMod: cmod });
+      }
     }
 
+    // Add the new character to the list
     characters.push(newChar);
-    console.log("Characters:", characters);
+    console.log("Characters List:", characters);
 
+    // Reset the form and close the modal
     createCharacterModal.style.display = "none";
     createCharacterForm.reset();
     attackCreationList.innerHTML = '';
     renderCharacterList();
-});
+  });
+} else {
+  console.warn('Create Character Form (create-character-form) not found!');
+}
 
   // Drag from lists
   let draggedCharId = null;
