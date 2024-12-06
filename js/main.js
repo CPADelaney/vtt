@@ -173,7 +173,7 @@ console.log(rows, cols, users, weapons, monsters);
     const entity = entityTokens[`${r},${c}`];
 
     if (entity && isEntitySelected(entity) && canControlEntity(entity)) {
-      showContextMenu(e.clientX, e.clientY);
+      showContextMenuForGrid(e.clientX, e.clientY);
     } else {
       hideContextMenu();
     }
@@ -435,7 +435,7 @@ console.log(rows, cols, users, weapons, monsters);
     cells.forEach(cell => cell.style.outline = '');
   }
 
-  function showContextMenu(x,y) {
+  function showContextMenuForGrid(x,y) {
     contextMenu.style.display = 'block';
     contextMenu.style.left = x + 'px';
     contextMenu.style.top = y + 'px';
