@@ -1,11 +1,11 @@
 // js/board.js
 
 export class Board {
-  constructor(rows, cols, entityTokens, app) {
+  constructor(rows, cols, entityTokens, appInstance) {
     this.rows = rows;
     this.cols = cols;
     this.entityTokens = entityTokens;
-    this.app = app; // Reference to the App instance for inter-module communication
+    this.app = appInstance;
 
     // DOM Elements
     this.gridEl = document.getElementById('grid');
@@ -34,7 +34,7 @@ export class Board {
   initialize() {
     this.buildGrid();
     this.setupEventListeners();
-    this.redrawBoard();
+    this.app.redrawBoard();
   }
 
   // Grid Setup
