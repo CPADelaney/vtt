@@ -208,7 +208,7 @@ handleCommandInput(e) {
 
   handleDiceButtonClick(btn) {
     const sides = parseInt(btn.dataset.sides, 10);
-    const result = this.rollSingleDice(sides);
+    const result = rollSingleDice(sides);
     const result = rollSingleDice(sides);
     this.addMessage({ text: `Rolled d${sides}: ${result}`, sender: this.currentUser, private: false });
   }
