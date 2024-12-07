@@ -187,7 +187,6 @@ export class App {
         const diceExpr = parts.slice(diceExprIndex).join('');
         if (diceExpr) {
           const result = rollCombinedDiceExpression(diceExpr);
-          const result = rollCombinedDiceExpression(diceExpr);
           if (recipients && recipients.length > 0) {
             if (!recipients.includes("DM")) recipients.push("DM");
             if (!recipients.includes(this.currentUser)) recipients.push(this.currentUser);
