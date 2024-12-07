@@ -156,56 +156,55 @@ export class App {
     this.monsterFilter.addEventListener('change', () => this.renderMonsterList());
   }
 
-  // Dice and Chat Handlers
-  handleCommandInput(e) {
-    if (e.key === 'Enter') {
-      const command = this.commandInput.value.trim();
-      this.commandInput.value = '';
+// Dice and Chat Handlers
+handleCommandInput(e) {
+  if (e.key === 'Enter') {
+    const command = this.commandInput.value.trim();
+    this.commandInput.value = '';
 
-      if (!command) return;
+    if (!command) return;
 
-      if (command.toLowerCase().startsWith('/roll')) {
-        const parts = command.split(/\s+/);
-        let recipients = null;
-        let diceExprIndex = 1;
+    if (command.toLowerCase().startsWith('/roll')) {
+      const parts = command.split(/\s+/);
+      let recipients = null;
+      let diceExprIndex = 1;
 
-        if (parts.length > 2 && parts[1].toLowerCase() === '/w') {
-          recipients = [];
-          let i = 2;
-          for (; i < parts.length; i++) {
-            if (parts[i].match(/d/)) {
-              diceExprIndex = i;
-              break;
-            } else {
-              if (this.users.includes(parts[i])) {
-                recipients.push(parts[i]);
-              }
+      if (parts.length > 2 && parts[1].toLowerCase() === '/w') {
+        recipients = [];
+        let i = 2;
+        for (; i < parts.length; i++) {
+          if (parts[i].match(/d/)) {
+            diceExprIndex = i;
+            break;
+          } else {
+            if (this.users.includes(parts[i])) {
+              recipients.push(parts[i]);
             }
           }
         }
-
-        const diceExpr = parts.slice(diceExprIndex).join('');
-        if (diceExpr) {
-          const result = rollCombinedDiceExpression(diceExpr);
-          const result = rollCombinedDiceExpression(diceExpr);
-          if (recipients && recipients.length > 0) {
-            if (!recipients.includes("DM")) recipients.push("DM");
-            if (!recipients.includes(this.currentUser)) recipients.push(this.currentUser);
-            this.addMessage({ text: result, sender: this.currentUser, private: true, recipients: recipients });
-          } else {
-            this.addMessage({ text: result, sender: this.currentUser, private: false });
-          }
-        } else {
-          this.addMessage({ text: "No dice expression provided.", sender: "System", private: false });
-        }
-
-      } else if (command.startsWith('/')) {
-        this.addMessage({ text: `Unrecognized command: ${command}`, sender: "System", private: false });
-      } else {
-        this.addMessage({ text: command, sender: this.currentUser, private: false });
       }
+
+      const diceExpr = parts.slice(diceExprIndex).join('');
+      if (diceExpr) {
+        const result = rollCombinedDiceExpression(diceExpr); // Removed duplicated line
+        if (recipients && recipients.length > 0) {
+          if (!recipients.includes("DM")) recipients.push("DM");
+          if (!recipients.includes(this.currentUser)) recipients.push(this.currentUser);
+          this.addMessage({ text: result, sender: this.currentUser, private: true, recipients: recipients });
+        } else {
+          this.addMessage({ text: result, sender: this.currentUser, private: false });
+        }
+      } else {
+        this.addMessage({ text: "No dice expression provided.", sender: "System", private: false });
+      }
+
+    } else if (command.startsWith('/')) {
+      this.addMessage({ text: `Unrecognized command: ${command}`, sender: "System", private: false });
+    } else {
+      this.addMessage({ text: command, sender: this.currentUser, private: false });
     }
   }
+}
 
   handleDiceButtonClick(btn) {
     const sides = parseInt(btn.dataset.sides, 10);
@@ -236,43 +235,6 @@ export class App {
     this.logEl.scrollTop = this.logEl.scrollHeight;
   }
 
-  // Dice Rolling Functions
-  rollSingleDice(sides) {
-    return Math.floor(Math.random() * sides) + 1;
-  }
-  rollCombinedDiceExpression(expression) {
-    const originalExpr = expression;
-    expression = expression.trim().replace(/\s+/g, '');
-    const regex = /([+\-])?(\d*d\d+|\d+)/gi;
-    let total = 0;
-    let detailParts = [];
-    let match;
-    while ((match = regex.exec(expression)) !== null) {
-      let sign = match[1] || '+';
-      let token = match[2];
-      let signFactor = (sign === '-') ? -1 : 1;
-      if (token.includes('d')) {
-        let [diceCountStr, sidesStr] = token.split('d');
-        let diceCount = parseInt(diceCountStr || '1', 10);
-        let sides = parseInt(sidesStr, 10);
-        let rolls = [];
-        for (let i = 0; i < diceCount; i++) {
-          let result = this.rollSingleDice(sides);
-          rolls.push(result);
-        }
-        let sumRolls = rolls.reduce((a, b) => a + b, 0);
-        total += sumRolls * signFactor;
-        detailParts.push(`${sign}${diceCount}d${sides} [${rolls.join(',')}]`);
-      } else {
-        let num = parseInt(token, 10);
-        total += num * signFactor;
-        detailParts.push(`${sign}${num}`);
-      }
-    }
-    let detailStr = detailParts.join('');
-    detailStr = detailStr.replace(/^\+/, ''); // Remove leading +
-    return `Rolled ${originalExpr}: ${detailStr} = ${total}`;
-  }
   // Rendering Functions
   renderCharacterList() {
     this.characterListEntries.innerHTML = '';
