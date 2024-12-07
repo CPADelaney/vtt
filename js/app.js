@@ -2,6 +2,7 @@
 
 import { Board } from './board.js'; // Adjust the path if necessary
 import { rollSingleDice, rollCombinedDiceExpression } from './dice.js'; // Import dice functions
+import { performAttack, getPossibleTargets, rollDamageDice } from './combat.js';
 
 export class App {
   constructor() {
@@ -423,7 +424,7 @@ export class App {
       const attackBtn = document.createElement('button');
       attackBtn.textContent = "Attack!";
       attackBtn.addEventListener('click', () => {
-        this.performAttack(entityData, type, att, w);
+        performAttack(entityData, type, att, w);
       });
       attackDiv.appendChild(attackBtn);
       containerEl.appendChild(attackDiv);
@@ -525,67 +526,5 @@ export class App {
     this.entityTokens[key] = { type: "monster", id: monId };
     this.board.redrawBoard();
     this.renderMonsterList();
-  }
-
-  // Attack Functionality
-  performAttack(entityData, type, attackEntry, weapon) {
-    let possibleTargets = this.getPossibleTargets(type, entityData);
-    if (possibleTargets.length === 0) {
-      this.addMessage({ sender: "System", text: "No targets available.", private: false });
-      return;
-    }
-
-    let targetName = prompt("Choose a target (Type exact name):\n" + possibleTargets.map(pt => pt.name).join('\n'));
-    if (!targetName) return;
-    let target = possibleTargets.find(pt => pt.name === targetName);
-    if (!target) {
-      this.addMessage({ sender: "System", text: "Invalid target selected.", private: false });
-      return;
-    }
-
-    let statVal = entityData[weapon.stat];
-    let statMod = Math.floor((statVal - 10) / 2);
-    let roll = this.rollSingleDice(20);
-    let totalAttack = roll + statMod + weapon.baseMod + attackEntry.customMod;
-
-    let damage = this.rollDamageDice(weapon.damageDice, statMod, weapon.baseMod, attackEntry.customMod);
-
-    this.addMessage({
-      sender: entityData.name,
-      text: `Attacks ${target.name} with ${weapon.name}!\nAttack Roll: d20(${roll})+Stat(${statMod})+Wep(${weapon.baseMod})+Custom(${attackEntry.customMod}) = ${totalAttack}\nDamage: ${damage.details} = ${damage.total}`,
-      private: false
-    });
-  }
-
-  getPossibleTargets(attackerType, attackerData) {
-    let targets = this.characters.map(ch => ({ type: "character", id: ch.id, name: ch.name, placed: ch.placed }));
-    for (const key in this.entityTokens) {
-      const et = this.entityTokens[key];
-      if (et.type === "character") {
-        // Already included
-      } else {
-        const m = this.getMonsterById(et.id);
-        if (m && !targets.find(t => t.type === "monster" && t.id === m.id)) {
-          targets.push({ type: "monster", id: m.id, name: m.name, placed: true });
-        }
-      }
-    }
-    // Remove self
-    targets = targets.filter(t => t.name !== attackerData.name);
-    return targets;
-  }
-
-  // Dice Rolling Utilities
-  rollDamageDice(diceExp, statMod, baseMod, customMod) {
-    const match = diceExp.match(/(\d+)d(\d+)/);
-    if (!match) return { total: 0, details: "Invalid dice expression." };
-    let diceCount = parseInt(match[1], 10);
-    let diceSides = parseInt(match[2], 10);
-    let rolls = [];
-    for (let i = 0; i < diceCount; i++) {
-      rolls.push(this.rollSingleDice(diceSides));
-    }
-    let sum = rolls.reduce((a, b) => a + b, 0) + statMod + baseMod + customMod;
-    return { total: sum, details: `(${rolls.join(',')})+Stat(${statMod})+Wep(${baseMod})+Custom(${customMod})` };
   }
 }
