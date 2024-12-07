@@ -236,43 +236,6 @@ export class App {
     this.logEl.scrollTop = this.logEl.scrollHeight;
   }
 
-  // Dice Rolling Functions
-  rollSingleDice(sides) {
-    return Math.floor(Math.random() * sides) + 1;
-  }
-  rollCombinedDiceExpression(expression) {
-    const originalExpr = expression;
-    expression = expression.trim().replace(/\s+/g, '');
-    const regex = /([+\-])?(\d*d\d+|\d+)/gi;
-    let total = 0;
-    let detailParts = [];
-    let match;
-    while ((match = regex.exec(expression)) !== null) {
-      let sign = match[1] || '+';
-      let token = match[2];
-      let signFactor = (sign === '-') ? -1 : 1;
-      if (token.includes('d')) {
-        let [diceCountStr, sidesStr] = token.split('d');
-        let diceCount = parseInt(diceCountStr || '1', 10);
-        let sides = parseInt(sidesStr, 10);
-        let rolls = [];
-        for (let i = 0; i < diceCount; i++) {
-          let result = this.rollSingleDice(sides);
-          rolls.push(result);
-        }
-        let sumRolls = rolls.reduce((a, b) => a + b, 0);
-        total += sumRolls * signFactor;
-        detailParts.push(`${sign}${diceCount}d${sides} [${rolls.join(',')}]`);
-      } else {
-        let num = parseInt(token, 10);
-        total += num * signFactor;
-        detailParts.push(`${sign}${num}`);
-      }
-    }
-    let detailStr = detailParts.join('');
-    detailStr = detailStr.replace(/^\+/, ''); // Remove leading +
-    return `Rolled ${originalExpr}: ${detailStr} = ${total}`;
-  }
   // Rendering Functions
   renderCharacterList() {
     this.characterListEntries.innerHTML = '';
