@@ -11,7 +11,7 @@ export class App {
     this.cols = 8;
     this.users = ["DM", "Player1", "Player2"];
     this.currentUser = "DM";
-
+    
     // Data Structures
     this.weapons = [
       { id: 1, name: "Short Sword", damageDice: "1d6", stat: "STR", baseMod: 2 },
