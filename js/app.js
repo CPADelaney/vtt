@@ -1,7 +1,5 @@
 // js/app.js
 
-import { Board } from './board.js'; // Adjust the path if necessary
-
 export class App {
   constructor() {
     // Configuration Constants
@@ -45,6 +43,8 @@ export class App {
     this.draggedMonsterId = null;
 
     // DOM Elements
+    this.gridEl = document.getElementById('grid');
+    this.marqueeEl = document.getElementById('selection-marquee');
     this.logEl = document.getElementById('log');
     this.commandInput = document.getElementById('command-input');
     this.characterListEntries = document.getElementById('character-list-entries');
@@ -66,13 +66,15 @@ export class App {
     this.assignOwnerField = document.getElementById('assign-owner-field');
     this.createCharacterBtn = document.getElementById('create-character-btn');
 
-    // Initialize Board Module
-    this.board = new Board(this.rows, this.cols, this.entityTokens, this);
+    // Context Menu
+    this.contextMenu = document.getElementById('context-menu');
+    this.contextDelete = document.getElementById('context-delete');
+    this.contextMenuVisible = false;
   }
 
   // Initialize the application
   initialize() {
-    this.board.initialize();
+    this.buildGrid();
     this.setupEventListeners();
     this.renderCharacterList();
     this.renderMonsterList();
@@ -93,11 +95,18 @@ export class App {
   }
 
   getEntityPosition(type, id) {
-    return this.board.getEntityPosition(type, id);
+    for (const key in this.entityTokens) {
+      const et = this.entityTokens[key];
+      if (et.type === type && et.id === id) {
+        const [r, c] = key.split(',').map(Number);
+        return { row: r, col: c };
+      }
+    }
+    return null;
   }
 
   isEntitySelected(ent) {
-    return this.board.isEntitySelected(ent);
+    return this.selectedEntities.some(e => e.type === ent.type && e.id === ent.id);
   }
 
   canControlEntity(entity) {
@@ -109,9 +118,50 @@ export class App {
     }
   }
 
-  // Setup Event Listeners Related to Non-Board Functionalities
+  // Grid Setup
+  buildGrid() {
+    for (let r = 0; r < this.rows; r++) {
+      const rowEl = document.createElement('tr');
+      for (let c = 0; c < this.cols; c++) {
+        const cell = document.createElement('td');
+        cell.dataset.row = r;
+        cell.dataset.col = c;
+        cell.addEventListener('dragover', (ev) => ev.preventDefault());
+        cell.addEventListener('drop', (ev) => this.handleDrop(ev, r, c));
+        rowEl.appendChild(cell);
+      }
+      this.gridEl.appendChild(rowEl);
+    }
+  }
+
+  handleDrop(ev, r, c) {
+    ev.preventDefault();
+    if (this.draggedCharId !== null) {
+      this.placeCharacterOnBoard(this.draggedCharId, r, c);
+    }
+    if (this.draggedMonsterId !== null) {
+      this.placeMonsterOnBoard(this.draggedMonsterId, r, c);
+    }
+  }
+
+  // Event Listeners Setup
   setupEventListeners() {
-    // Context Menu actions are already handled in Board module
+    // Grid Interaction
+    this.gridEl.addEventListener('mousedown', (e) => this.handleGridMouseDown(e));
+    document.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+    document.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+
+    // Context Menu
+    document.addEventListener('contextmenu', (e) => this.handleContextMenu(e));
+    this.contextDelete.addEventListener('click', () => {
+      this.deleteSelectedEntities();
+      this.hideContextMenu();
+    });
+    document.addEventListener('click', (e) => {
+      if (this.contextMenuVisible && !this.contextMenu.contains(e.target)) {
+        this.hideContextMenu();
+      }
+    });
 
     // Dice and Chat
     this.commandInput.addEventListener('keypress', (e) => this.handleCommandInput(e));
@@ -152,6 +202,163 @@ export class App {
 
     // Monster Filter
     this.monsterFilter.addEventListener('change', () => this.renderMonsterList());
+  }
+
+  // Grid Mouse Down Handler
+  handleGridMouseDown(e) {
+    if (e.button !== 0) return; // Left-click only
+
+    const rect = this.gridEl.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const cellWidth = 40;
+    const cellHeight = 40;
+
+    const c = Math.floor(x / cellWidth);
+    const r = Math.floor(y / cellHeight);
+
+    if (r < 0 || r >= this.rows || c < 0 || c >= this.cols) return; // Click outside grid
+
+    const key = `${r},${c}`;
+    const entity = this.entityTokens[key];
+    const ctrlPressed = e.ctrlKey;
+
+    if (entity) {
+      if (ctrlPressed) {
+        // Toggle selection
+        if (this.isEntitySelected(entity)) {
+          this.selectedEntities = this.selectedEntities.filter(se => !(se.type === entity.type && se.id === entity.id));
+        } else {
+          this.selectedEntities.push({ type: entity.type, id: entity.id });
+        }
+      } else {
+        if (this.isEntitySelected(entity)) {
+          // Already selected, do nothing
+        } else {
+          this.selectedEntities = [{ type: entity.type, id: entity.id }];
+        }
+      }
+
+      if (this.selectedEntities.length > 0 && this.selectedEntities.every(ent => this.canControlEntity(ent))) {
+        this.isDraggingTokens = true;
+        this.dragStartPos = { x: e.clientX, y: e.clientY };
+        this.originalPositions = this.selectedEntities.map(ent => {
+          let pos = this.getEntityPosition(ent.type, ent.id);
+          return { ...ent, row: pos.row, col: pos.col };
+        });
+      }
+    } else {
+      if (!ctrlPressed) {
+        this.selectedEntities = [];
+      }
+      this.isMarqueeSelecting = true;
+      this.marqueeStart = { x: x, y: y };
+      this.marqueeEl.style.display = 'block';
+      this.marqueeEl.style.left = `${this.marqueeStart.x}px`;
+      this.marqueeEl.style.top = `${this.marqueeStart.y}px`;
+      this.marqueeEl.style.width = '0px';
+      this.marqueeEl.style.height = '0px';
+    }
+
+    this.updateSelectionStyles();
+  }
+
+  // Mouse Move Handler
+  handleMouseMove(e) {
+    if (this.isDraggingTokens && this.selectedEntities.length > 0) {
+      const dx = e.clientX - this.dragStartPos.x;
+      const dy = e.clientY - this.dragStartPos.y;
+      const cellWidth = 40;
+      const cellHeight = 40;
+      const rowOffset = Math.round(dy / cellHeight);
+      const colOffset = Math.round(dx / cellWidth);
+      this.highlightDragPositions(rowOffset, colOffset);
+    }
+
+    if (this.isMarqueeSelecting) {
+      const rect = this.gridEl.getBoundingClientRect();
+      let currentX = e.clientX - rect.left;
+      let currentY = e.clientY - rect.top;
+
+      // Constrain within grid
+      currentX = Math.max(0, Math.min(currentX, this.cols * 40));
+      currentY = Math.max(0, Math.min(currentY, this.rows * 40));
+
+      const x1 = Math.min(currentX, this.marqueeStart.x);
+      const y1 = Math.min(currentY, this.marqueeStart.y);
+      const x2 = Math.max(currentX, this.marqueeStart.x);
+      const y2 = Math.max(currentY, this.marqueeStart.y);
+
+      this.marqueeRect = {
+        x: x1,
+        y: y1,
+        w: x2 - x1,
+        h: y2 - y1
+      };
+
+      this.marqueeEl.style.left = `${x1}px`;
+      this.marqueeEl.style.top = `${y1}px`;
+      this.marqueeEl.style.width = `${this.marqueeRect.w}px`;
+      this.marqueeEl.style.height = `${this.marqueeRect.h}px`;
+    }
+  }
+
+  // Mouse Up Handler
+  handleMouseUp(e) {
+    if (this.isDraggingTokens) {
+      this.isDraggingTokens = false;
+      const dx = e.clientX - this.dragStartPos.x;
+      const dy = e.clientY - this.dragStartPos.y;
+      const cellWidth = 40;
+      const cellHeight = 40;
+      const rowOffset = Math.round(dy / cellHeight);
+      const colOffset = Math.round(dx / cellWidth);
+
+      if (rowOffset !== 0 || colOffset !== 0) {
+        this.moveSelectedEntities(rowOffset, colOffset);
+      }
+      this.clearDragHighlights();
+    }
+
+    if (this.isMarqueeSelecting) {
+      this.isMarqueeSelecting = false;
+      this.marqueeEl.style.display = 'none';
+      this.selectedEntities = this.getEntitiesInMarquee();
+      this.updateSelectionStyles();
+    }
+  }
+
+  // Context Menu Handlers
+  handleContextMenu(e) {
+    e.preventDefault();
+    const cell = e.target.closest('td');
+    if (!cell) {
+      this.hideContextMenu();
+      return;
+    }
+
+    const r = parseInt(cell.dataset.row, 10);
+    const c = parseInt(cell.dataset.col, 10);
+    const entity = this.entityTokens[`${r},${c}`];
+
+    if (entity && this.isEntitySelected(entity) && this.canControlEntity(entity)) {
+      this.showContextMenu(e.pageX, e.pageY);
+    } else {
+      this.hideContextMenu();
+    }
+  }
+
+  showContextMenu(x, y) {
+    this.contextMenu.style.display = 'block';
+    this.contextMenu.style.left = `${x}px`;
+    this.contextMenu.style.top = `${y}px`;
+    this.contextMenuVisible = true;
+  }
+
+  hideContextMenu() {
+    this.contextMenu.style.display = 'none';
+    this.contextMenuVisible = false;
   }
 
   // Dice and Chat Handlers
@@ -278,6 +485,191 @@ export class App {
     return `Rolled ${originalExpr}: ${detailStr} = ${total}`;
   }
 
+  // Entity Selection and Movement
+  updateSelectionStyles() {
+    const cells = this.gridEl.querySelectorAll('td');
+    cells.forEach(cell => cell.classList.remove('selected'));
+
+    for (let ent of this.selectedEntities) {
+      const pos = this.getEntityPosition(ent.type, ent.id);
+      if (pos) {
+        const cell = this.gridEl.querySelector(`td[data-row='${pos.row}'][data-col='${pos.col}']`);
+        if (cell) cell.classList.add('selected');
+      }
+    }
+  }
+
+  moveSelectedEntities(rowOffset, colOffset) {
+    let newPositions = [];
+    for (let i = 0; i < this.selectedEntities.length; i++) {
+      const ent = this.selectedEntities[i];
+      const oldPos = this.originalPositions[i];
+      const newRow = oldPos.row + rowOffset;
+      const newCol = oldPos.col + colOffset;
+      if (newRow < 0 || newRow >= this.rows || newCol < 0 || newCol >= this.cols) {
+        return;
+      }
+      const destKey = `${newRow},${newCol}`;
+      if (this.entityTokens[destKey] && !this.selectedEntities.some(se => {
+        const p = this.getEntityPosition(se.type, se.id);
+        return p && p.row === newRow && p.col === newCol;
+      })) {
+        return;
+      }
+      newPositions.push({ ...ent, row: newRow, col: newCol });
+    }
+
+    for (const ent of this.selectedEntities) {
+      const pos = this.getEntityPosition(ent.type, ent.id);
+      if (pos) delete this.entityTokens[`${pos.row},${pos.col}`];
+    }
+
+    for (const np of newPositions) {
+      this.entityTokens[`${np.row},${np.col}`] = { type: np.type, id: np.id };
+    }
+
+    this.redrawBoard();
+  }
+
+  redrawBoard() {
+    const cells = this.gridEl.querySelectorAll('td');
+    cells.forEach(cell => cell.textContent = '');
+    for (const key in this.entityTokens) {
+      const et = this.entityTokens[key];
+      const [r, c] = key.split(',').map(Number);
+      const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
+      if (et.type === "character") cell.textContent = '@';
+      else cell.textContent = 'M';
+    }
+    this.updateSelectionStyles();
+  }
+
+  highlightDragPositions(rowOffset, colOffset) {
+    this.clearDragHighlights();
+    for (let i = 0; i < this.selectedEntities.length; i++) {
+      const ent = this.selectedEntities[i];
+      const oldPos = this.originalPositions[i];
+      const nr = oldPos.row + rowOffset;
+      const nc = oldPos.col + colOffset;
+      if (nr >= 0 && nr < this.rows && nc >= 0 && nc < this.cols) {
+        const cell = this.gridEl.querySelector(`td[data-row='${nr}'][data-col='${nc}']`);
+        if (cell) cell.style.outline = '2px dashed green';
+      }
+    }
+  }
+
+  clearDragHighlights() {
+    const cells = this.gridEl.querySelectorAll('td');
+    cells.forEach(cell => cell.style.outline = '');
+  }
+
+  deleteSelectedEntities() {
+    for (let ent of this.selectedEntities) {
+      const pos = this.getEntityPosition(ent.type, ent.id);
+      if (pos) delete this.entityTokens[`${pos.row},${pos.col}`];
+      if (ent.type === "character") {
+        const ch = this.getCharacterById(ent.id);
+        if (ch) ch.placed = false;
+      }
+      // Monsters could have a placed flag if needed
+    }
+    this.selectedEntities = [];
+    this.redrawBoard();
+    this.renderCharacterList();
+    this.renderMonsterList();
+  }
+
+  getEntitiesInMarquee() {
+    const cellWidth = 40;
+    const cellHeight = 40;
+    let selected = [];
+
+    for (const key in this.entityTokens) {
+      const [r, c] = key.split(',').map(Number);
+      const cellX = c * cellWidth;
+      const cellY = r * cellHeight;
+
+      const isSelected =
+        cellX < this.marqueeRect.x + this.marqueeRect.w &&
+        cellX + cellWidth > this.marqueeRect.x &&
+        cellY < this.marqueeRect.y + this.marqueeRect.h &&
+        cellY + cellHeight > this.marqueeRect.y;
+
+      if (isSelected) {
+        selected.push({ type: this.entityTokens[key].type, id: this.entityTokens[key].id });
+      }
+    }
+    return selected;
+  }
+
+  // Context Menu Actions
+  handleContextDelete() {
+    this.deleteSelectedEntities();
+    this.hideContextMenu();
+  }
+
+  // Dice Rolling Utilities
+  rollDamageDice(diceExp, statMod, baseMod, customMod) {
+    const match = diceExp.match(/(\d+)d(\d+)/);
+    if (!match) return { total: 0, details: "Invalid dice expression." };
+    let diceCount = parseInt(match[1], 10);
+    let diceSides = parseInt(match[2], 10);
+    let rolls = [];
+    for (let i = 0; i < diceCount; i++) {
+      rolls.push(this.rollSingleDice(diceSides));
+    }
+    let sum = rolls.reduce((a, b) => a + b, 0) + statMod + baseMod + customMod;
+    return { total: sum, details: `(${rolls.join(',')})+Stat(${statMod})+Wep(${baseMod})+Custom(${customMod})` };
+  }
+
+  // Attack Functionality
+  performAttack(entityData, type, attackEntry, weapon) {
+    let possibleTargets = this.getPossibleTargets(type, entityData);
+    if (possibleTargets.length === 0) {
+      this.addMessage({ sender: "System", text: "No targets available.", private: false });
+      return;
+    }
+
+    let targetName = prompt("Choose a target (Type exact name):\n" + possibleTargets.map(pt => pt.name).join('\n'));
+    if (!targetName) return;
+    let target = possibleTargets.find(pt => pt.name === targetName);
+    if (!target) {
+      this.addMessage({ sender: "System", text: "Invalid target selected.", private: false });
+      return;
+    }
+
+    let statVal = entityData[weapon.stat];
+    let statMod = Math.floor((statVal - 10) / 2);
+    let roll = this.rollSingleDice(20);
+    let totalAttack = roll + statMod + weapon.baseMod + attackEntry.customMod;
+
+    let damage = this.rollDamageDice(weapon.damageDice, statMod, weapon.baseMod, attackEntry.customMod);
+
+    this.addMessage({
+      sender: entityData.name,
+      text: `Attacks ${target.name} with ${weapon.name}!\nAttack Roll: d20(${roll})+Stat(${statMod})+Wep(${weapon.baseMod})+Custom(${attackEntry.customMod}) = ${totalAttack}\nDamage: ${damage.details} = ${damage.total}`,
+      private: false
+    });
+  }
+
+  getPossibleTargets(attackerType, attackerData) {
+    let targets = this.characters.map(ch => ({ type: "character", id: ch.id, name: ch.name, placed: ch.placed }));
+    for (const key in this.entityTokens) {
+      const et = this.entityTokens[key];
+      if (et.type === "character") {
+        // Already included
+      } else {
+        const m = this.getMonsterById(et.id);
+        if (m && !targets.find(t => t.type === "monster" && t.id === m.id)) {
+          targets.push({ type: "monster", id: m.id, name: m.name, placed: true });
+        }
+      }
+    }
+    // Remove self
+    targets = targets.filter(t => t.name !== attackerData.name);
+    return targets;
+  }
+
   // Rendering Functions
   renderCharacterList() {
     this.characterListEntries.innerHTML = '';
@@ -294,11 +686,11 @@ export class App {
       dragIcon.setAttribute('draggable', canPlace ? 'true' : 'false');
       if (canPlace) {
         dragIcon.addEventListener('dragstart', (ev) => {
-          this.board.draggedCharId = ch.id;
-          this.board.draggedMonsterId = null;
+          this.draggedCharId = ch.id;
+          this.draggedMonsterId = null;
         });
         dragIcon.addEventListener('dragend', () => {
-          this.board.draggedCharId = null;
+          this.draggedCharId = null;
         });
       }
 
@@ -348,11 +740,11 @@ export class App {
       dragIcon.setAttribute('draggable', canPlace ? 'true' : 'false');
       if (canPlace) {
         dragIcon.addEventListener('dragstart', () => {
-          this.board.draggedMonsterId = m.id;
-          this.board.draggedCharId = null;
+          this.draggedMonsterId = m.id;
+          this.draggedCharId = null;
         });
         dragIcon.addEventListener('dragend', () => {
-          this.board.draggedMonsterId = null;
+          this.draggedMonsterId = null;
         });
       }
 
@@ -372,6 +764,22 @@ export class App {
       div.appendChild(openBtn);
       this.monsterListEntries.appendChild(div);
     }
+  }
+
+  renderLog() {
+    let displayText = '';
+    for (let msg of this.messages) {
+      if (!msg.private) {
+        displayText += `${msg.sender}: ${msg.text}\n`;
+      } else {
+        if (this.isDM() || (msg.recipients && msg.recipients.includes(this.currentUser))) {
+          let recipientsStr = msg.recipients.join(', ');
+          displayText += `${msg.sender} -> ${recipientsStr}: ${msg.text}\n`;
+        }
+      }
+    }
+    this.logEl.textContent = displayText;
+    this.logEl.scrollTop = this.logEl.scrollHeight;
   }
 
   // Modal Handling
@@ -518,7 +926,7 @@ export class App {
     if (this.entityTokens[key]) return;
     this.entityTokens[key] = { type: "character", id: charId };
     ch.placed = true;
-    this.board.redrawBoard();
+    this.redrawBoard();
     this.renderCharacterList();
   }
 
@@ -529,69 +937,7 @@ export class App {
     const key = `${row},${col}`;
     if (this.entityTokens[key]) return;
     this.entityTokens[key] = { type: "monster", id: monId };
-    this.board.redrawBoard();
+    this.redrawBoard();
     this.renderMonsterList();
-  }
-
-  // Attack Functionality
-  performAttack(entityData, type, attackEntry, weapon) {
-    let possibleTargets = this.getPossibleTargets(type, entityData);
-    if (possibleTargets.length === 0) {
-      this.addMessage({ sender: "System", text: "No targets available.", private: false });
-      return;
-    }
-
-    let targetName = prompt("Choose a target (Type exact name):\n" + possibleTargets.map(pt => pt.name).join('\n'));
-    if (!targetName) return;
-    let target = possibleTargets.find(pt => pt.name === targetName);
-    if (!target) {
-      this.addMessage({ sender: "System", text: "Invalid target selected.", private: false });
-      return;
-    }
-
-    let statVal = entityData[weapon.stat];
-    let statMod = Math.floor((statVal - 10) / 2);
-    let roll = this.rollSingleDice(20);
-    let totalAttack = roll + statMod + weapon.baseMod + attackEntry.customMod;
-
-    let damage = this.rollDamageDice(weapon.damageDice, statMod, weapon.baseMod, attackEntry.customMod);
-
-    this.addMessage({
-      sender: entityData.name,
-      text: `Attacks ${target.name} with ${weapon.name}!\nAttack Roll: d20(${roll})+Stat(${statMod})+Wep(${weapon.baseMod})+Custom(${attackEntry.customMod}) = ${totalAttack}\nDamage: ${damage.details} = ${damage.total}`,
-      private: false
-    });
-  }
-
-  getPossibleTargets(attackerType, attackerData) {
-    let targets = this.characters.map(ch => ({ type: "character", id: ch.id, name: ch.name, placed: ch.placed }));
-    for (const key in this.entityTokens) {
-      const et = this.entityTokens[key];
-      if (et.type === "character") {
-        // Already included
-      } else {
-        const m = this.getMonsterById(et.id);
-        if (m && !targets.find(t => t.type === "monster" && t.id === m.id)) {
-          targets.push({ type: "monster", id: m.id, name: m.name, placed: true });
-        }
-      }
-    }
-    // Remove self
-    targets = targets.filter(t => t.name !== attackerData.name);
-    return targets;
-  }
-
-  // Dice Rolling Utilities
-  rollDamageDice(diceExp, statMod, baseMod, customMod) {
-    const match = diceExp.match(/(\d+)d(\d+)/);
-    if (!match) return { total: 0, details: "Invalid dice expression." };
-    let diceCount = parseInt(match[1], 10);
-    let diceSides = parseInt(match[2], 10);
-    let rolls = [];
-    for (let i = 0; i < diceCount; i++) {
-      rolls.push(this.rollSingleDice(diceSides));
-    }
-    let sum = rolls.reduce((a, b) => a + b, 0) + statMod + baseMod + customMod;
-    return { total: sum, details: `(${rolls.join(',')})+Stat(${statMod})+Wep(${baseMod})+Custom(${customMod})` };
   }
 }
