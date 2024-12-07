@@ -1,5 +1,7 @@
 // js/app.js
 
+import { rollSingleDice, rollCombinedDiceExpression } from './dice.js';
+
 export class App {
   constructor() {
     // Configuration Constants
@@ -171,7 +173,7 @@ export class App {
     document.getElementById('roll-expression').addEventListener('click', () => {
       const expr = document.getElementById('dice-expression').value;
       if (expr) {
-        const result = this.rollCombinedDiceExpression(expr);
+        const result = rollCombinedDiceExpression(expr);
         this.addMessage({ text: result, sender: this.currentUser, private: false });
       }
     });
@@ -391,7 +393,7 @@ export class App {
 
         const diceExpr = parts.slice(diceExprIndex).join('');
         if (diceExpr) {
-          const result = this.rollCombinedDiceExpression(diceExpr);
+          const result = rollCombinedDiceExpression(diceExpr);
           if (recipients && recipients.length > 0) {
             if (!recipients.includes("DM")) recipients.push("DM");
             if (!recipients.includes(this.currentUser)) recipients.push(this.currentUser);
@@ -413,7 +415,7 @@ export class App {
 
   handleDiceButtonClick(btn) {
     const sides = parseInt(btn.dataset.sides, 10);
-    const result = this.rollSingleDice(sides);
+    const result = rollSingleDice(sides);
     this.addMessage({ text: `Rolled d${sides}: ${result}`, sender: this.currentUser, private: false });
   }
 
@@ -437,52 +439,6 @@ export class App {
     }
     this.logEl.textContent = displayText;
     this.logEl.scrollTop = this.logEl.scrollHeight;
-  }
-
-  // Dice Rolling Functions
-  rollSingleDice(sides) {
-    return Math.floor(Math.random() * sides) + 1;
-  }
-
-  rollCombinedDiceExpression(expression) {
-    const originalExpr = expression;
-    expression = expression.trim().replace(/\s+/g, '');
-    const regex = /([+\-])?(\d*d\d+|\d+)/gi;
-    let total = 0;
-    let detailParts = [];
-    let match;
-
-    while ((match = regex.exec(expression)) !== null) {
-      let sign = match[1] || '+';
-      let token = match[2];
-
-      let signFactor = (sign === '-') ? -1 : 1;
-
-      if (token.includes('d')) {
-        let [diceCountStr, sidesStr] = token.split('d');
-        let diceCount = parseInt(diceCountStr || '1', 10);
-        let sides = parseInt(sidesStr, 10);
-
-        let rolls = [];
-        for (let i = 0; i < diceCount; i++) {
-          let result = this.rollSingleDice(sides);
-          rolls.push(result);
-        }
-
-        let sumRolls = rolls.reduce((a, b) => a + b, 0);
-        total += sumRolls * signFactor;
-        detailParts.push(`${sign}${diceCount}d${sides} [${rolls.join(',')}]`);
-      } else {
-        let num = parseInt(token, 10);
-        total += num * signFactor;
-        detailParts.push(`${sign}${num}`);
-      }
-    }
-
-    let detailStr = detailParts.join('');
-    detailStr = detailStr.replace(/^\+/, ''); // Remove leading +
-
-    return `Rolled ${originalExpr}: ${detailStr} = ${total}`;
   }
 
   // Entity Selection and Movement
@@ -616,7 +572,7 @@ export class App {
     let diceSides = parseInt(match[2], 10);
     let rolls = [];
     for (let i = 0; i < diceCount; i++) {
-      rolls.push(this.rollSingleDice(diceSides));
+      rolls.push(rollSingleDice(diceSides));
     }
     let sum = rolls.reduce((a, b) => a + b, 0) + statMod + baseMod + customMod;
     return { total: sum, details: `(${rolls.join(',')})+Stat(${statMod})+Wep(${baseMod})+Custom(${customMod})` };
@@ -640,7 +596,7 @@ export class App {
 
     let statVal = entityData[weapon.stat];
     let statMod = Math.floor((statVal - 10) / 2);
-    let roll = this.rollSingleDice(20);
+    let roll = rollSingleDice(20);
     let totalAttack = roll + statMod + weapon.baseMod + attackEntry.customMod;
 
     let damage = this.rollDamageDice(weapon.damageDice, statMod, weapon.baseMod, attackEntry.customMod);
