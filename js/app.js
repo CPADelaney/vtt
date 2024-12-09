@@ -80,7 +80,7 @@ export class App {
   isEntitySelected(ent) {
     return this.board.isEntitySelected(ent);
   }
-}
+  
   moveSelectedEntities(rowOffset, colOffset) {
     const selected = this.board.selectedEntities;
     
@@ -112,4 +112,6 @@ export class App {
     // Redraw the board after moving
     this.board.redrawBoard();
   }
+
+}
 
