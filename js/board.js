@@ -145,7 +145,7 @@ redrawBoard() {
         this.isDraggingTokens = true;
         this.dragStartPos = { x: e.clientX, y: e.clientY };
         this.originalPositions = this.selectedEntities.map(ent => {
-          let pos = this.app.getEntityPosition(ent.type, ent.id);
+          let pos = this.getEntityPosition(ent.type, ent.id);
           return { ...ent, row: pos.row, col: pos.col };
         });
       }
@@ -268,7 +268,7 @@ redrawBoard() {
     cells.forEach(cell => cell.classList.remove('selected'));
 
     for (let ent of this.selectedEntities) {
-      const pos = this.app.getEntityPosition(ent.type, ent.id);
+      const pos = this.getEntityPosition(ent.type, ent.id);
       if (pos) {
         const cell = this.gridEl.querySelector(`td[data-row='${pos.row}'][data-col='${pos.col}']`);
         if (cell) cell.classList.add('selected');
@@ -296,6 +296,21 @@ redrawBoard() {
     const cells = this.gridEl.querySelectorAll('td');
     cells.forEach(cell => cell.style.outline = '');
   }
+  
+  isEntitySelected(entity) {
+  return this.selectedEntities.some(se => se.type === entity.type && se.id === entity.id);
+}
+
+  getEntityPosition(type, id) {
+  for (const key in this.entityTokens) {
+    const ent = this.entityTokens[key];
+    if (ent.type === type && ent.id === id) {
+      const [r, c] = key.split(',').map(Number);
+      return { row: r, col: c };
+    }
+  }
+  return null;
+}
 
   // Get Entities Within the Marquee Selection
   getEntitiesInMarquee() {
