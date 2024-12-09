@@ -61,6 +61,33 @@ export class App {
     }
   }
 
+  deleteSelectedEntities() {
+  const selected = this.board.selectedEntities;
+  for (let ent of selected) {
+    // Find the entity position
+    const pos = this.board.getEntityPosition(ent.type, ent.id);
+    if (pos) {
+      const key = `${pos.row},${pos.col}`;
+      delete this.entityTokens[key];
+    }
+
+    // If this is a character, also mark as not placed if needed
+    if (ent.type === 'character') {
+      const ch = this.getCharacterById(ent.id);
+      if (ch) ch.placed = false;
+    }
+  }
+
+  // Clear the selection after deletion
+  this.board.selectedEntities = [];
+
+  // Redraw the board and update UI
+  this.board.redrawBoard();
+  this.uiManager.renderCharacterList();
+  this.uiManager.renderMonsterList();
+}
+
+
   placeCharacterOnBoard(charId, row, col) {
     this.characterManager.placeCharacterOnBoard(charId, row, col);
   }
