@@ -61,6 +61,14 @@ export class App {
     }
   }
 
+  placeCharacterOnBoard(charId, row, col) {
+    this.characterManager.placeCharacterOnBoard(charId, row, col);
+  }
+  
+  placeMonsterOnBoard(monId, row, col) {
+    this.monsterManager.placeMonsterOnBoard(monId, row, col);
+  }
+
   getCharacterById(id) {
     return this.characterManager.getCharacterById(id);
   }
