@@ -82,36 +82,34 @@ export class App {
   }
   
   moveSelectedEntities(rowOffset, colOffset) {
-    const selected = this.board.selectedEntities;
-    
-    for (let ent of selected) {
-      const pos = this.board.getEntityPosition(ent.type, ent.id);
-      if (!pos) continue;
-      
-      const newRow = pos.row + rowOffset;
-      const newCol = pos.col + colOffset;
-  
-      if (newRow < 0 || newRow >= this.rows || newCol < 0 || newCol >= this.cols) {
-        // Out of bounds, skip
-        continue;
-      }
-  
-      // Remove the old position
-      delete this.entityTokens[`${pos.row},${pos.col}`];
-  
-      // Place the entity at the new position
-      const key = `${newRow},${newCol}`;
-      if (!this.entityTokens[key]) {
-        this.entityTokens[key] = { type: ent.type, id: ent.id };
-      }
-  
-      // If you want to ensure the entity's "placed" property or other logic is updated,
-      // you could call the manager's method again or just rely on this logic.
+  const selected = this.board.selectedEntities;
+
+  for (let ent of selected) {
+    const pos = this.board.getEntityPosition(ent.type, ent.id);
+    if (!pos) continue;
+
+    const newRow = pos.row + rowOffset;
+    const newCol = pos.col + colOffset;
+
+    // Check bounds
+    if (newRow < 0 || newRow >= this.rows || newCol < 0 || newCol >= this.cols) {
+      continue; // Skip if out of bounds
     }
-  
-    // Redraw the board after moving
-    this.board.redrawBoard();
+
+    // Remove from old position
+    delete this.entityTokens[`${pos.row},${pos.col}`];
+
+    // Place at new position (since it's already on the board, we just update tokens)
+    const newKey = `${newRow},${newCol}`;
+    if (!this.entityTokens[newKey]) {
+      this.entityTokens[newKey] = { type: ent.type, id: ent.id };
+    }
   }
+
+  // After adjusting positions, redraw the board
+  this.board.redrawBoard();
+}
+
 
 }
 
