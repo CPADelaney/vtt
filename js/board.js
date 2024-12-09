@@ -34,7 +34,7 @@ export class Board {
   initialize() {
     this.buildGrid();
     this.setupEventListeners();
-    this.app.redrawBoard();
+    this.redrawBoard();
   }
 
   // Grid Setup
@@ -52,6 +52,27 @@ export class Board {
       this.gridEl.appendChild(rowEl);
     }
   }
+redrawBoard() {
+  // Clear all cells first
+  const cells = this.gridEl.querySelectorAll('td');
+  cells.forEach(cell => cell.innerHTML = '');
+
+  // Loop over entityTokens and place them on the grid
+  for (const key in this.entityTokens) {
+    const [r, c] = key.split(',').map(Number);
+    const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
+    if (cell) {
+      const entity = this.entityTokens[key];
+      const token = document.createElement('div');
+      token.classList.add('token', entity.type);
+      token.textContent = entity.type === 'character' ? 'C' : 'M';
+      cell.appendChild(token);
+    }
+  }
+
+  // Update selection styles if needed
+  this.updateSelectionStyles();
+}
 
   // Handle Drop Events on Grid Cells
   handleDrop(ev, r, c) {
