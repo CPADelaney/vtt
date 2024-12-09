@@ -81,3 +81,35 @@ export class App {
     return this.board.isEntitySelected(ent);
   }
 }
+  moveSelectedEntities(rowOffset, colOffset) {
+    const selected = this.board.selectedEntities;
+    
+    for (let ent of selected) {
+      const pos = this.board.getEntityPosition(ent.type, ent.id);
+      if (!pos) continue;
+      
+      const newRow = pos.row + rowOffset;
+      const newCol = pos.col + colOffset;
+  
+      if (newRow < 0 || newRow >= this.rows || newCol < 0 || newCol >= this.cols) {
+        // Out of bounds, skip
+        continue;
+      }
+  
+      // Remove the old position
+      delete this.entityTokens[`${pos.row},${pos.col}`];
+  
+      // Place the entity at the new position
+      const key = `${newRow},${newCol}`;
+      if (!this.entityTokens[key]) {
+        this.entityTokens[key] = { type: ent.type, id: ent.id };
+      }
+  
+      // If you want to ensure the entity's "placed" property or other logic is updated,
+      // you could call the manager's method again or just rely on this logic.
+    }
+  
+    // Redraw the board after moving
+    this.board.redrawBoard();
+  }
+
