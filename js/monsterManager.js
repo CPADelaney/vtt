@@ -1,4 +1,5 @@
 // monsterManager.js
+
 export class MonsterManager {
   constructor(app) {
     this.app = app;
@@ -16,6 +17,15 @@ export class MonsterManager {
     if (this.app.entityTokens[key]) return;
     this.app.entityTokens[key] = { type: "monster", id: monId };
     this.app.board.redrawBoard();
+    this.app.uiManager.renderMonsterList();
+  }
+
+  addAttackToMonster(monId, attackId) {
+    // DM method to add new attacks to a monster
+    const m = this.getMonsterById(monId);
+    if (!m) return;
+    if (!m.attacks) m.attacks = [];
+    m.attacks.push({ attackId: attackId });
     this.app.uiManager.renderMonsterList();
   }
 }
