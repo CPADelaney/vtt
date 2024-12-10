@@ -121,10 +121,10 @@ export class UIManager {
       dragIcon.setAttribute('draggable', canPlace ? 'true' : 'false');
       if (canPlace) {
         dragIcon.addEventListener('dragstart', (ev) => {
-          ev.dataTransfer.setData('text', ''); // Required for proper drag in some browsers
-          this.app.board.draggedCharId = ch.id;
+          ev.dataTransfer.setData('text', ''); // essential for Chrome/Firefox to initiate a valid drag
+          this.app.board.draggedCharId = ch.id; // or draggedMonsterId if monster
           this.app.board.draggedMonsterId = null;
-          ev.dataTransfer.dropEffect = 'move';
+          ev.dataTransfer.effectAllowed = 'move';
         });
         dragIcon.addEventListener('dragend', () => {
           this.app.board.draggedCharId = null;
@@ -177,13 +177,13 @@ export class UIManager {
       dragIcon.setAttribute('draggable', canPlace ? 'true' : 'false');
       if (canPlace) {
         dragIcon.addEventListener('dragstart', (ev) => {
-          ev.dataTransfer.setData('text', '');
-          this.app.board.draggedMonsterId = m.id;
-          this.app.board.draggedCharId = null;
-          ev.dataTransfer.dropEffect = 'move';
+          ev.dataTransfer.setData('text', ''); // essential for Chrome/Firefox to initiate a valid drag
+          this.app.board.draggedCharId = ch.id; // or draggedMonsterId if monster
+          this.app.board.draggedMonsterId = null;
+          ev.dataTransfer.effectAllowed = 'move';
         });
         dragIcon.addEventListener('dragend', () => {
-          this.app.board.draggedMonsterId = null;
+          this.app.board.draggedCharId = null;
         });
       }
 
