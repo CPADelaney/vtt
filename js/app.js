@@ -109,33 +109,51 @@ export class App {
   }
   
   moveSelectedEntities(rowOffset, colOffset) {
-  const selected = this.board.selectedEntities;
-
-  for (let ent of selected) {
-    const pos = this.board.getEntityPosition(ent.type, ent.id);
-    if (!pos) continue;
-
-    const newRow = pos.row + rowOffset;
-    const newCol = pos.col + colOffset;
-
-    // Check bounds
-    if (newRow < 0 || newRow >= this.rows || newCol < 0 || newCol >= this.cols) {
-      continue; // Skip if out of bounds
+    const selected = this.board.selectedEntities;
+  
+    // First, validate that all selected entities can move
+    for (let ent of selected) {
+      const pos = this.board.getEntityPosition(ent.type, ent.id);
+      if (!pos) {
+        // If an entity position is not found, skip it or consider invalid
+        return; 
+      }
+  
+      const newRow = pos.row + rowOffset;
+      const newCol = pos.col + colOffset;
+  
+      // Check bounds
+      if (newRow < 0 || newRow >= this.rows || newCol < 0 || newCol >= this.cols) {
+        // Out of bounds: cancel the entire move
+        return;
+      }
+  
+      // Check if new position is free (optional)
+      const newKey = `${newRow},${newCol}`;
+      if (this.entityTokens[newKey]) {
+        // Position already occupied: cancel the entire move
+        return;
+      }
     }
-
-    // Remove from old position
-    delete this.entityTokens[`${pos.row},${pos.col}`];
-
-    // Place at new position (since it's already on the board, we just update tokens)
-    const newKey = `${newRow},${newCol}`;
-    if (!this.entityTokens[newKey]) {
+  
+    // If we reach this point, all moves are valid. Proceed to actually move.
+    for (let ent of selected) {
+      const pos = this.board.getEntityPosition(ent.type, ent.id);
+      if (!pos) continue; // In case an entity disappeared
+      
+      const newRow = pos.row + rowOffset;
+      const newCol = pos.col + colOffset;
+      const oldKey = `${pos.row},${pos.col}`;
+      const newKey = `${newRow},${newCol}`;
+  
+      delete this.entityTokens[oldKey];
       this.entityTokens[newKey] = { type: ent.type, id: ent.id };
     }
+  
+    // Redraw after moving everyone
+    this.board.redrawBoard();
   }
 
-  // After adjusting positions, redraw the board
-  this.board.redrawBoard();
-}
 
 
 }
