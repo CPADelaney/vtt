@@ -23,7 +23,6 @@ export class MonsterManager {
     this.app.board.redrawBoard();
     this.app.uiManager.renderMonsterList();
   }
-}
 
 
   addAttackToMonster(monId, attackId) {
