@@ -232,11 +232,6 @@ export class Board {
       this.marqueeEl.style.width = '0px';
       this.marqueeEl.style.height = '0px';
     }
-  
-    this.updateSelectionStyles();
-  }
-
-
     this.updateSelectionStyles();
   }
 
