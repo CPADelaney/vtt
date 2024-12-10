@@ -36,11 +36,14 @@ export class MonsterManager {
   }
 
   addAttackToMonster(monId, attackId) {
-    // DM method to add new attacks to a monster
     const m = this.getMonsterById(monId);
-    if (!m) return;
+    if (!m) {
+      console.warn("No monster with id", monId);
+      return;
+    }
     if (!m.attacks) m.attacks = [];
-    m.attacks.push({ attackId: attackId });
+    m.attacks.push({ attackId });
+    console.log("Attack added to monster", monId, "Attacks:", m.attacks);
     this.app.uiManager.renderMonsterList();
   }
 }
