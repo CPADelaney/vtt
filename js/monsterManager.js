@@ -13,28 +13,17 @@ export class MonsterManager {
   placeMonsterOnBoard(monId, row, col) {
     console.log("placeMonsterOnBoard called with", monId, row, col);
     const m = this.getMonsterById(monId);
-    if (!m) {
-      console.log("No monster found with id:", monId);
-      return;
-    }
-  
-    if (!this.app.isDM()) {
-      console.log("Not DM, cannot place monster");
-      return;
-    }
-  
+    if (!m) return;
+    if (!this.app.isDM()) return;
     const key = `${row},${col}`;
-    if (this.app.entityTokens[key]) {
-      console.log("Cell already occupied by another entity");
-      return;
-    }
-  
+    if (this.app.entityTokens[key]) return;
     this.app.entityTokens[key] = { type: "monster", id: monId };
     console.log("Monster placed on board at", key, this.app.entityTokens[key]);
-  
+
     this.app.board.redrawBoard();
     this.app.uiManager.renderMonsterList();
   }
+}
 
 
   addAttackToMonster(monId, attackId) {
