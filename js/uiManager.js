@@ -240,27 +240,47 @@ export class UIManager {
     this.monsterSheetModal.style.display = "block";
   }
 
-  renderAttacksSection(entityData, type, containerEl) {
-    containerEl.innerHTML = `<h4>Attacks</h4>`;
-    if (!entityData.attacks || entityData.attacks.length === 0) {
-      containerEl.innerHTML += `<p>No attacks.</p>`;
-      return;
-    }
-
-    for (let att of entityData.attacks) {
-      const w = this.app.weapons.find(wep => wep.id === att.weaponId);
-      if (!w) continue;
-      const attackDiv = document.createElement('div');
-      attackDiv.textContent = `${w.name} (Custom Mod: ${att.customMod}) `;
-      const attackBtn = document.createElement('button');
-      attackBtn.textContent = "Attack!";
-      attackBtn.addEventListener('click', () => {
-        performAttack(entityData, type, att, w, this.app);
-      });
-      attackDiv.appendChild(attackBtn);
-      containerEl.appendChild(attackDiv);
-    }
+renderAttacksSection(entityData, type, containerEl) {
+  containerEl.innerHTML = `<h4>Attacks</h4>`;
+  if (!entityData.attacks || entityData.attacks.length === 0) {
+    containerEl.innerHTML += `<p>No attacks.</p>`;
+    return;
   }
+
+  for (let att of entityData.attacks) {
+    const w = this.app.weapons.find(wep => wep.id === att.weaponId);
+    if (!w) continue;
+    const attackDiv = document.createElement('div');
+    attackDiv.textContent = `${w.name} (Custom Mod: ${att.customMod}) `;
+    const attackBtn = document.createElement('button');
+    attackBtn.textContent = "Attack!";
+
+    // Updated event listener:
+    attackBtn.addEventListener('click', () => {
+      const actionData = {
+        type: 'attack',
+        attacker: entityData,
+        entityType: type,
+        attackEntry: att,
+        weapon: w
+      };
+
+      this.app.startAction(actionData);
+
+      // Calculate range and get positions
+      const range = 5; // Example range
+      const attackerPos = this.app.board.getEntityPosition(type, entityData.id);
+      const possiblePositions = this.app.board.getPositionsInRange(attackerPos, range);
+
+      // Highlight possible target tiles
+      this.app.board.highlightTiles(possiblePositions, 'target-highlight');
+    });
+
+    attackDiv.appendChild(attackBtn);
+    containerEl.appendChild(attackDiv);
+  }
+}
+
 
   openCreateCharacterModal() {
     if (this.app.isDM()) {
