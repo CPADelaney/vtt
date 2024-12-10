@@ -5,7 +5,7 @@ export class Board {
   constructor(rows, cols, entityTokens, appInstance) {
     this.rows = rows;
     this.cols = cols;
-    this.entityTokens = entityTokens;
+    this.app.entityTokens = entityTokens;
     this.app = appInstance;
 
     this.gridEl = document.getElementById('grid');
@@ -167,7 +167,7 @@ export class Board {
     // Single-target Attack Mode
     if (this.app.currentAction && this.app.currentAction.type === 'attack') {
       const key = `${r},${c}`;
-      const entity = this.entityTokens[key];
+      const entity = this.app.entityTokens[key];
       console.log("Attack mode click:", r, c, "entity:", entity, "highlighted:", this.isCellHighlighted(r,c));
   
       if (entity && this.isCellHighlighted(r, c)) {
@@ -186,7 +186,7 @@ export class Board {
   
     // Normal selection/marquee mode
     const key = `${r},${c}`;
-    const entity = this.entityTokens[key];
+    const entity = this.app.entityTokens[key];
     const ctrlPressed = e.ctrlKey;
     console.log("Normal mode click on cell:", r, c, "Entity:", entity, "Ctrl pressed:", ctrlPressed);
   
@@ -323,7 +323,7 @@ export class Board {
 
     const r = parseInt(cell.dataset.row, 10);
     const c = parseInt(cell.dataset.col, 10);
-    const entity = this.entityTokens[`${r},${c}`];
+    const entity = this.app.entityTokens[`${r},${c}`];
 
     if (entity && this.isEntitySelected(entity) && this.app.canControlEntity(entity)) {
       this.showContextMenu(e.pageX, e.pageY);
@@ -400,7 +400,7 @@ export class Board {
     const cellHeight = 40;
     let selected = [];
 
-    for (const key in this.entityTokens) {
+    for (const key in this.app.entityTokens) {
       const [r, c] = key.split(',').map(Number);
       const cellX = c * cellWidth;
       const cellY = r * cellHeight;
@@ -412,7 +412,7 @@ export class Board {
         cellY + cellHeight > this.marqueeRect.y;
 
       if (isSelected) {
-        selected.push({ type: this.entityTokens[key].type, id: this.entityTokens[key].id });
+        selected.push({ type: this.app.entityTokens[key].type, id: this.app.entityTokens[key].id });
       }
     }
     return selected;
@@ -460,8 +460,8 @@ export class Board {
     let entities = [];
     for (let pos of positions) {
       const key = `${pos.row},${pos.col}`;
-      if (this.entityTokens[key]) {
-        entities.push(this.entityTokens[key]);
+      if (this.app.entityTokens[key]) {
+        entities.push(this.app.entityTokens[key]);
       }
     }
     return entities;
