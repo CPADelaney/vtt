@@ -8,13 +8,11 @@ export class Board {
     this.entityTokens = entityTokens;
     this.app = appInstance;
 
-    // DOM Elements
     this.gridEl = document.getElementById('grid');
     this.marqueeEl = document.getElementById('selection-marquee');
     this.contextMenu = document.getElementById('context-menu');
     this.contextDelete = document.getElementById('context-delete');
 
-    // Selection and Dragging States
     this.selectedEntities = [];
     this.isDraggingTokens = false;
     this.dragStartPos = { x: 0, y: 0 };
@@ -24,12 +22,11 @@ export class Board {
     this.marqueeStart = { x: 0, y: 0 };
     this.marqueeRect = { x: 0, y: 0, w: 0, h: 0 };
 
-    // Drag Indicators
     this.draggedCharId = null;
     this.draggedMonsterId = null;
 
     this.contextMenuVisible = false;
-    this.terrainEffects = {}; // Store terrain effects if needed
+    this.terrainEffects = {};
   }
 
   initialize() {
@@ -45,12 +42,14 @@ export class Board {
         const cell = document.createElement('td');
         cell.dataset.row = r;
         cell.dataset.col = c;
-        // Allow dropping
+
+        // Allow dropping on cells
         cell.addEventListener('dragover', (ev) => {
           ev.preventDefault();
           ev.dataTransfer.dropEffect = 'move';
         });
         cell.addEventListener('drop', (ev) => this.handleDrop(ev, r, c));
+
         rowEl.appendChild(cell);
       }
       this.gridEl.appendChild(rowEl);
@@ -64,7 +63,6 @@ export class Board {
       cell.classList.remove('terrain-acidic');
     });
 
-    // Place entities
     for (const key in this.entityTokens) {
       const [r, c] = key.split(',').map(Number);
       const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
@@ -77,15 +75,12 @@ export class Board {
       }
     }
 
-    // Draw terrain effects if any
     if (this.app.terrainEffects) {
       for (const key in this.app.terrainEffects) {
         const [r, c] = key.split(',').map(Number);
         const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
-        if (cell) {
-          if (this.app.terrainEffects[key].type === 'acidic') {
-            cell.classList.add('terrain-acidic');
-          }
+        if (cell && this.app.terrainEffects[key].type === 'acidic') {
+          cell.classList.add('terrain-acidic');
         }
       }
     }
@@ -95,6 +90,7 @@ export class Board {
 
   handleDrop(ev, r, c) {
     ev.preventDefault();
+    console.log('handleDrop fired', r, c, 'draggedCharId:', this.draggedCharId, 'draggedMonsterId:', this.draggedMonsterId);
     if (this.draggedCharId !== null) {
       this.app.placeCharacterOnBoard(this.draggedCharId, r, c);
       this.draggedCharId = null;
@@ -128,10 +124,8 @@ export class Board {
     const rect = this.gridEl.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-
     const cellWidth = 40;
     const cellHeight = 40;
-
     const c = Math.floor(x / cellWidth);
     const r = Math.floor(y / cellHeight);
 
