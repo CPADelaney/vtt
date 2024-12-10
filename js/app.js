@@ -11,15 +11,16 @@ import { initialMonsters } from './monsters.js';
 export class App {
   constructor() {
     // Configuration & Data
+    console.log("App constructor called");
     this.rows = 8;
     this.cols = 8;
     this.users = ["DM", "Player1", "Player2"];
-    this.currentUser = "DM";
+    this.currentUser = "DM"; // Default to DM for easier testing
 
     this.weapons = [
       { id: 1, name: "Short Sword", damageDice: "1d6", stat: "STR", baseMod: 2 },
-      { id: 2, name: "Long Bow",    damageDice: "1d8", stat: "DEX", baseMod: 1 },
-      { id: 3, name: "Dagger",      damageDice: "1d4", stat: "DEX", baseMod: 3 }
+      { id: 2, name: "Long Bow", damageDice: "1d8", stat: "DEX", baseMod: 1 },
+      { id: 3, name: "Dagger", damageDice: "1d4", stat: "DEX", baseMod: 3 }
     ];
 
     this.characters = [];
@@ -28,52 +29,64 @@ export class App {
     // Load monsters from monsters.js
     this.monsters = initialMonsters;
 
-
     this.entityTokens = {};
     this.messages = [];
 
+    // Initialize managers and board
+    console.log("Initializing Board and Managers");
     this.board = new Board(this.rows, this.cols, this.entityTokens, this);
     this.uiManager = new UIManager(this);
     this.chatManager = new ChatManager(this);
     this.characterManager = new CharacterManager(this);
     this.monsterManager = new MonsterManager(this);
 
-    this.currentAction = null; // { type: 'attack', attacker: {...}, attackData: {...}, weapon: {...} }
-    this.recentStates = []; // For undo: store snapshots of state before actions
+    this.currentAction = null; // For attacks/actions
+    this.recentStates = []; 
     this.maxUndo = 5;
 
-    this.campaignManager = new CampaignManager(this); // Initialize the campaign manager
+    this.campaignManager = new CampaignManager(this);
   }
 
   initialize() {
+    console.log("App initialize called");
     this.campaignManager.loadState();
     
+    // Initialize board after loading state
     this.board.initialize();
+
+    // Render initial UI
     this.uiManager.renderCharacterList();
     this.uiManager.renderMonsterList();
     this.uiManager.renderLog();
+    console.log("App initialized and UI rendered");
   }
 
   startAction(action) {
-    // action = { type: 'attack', attacker: entityData, att: attackEntry, weapon: weapon }
+    console.log("startAction called with:", action);
     this.currentAction = action;
   }
   
   clearAction() {
+    console.log("clearAction called");
     this.currentAction = null;
   }
 
   saveStateForUndo() {
-    // Save a snapshot of current state for undo
+    console.log("saveStateForUndo called");
     const state = this.campaignManager.gatherStateFromApp();
     this.recentStates.push(JSON.stringify(state));
     if (this.recentStates.length > this.maxUndo) {
       this.recentStates.shift();
     }
+    console.log("State saved, undo stack size:", this.recentStates.length);
   }
 
   undoLastAction() {
-    if (this.recentStates.length === 0) return;
+    console.log("undoLastAction called");
+    if (this.recentStates.length === 0) {
+      console.warn("No states to undo");
+      return;
+    }
 
     const lastStateJSON = this.recentStates.pop();
     const lastState = JSON.parse(lastStateJSON);
@@ -82,9 +95,11 @@ export class App {
     this.uiManager.renderCharacterList();
     this.uiManager.renderMonsterList();
     this.uiManager.renderLog();
+    console.log("Last action undone");
   }
   
   saveCampaign() {
+    console.log("saveCampaign called");
     this.campaignManager.saveState();
   }
 
@@ -93,46 +108,54 @@ export class App {
   }
 
   canControlEntity(entity) {
-    if (entity.type === "character") {
-      const ch = this.characterManager.getCharacterById(entity.id);
+    const type = entity.type;
+    const id = entity.id;
+    if (type === "character") {
+      const ch = this.characterManager.getCharacterById(id);
       return ch && (this.isDM() || ch.owner === this.currentUser);
     } else {
+      // For monsters, only DM controls
       return this.isDM();
     }
   }
 
   deleteSelectedEntities() {
-  const selected = this.board.selectedEntities;
-  for (let ent of selected) {
-    // Find the entity position
-    const pos = this.board.getEntityPosition(ent.type, ent.id);
-    if (pos) {
-      const key = `${pos.row},${pos.col}`;
-      delete this.entityTokens[key];
+    console.log("deleteSelectedEntities called");
+    const selected = this.board.selectedEntities;
+    console.log("Deleting selected:", selected);
+    for (let ent of selected) {
+      const pos = this.board.getEntityPosition(ent.type, ent.id);
+      if (pos) {
+        const key = `${pos.row},${pos.col}`;
+        delete this.entityTokens[key];
+        console.log("Deleted entity from:", key);
+      }
+
+      // If character, mark not placed
+      if (ent.type === 'character') {
+        const ch = this.getCharacterById(ent.id);
+        if (ch) {
+          ch.placed = false;
+          console.log("Marked character as not placed:", ch);
+        }
+      }
     }
 
-    // If this is a character, also mark as not placed if needed
-    if (ent.type === 'character') {
-      const ch = this.getCharacterById(ent.id);
-      if (ch) ch.placed = false;
-    }
+    this.board.selectedEntities = [];
+
+    this.board.redrawBoard();
+    this.uiManager.renderCharacterList();
+    this.uiManager.renderMonsterList();
+    console.log("Entities deleted and UI updated");
   }
 
-  // Clear the selection after deletion
-  this.board.selectedEntities = [];
-
-  // Redraw the board and update UI
-  this.board.redrawBoard();
-  this.uiManager.renderCharacterList();
-  this.uiManager.renderMonsterList();
-}
-
-
   placeCharacterOnBoard(charId, row, col) {
+    console.log("App.placeCharacterOnBoard called with", charId, row, col);
     this.characterManager.placeCharacterOnBoard(charId, row, col);
   }
   
   placeMonsterOnBoard(monId, row, col) {
+    console.log("App.placeMonsterOnBoard called with", monId, row, col);
     this.monsterManager.placeMonsterOnBoard(monId, row, col);
   }
 
@@ -149,52 +172,44 @@ export class App {
   }
   
   moveSelectedEntities(rowOffset, colOffset) {
+    console.log("moveSelectedEntities called with offsets:", rowOffset, colOffset);
     const selected = this.board.selectedEntities;
   
-    // First, validate that all selected entities can move
     for (let ent of selected) {
       const pos = this.board.getEntityPosition(ent.type, ent.id);
       if (!pos) {
-        // If an entity position is not found, skip it or consider invalid
+        console.warn("No position found for entity:", ent);
         return; 
       }
   
       const newRow = pos.row + rowOffset;
       const newCol = pos.col + colOffset;
-  
-      // Check bounds
       if (newRow < 0 || newRow >= this.rows || newCol < 0 || newCol >= this.cols) {
-        // Out of bounds: cancel the entire move
+        console.warn("Move out of bounds:", newRow, newCol);
         return;
       }
   
-      // Check if new position is free (optional)
       const newKey = `${newRow},${newCol}`;
       if (this.entityTokens[newKey]) {
-        // Position already occupied: cancel the entire move
+        console.warn("Cell occupied at", newKey);
         return;
       }
     }
   
-    // If we reach this point, all moves are valid. Proceed to actually move.
+    // Perform move
     for (let ent of selected) {
       const pos = this.board.getEntityPosition(ent.type, ent.id);
-      if (!pos) continue; // In case an entity disappeared
-      
+      if (!pos) continue; 
       const newRow = pos.row + rowOffset;
       const newCol = pos.col + colOffset;
       const oldKey = `${pos.row},${pos.col}`;
       const newKey = `${newRow},${newCol}`;
-  
       delete this.entityTokens[oldKey];
       this.entityTokens[newKey] = { type: ent.type, id: ent.id };
+      console.log("Moved entity to:", newKey);
     }
   
-    // Redraw after moving everyone
     this.board.redrawBoard();
+    console.log("Entities moved and board redrawn");
   }
-
-
-
 }
-
