@@ -38,7 +38,6 @@ export class CharacterManager {
     this.app.board.redrawBoard();
     this.app.uiManager.renderCharacterList();
   }
-}
   addAttackToCharacter(charId, attackId) {
     // DM method to add new attacks
     const ch = this.getCharacterById(charId);
@@ -46,4 +45,5 @@ export class CharacterManager {
     ch.attacks.push({ attackId: attackId });
     this.app.uiManager.renderCharacterList();
   }
+  
 }
