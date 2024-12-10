@@ -149,7 +149,6 @@ export class UIManager {
       container.appendChild(div);
     }
   }
-
   renderMonsterList() {
     if (this.app.isDM()) {
       this.monsterList.style.display = "block";
@@ -157,41 +156,41 @@ export class UIManager {
       this.monsterList.style.display = "none";
       return;
     }
-
+  
     this.monsterListEntries.innerHTML = '';
     const filter = this.monsterFilter.value;
     let filtered = this.app.monsters;
     if (filter) {
       filtered = this.app.monsters.filter(m => m.habitats.includes(filter));
     }
-
+  
     for (let m of filtered) {
       const div = document.createElement('div');
       div.className = 'monster-list-item';
-
+  
       const canPlace = this.app.isDM();
-
+  
       const dragIcon = document.createElement('span');
       dragIcon.textContent = '⚔';
       dragIcon.className = 'drag-icon';
       dragIcon.setAttribute('draggable', canPlace ? 'true' : 'false');
       if (canPlace) {
         dragIcon.addEventListener('dragstart', (ev) => {
-          ev.dataTransfer.setData('text', ''); // essential for Chrome/Firefox to initiate a valid drag
-          this.app.board.draggedCharId = ch.id; // or draggedMonsterId if monster
-          this.app.board.draggedMonsterId = null;
+          ev.dataTransfer.setData('text', '');
+          this.app.board.draggedMonsterId = m.id;
+          this.app.board.draggedCharId = null;
           ev.dataTransfer.effectAllowed = 'move';
         });
         dragIcon.addEventListener('dragend', () => {
-          this.app.board.draggedCharId = null;
+          this.app.board.draggedMonsterId = null;
         });
       }
-
+  
       div.appendChild(dragIcon);
-
+  
       let textNode = document.createTextNode(`${m.name}`);
       div.appendChild(textNode);
-
+  
       let openBtn = document.createElement('button');
       openBtn.textContent = 'View Stats';
       openBtn.addEventListener('click', () => {
@@ -199,11 +198,12 @@ export class UIManager {
           this.openMonsterSheet(m);
         }
       });
-
+  
       div.appendChild(openBtn);
       this.monsterListEntries.appendChild(div);
     }
   }
+
 
   openCharacterSheet(ch) {
     document.getElementById('character-name').textContent = ch.name;
