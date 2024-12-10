@@ -1,4 +1,5 @@
 // js/board.js
+import { performAttack, performAoeAttack } from './combat.js';
 
 export class Board {
   constructor(rows, cols, entityTokens, appInstance) {
@@ -28,16 +29,15 @@ export class Board {
     this.draggedMonsterId = null;
 
     this.contextMenuVisible = false;
+    this.terrainEffects = {}; // Store terrain effects if needed
   }
 
-  // Initialize Board Functionalities
   initialize() {
     this.buildGrid();
     this.setupEventListeners();
     this.redrawBoard();
   }
 
-  // Grid Setup
   buildGrid() {
     for (let r = 0; r < this.rows; r++) {
       const rowEl = document.createElement('tr');
@@ -54,11 +54,13 @@ export class Board {
   }
 
   redrawBoard() {
-    // Clear all cells first
     const cells = this.gridEl.querySelectorAll('td');
-    cells.forEach(cell => cell.innerHTML = '');
+    cells.forEach(cell => {
+      cell.innerHTML = '';
+      cell.classList.remove('terrain-acidic');
+    });
 
-    // Loop over entityTokens and place them on the grid
+    // Place entities
     for (const key in this.entityTokens) {
       const [r, c] = key.split(',').map(Number);
       const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
@@ -71,29 +73,39 @@ export class Board {
       }
     }
 
-    // Update selection styles if needed
+    // Draw terrain effects if any
+    if (this.app.terrainEffects) {
+      for (const key in this.app.terrainEffects) {
+        const [r, c] = key.split(',').map(Number);
+        const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
+        if (cell) {
+          if (this.app.terrainEffects[key].type === 'acidic') {
+            cell.classList.add('terrain-acidic');
+          }
+        }
+      }
+    }
+
     this.updateSelectionStyles();
   }
 
-  // Handle Drop Events on Grid Cells
   handleDrop(ev, r, c) {
     ev.preventDefault();
     if (this.draggedCharId !== null) {
       this.app.placeCharacterOnBoard(this.draggedCharId, r, c);
+      this.draggedCharId = null;
     }
     if (this.draggedMonsterId !== null) {
       this.app.placeMonsterOnBoard(this.draggedMonsterId, r, c);
+      this.draggedMonsterId = null;
     }
   }
 
-  // Setup Event Listeners Related to the Board
   setupEventListeners() {
-    // Grid Interaction
     this.gridEl.addEventListener('mousedown', (e) => this.handleGridMouseDown(e));
     document.addEventListener('mousemove', (e) => this.handleMouseMove(e));
     document.addEventListener('mouseup', (e) => this.handleMouseUp(e));
 
-    // Context Menu
     document.addEventListener('contextmenu', (e) => this.handleContextMenu(e));
     this.contextDelete.addEventListener('click', () => {
       this.app.deleteSelectedEntities();
@@ -106,9 +118,8 @@ export class Board {
     });
   }
 
-  // Grid Mouse Down Handler
   handleGridMouseDown(e) {
-    if (e.button !== 0) return; // Left-click only
+    if (e.button !== 0) return;
 
     const rect = this.gridEl.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -120,50 +131,60 @@ export class Board {
     const c = Math.floor(x / cellWidth);
     const r = Math.floor(y / cellHeight);
 
-    if (r < 0 || r >= this.rows || c < 0 || c >= this.cols) return; // Click outside grid
+    if (r < 0 || r >= this.rows || c < 0 || c >= this.cols) return;
 
-    // Check if we're in an action mode (e.g., attack)
+    // AoE Attack Mode
+    if (this.app.currentAction && this.app.currentAction.type === 'aoe') {
+      this.app.saveStateForUndo();
+      const aoePositions = this.getAoEAreaPositions(this.app.currentAction.aoeShape, { row: r, col: c }, this.app.currentAction.radius);
+      const affectedEntities = this.getEntitiesInPositions(aoePositions);
+      const finalTargets = this.filterAoETargets(affectedEntities, this.app.currentAction);
+
+      performAoeAttack(
+        this.app.currentAction.attacker, 
+        this.app.currentAction.entityType, 
+        this.app.currentAction.attackEntry, 
+        this.app.currentAction.attackDef, 
+        this.app, 
+        finalTargets, 
+        aoePositions
+      );
+
+      this.clearHighlights();
+      this.app.clearAction();
+      return;
+    }
+
+    // Single-target Attack Mode
     if (this.app.currentAction && this.app.currentAction.type === 'attack') {
-      // Player should be clicking on a highlighted tile that contains a target
       const key = `${r},${c}`;
       const entity = this.entityTokens[key];
       if (entity && this.isCellHighlighted(r, c)) {
-        // Valid target chosen
-        this.app.saveStateForUndo(); // Save state before performing attack
-
+        this.app.saveStateForUndo();
         const { attacker, entityType, attackEntry, weapon } = this.app.currentAction;
-        // Call performAttack with direct target
-        // Import performAttack at the top if not already, or use a global reference
-        import('./combat.js').then(({ performAttack }) => {
-          performAttack(attacker, entityType, attackEntry, weapon, this.app, { type: entity.type, id: entity.id });
-        });
-
+        performAttack(attacker, entityType, attackEntry, weapon, this.app, { type: entity.type, id: entity.id });
         this.clearHighlights();
         this.app.clearAction();
         return;
       } else {
-        // Clicked invalid cell in attack mode - do nothing or show a message
-        return;
+        return; 
       }
     }
 
-    // Normal (non-action) behavior
+    // Normal selection/marquee
     const key = `${r},${c}`;
     const entity = this.entityTokens[key];
     const ctrlPressed = e.ctrlKey;
 
     if (entity) {
       if (ctrlPressed) {
-        // Toggle selection
         if (this.isEntitySelected(entity)) {
           this.selectedEntities = this.selectedEntities.filter(se => !(se.type === entity.type && se.id === entity.id));
         } else {
           this.selectedEntities.push({ type: entity.type, id: entity.id });
         }
       } else {
-        if (this.isEntitySelected(entity)) {
-          // Already selected, do nothing
-        } else {
+        if (!this.isEntitySelected(entity)) {
           this.selectedEntities = [{ type: entity.type, id: entity.id }];
         }
       }
@@ -192,8 +213,23 @@ export class Board {
     this.updateSelectionStyles();
   }
 
-  // Mouse Move Handler
   handleMouseMove(e) {
+    if (this.app.currentAction && this.app.currentAction.type === 'aoe') {
+      const rect = this.gridEl.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const cellWidth = 40;
+      const cellHeight = 40;
+      const c = Math.floor(x / cellWidth);
+      const r = Math.floor(y / cellHeight);
+
+      if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
+        this.clearHighlights();
+        const aoePositions = this.getAoEAreaPositions(this.app.currentAction.aoeShape, { row: r, col: c }, this.app.currentAction.radius);
+        this.highlightTiles(aoePositions, 'target-highlight');
+      }
+    }
+
     if (this.isDraggingTokens && this.selectedEntities.length > 0) {
       const dx = e.clientX - this.dragStartPos.x;
       const dy = e.clientY - this.dragStartPos.y;
@@ -209,7 +245,6 @@ export class Board {
       let currentX = e.clientX - rect.left;
       let currentY = e.clientY - rect.top;
 
-      // Constrain within grid
       currentX = Math.max(0, Math.min(currentX, this.cols * 40));
       currentY = Math.max(0, Math.min(currentY, this.rows * 40));
 
@@ -232,7 +267,6 @@ export class Board {
     }
   }
 
-  // Mouse Up Handler
   handleMouseUp(e) {
     if (this.isDraggingTokens) {
       this.isDraggingTokens = false;
@@ -257,7 +291,6 @@ export class Board {
     }
   }
 
-  // Context Menu Handlers
   handleContextMenu(e) {
     e.preventDefault();
     const cell = e.target.closest('td');
@@ -289,7 +322,6 @@ export class Board {
     this.contextMenuVisible = false;
   }
 
-  // Update Selection Styles on the Grid
   updateSelectionStyles() {
     const cells = this.gridEl.querySelectorAll('td');
     cells.forEach(cell => cell.classList.remove('selected'));
@@ -303,7 +335,6 @@ export class Board {
     }
   }
 
-  // Highlight Potential Drag Positions
   highlightDragPositions(rowOffset, colOffset) {
     this.clearDragHighlights();
     for (let i = 0; i < this.selectedEntities.length; i++) {
@@ -318,7 +349,6 @@ export class Board {
     }
   }
 
-  // Clear All Drag Highlights
   clearDragHighlights() {
     const cells = this.gridEl.querySelectorAll('td');
     cells.forEach(cell => cell.style.outline = '');
@@ -339,7 +369,6 @@ export class Board {
     return null;
   }
 
-  // Get Entities Within the Marquee Selection
   getEntitiesInMarquee() {
     const cellWidth = 40;
     const cellHeight = 40;
@@ -363,7 +392,6 @@ export class Board {
     return selected;
   }
 
-  // Add Range Calculation & Highlighting
   getPositionsInRange(startPos, range) {
     let positions = [];
     for (let rr = startPos.row - range; rr <= startPos.row + range; rr++) {
@@ -374,6 +402,63 @@ export class Board {
       }
     }
     return positions;
+  }
+
+  // AoE Helpers
+  getAoEAreaPositions(shape, centerPos, radius) {
+    let positions = [];
+    if (shape === 'circle') {
+      for (let rr = centerPos.row - radius; rr <= centerPos.row + radius; rr++) {
+        for (let cc = centerPos.col - radius; cc <= centerPos.col + radius; cc++) {
+          if (rr >= 0 && rr < this.rows && cc >= 0 && cc < this.cols) {
+            const dx = rr - centerPos.row;
+            const dy = cc - centerPos.col;
+            if (dx*dx + dy*dy <= radius*radius) {
+              positions.push({ row: rr, col: cc });
+            }
+          }
+        }
+      }
+    } else if (shape === 'cone') {
+      // Simple example: a cone "forward" direction is assumed upward
+      // Add more complex logic as needed
+      for (let rr = centerPos.row - radius; rr <= centerPos.row; rr++) {
+        for (let cc = centerPos.col - (radius - (centerPos.row - rr)); cc <= centerPos.col + (radius - (centerPos.row - rr)); cc++) {
+          if (rr >= 0 && rr < this.rows && cc >= 0 && cc < this.cols) {
+            positions.push({ row: rr, col: cc });
+          }
+        }
+      }
+    }
+    // Add other shapes as needed
+    return positions;
+  }
+
+  getEntitiesInPositions(positions) {
+    let entities = [];
+    for (let pos of positions) {
+      const key = `${pos.row},${pos.col}`;
+      if (this.entityTokens[key]) {
+        entities.push(this.entityTokens[key]);
+      }
+    }
+    return entities;
+  }
+
+  filterAoETargets(entities, actionData) {
+    // Check actionData.attackDef.conditions if excludeAllies etc.
+    if (actionData.attackDef.conditions && actionData.attackDef.conditions.excludeAllies) {
+      // Suppose attacker is a character: exclude characters owned by same user?
+      const attacker = actionData.attacker;
+      return entities.filter(ent => {
+        if (ent.type === 'character') {
+          const ch = this.app.getCharacterById(ent.id);
+          return ch && ch.owner !== attacker.owner;
+        }
+        return true;
+      });
+    }
+    return entities;
   }
 
   highlightTiles(positions, highlightClass) {
