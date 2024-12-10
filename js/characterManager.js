@@ -1,6 +1,4 @@
 // characterManager.js
-// Contains logic for character data manipulation only.
-
 export class CharacterManager {
   constructor(app) {
     this.app = app;
@@ -15,10 +13,9 @@ export class CharacterManager {
       id: this.app.nextCharacterId++,
       ...data,
       placed: false,
-      attacks: attacks
+      attacks: attacks // [{ attackId: 1 }, ...]
     };
     this.app.characters.push(newChar);
-    // After updating data, request UI update
     this.app.uiManager.renderCharacterList();
   }
 
