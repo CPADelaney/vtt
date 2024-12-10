@@ -57,26 +57,26 @@ export class Board {
   }
 
   redrawBoard() {
-    console.log("redrawBoard called");
+    console.log("redrawBoard called, current entityTokens:", this.app.entityTokens);
     const cells = this.gridEl.querySelectorAll('td');
     cells.forEach(cell => {
       cell.innerHTML = '';
       cell.classList.remove('terrain-acidic');
     });
-  
-    // Use this.app.entityTokens instead of this.entityTokens
+
     for (const key in this.app.entityTokens) {
       const [r, c] = key.split(',').map(Number);
       const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
       if (cell) {
         const entity = this.app.entityTokens[key];
+        console.log("Drawing entity", entity, "at", r, c);
         const token = document.createElement('div');
         token.classList.add('token', entity.type);
         token.textContent = entity.type === 'character' ? 'C' : 'M';
         cell.appendChild(token);
       }
     }
-  
+
     if (this.app.terrainEffects) {
       for (const key in this.app.terrainEffects) {
         const [r, c] = key.split(',').map(Number);
@@ -86,7 +86,7 @@ export class Board {
         }
       }
     }
-  
+
     this.updateSelectionStyles();
   }
 
@@ -359,13 +359,17 @@ export class Board {
   }
 
   getEntityPosition(type, id) {
-    for (const key in this.entityTokens) {
-      const ent = this.entityTokens[key];
+    console.log("getEntityPosition called for type:", type, "id:", id);
+    console.log("Current entityTokens:", this.app.entityTokens);
+    for (const key in this.app.entityTokens) {
+      const ent = this.app.entityTokens[key];
       if (ent.type === type && ent.id === id) {
         const [r, c] = key.split(',').map(Number);
+        console.log("Found entity at", r, c);
         return { row: r, col: c };
       }
     }
+    console.warn("No entity found with type:", type, "id:", id, "in entityTokens");
     return null;
   }
 
