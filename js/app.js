@@ -40,6 +40,10 @@ export class App {
     this.characterManager = new CharacterManager(this);
     this.monsterManager = new MonsterManager(this);
 
+    this.currentAction = null; // { type: 'attack', attacker: {...}, attackData: {...}, weapon: {...} }
+    this.recentStates = []; // For undo: store snapshots of state before actions
+    this.maxUndo = 5;
+
     this.campaignManager = new CampaignManager(this); // Initialize the campaign manager
   }
 
@@ -47,6 +51,36 @@ export class App {
     this.campaignManager.loadState();
     
     this.board.initialize();
+    this.uiManager.renderCharacterList();
+    this.uiManager.renderMonsterList();
+    this.uiManager.renderLog();
+  }
+
+  startAction(action) {
+    // action = { type: 'attack', attacker: entityData, att: attackEntry, weapon: weapon }
+    this.currentAction = action;
+  }
+  
+  clearAction() {
+    this.currentAction = null;
+  }
+
+  saveStateForUndo() {
+    // Save a snapshot of current state for undo
+    const state = this.campaignManager.gatherStateFromApp();
+    this.recentStates.push(JSON.stringify(state));
+    if (this.recentStates.length > this.maxUndo) {
+      this.recentStates.shift();
+    }
+  }
+
+  undoLastAction() {
+    if (this.recentStates.length === 0) return;
+
+    const lastStateJSON = this.recentStates.pop();
+    const lastState = JSON.parse(lastStateJSON);
+    this.campaignManager.applyStateToApp(lastState);
+    this.board.redrawBoard();
     this.uiManager.renderCharacterList();
     this.uiManager.renderMonsterList();
     this.uiManager.renderLog();
