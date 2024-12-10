@@ -244,47 +244,58 @@ export class UIManager {
     this.monsterSheetModal.style.display = "block";
   }
 
-  renderAttacksSection(entityData, type, containerEl) {
-    containerEl.innerHTML = `<h4>Attacks</h4>`;
-    if (!entityData.attacks || entityData.attacks.length === 0) {
-      containerEl.innerHTML += `<p>No attacks.</p>`;
-      return;
-    }
-
-    for (let att of entityData.attacks) {
-      const attackDef = attacksData[att.attackId];
-      if (!attackDef) continue;
-
-      const attackDiv = document.createElement('div');
-      attackDiv.textContent = `${attackDef.name} `;
-      const attackBtn = document.createElement('button');
-      attackBtn.textContent = "Attack!";
-
-      attackBtn.addEventListener('click', () => {
-        const actionData = {
-          type: attackDef.type === 'aoe' ? 'aoe' : 'attack',
-          aoeShape: attackDef.shape || null,
-          radius: attackDef.radius || 0,
-          attacker: entityData,
-          entityType: type,
-          attackEntry: att,
-          attackDef: attackDef
-        };
-
-        this.app.startAction(actionData);
-
-        const attackerPos = this.app.board.getEntityPosition(type, entityData.id);
-        if (attackDef.type === 'single') {
-          // Single-target: Highlight range
-          const possiblePositions = this.app.board.getPositionsInRange(attackerPos, attackDef.range);
-          this.app.board.highlightTiles(possiblePositions, 'target-highlight');
-        } else if (attackDef.type === 'aoe') {
-          // AoE: highlights handled on mousemove
-        }
-      });
-
-      attackDiv.appendChild(attackBtn);
-      containerEl.appendChild(attackDiv);
+    renderAttacksSection(entityData, type, containerEl) {
+      containerEl.innerHTML = `<h4>Attacks</h4>`;
+      if (!entityData.attacks || entityData.attacks.length === 0) {
+        containerEl.innerHTML += `<p>No attacks.</p>`;
+        return;
+      }
+  
+      for (let att of entityData.attacks) {
+        const attackDef = attacksData[att.attackId];
+        if (!attackDef) continue;
+  
+        const attackDiv = document.createElement('div');
+        attackDiv.textContent = `${attackDef.name} `;
+        const attackBtn = document.createElement('button');
+        attackBtn.textContent = "Attack!";
+  
+        attackBtn.addEventListener('click', () => {
+          const actionData = {
+            type: attackDef.type === 'aoe' ? 'aoe' : 'attack',
+            aoeShape: attackDef.shape || null,
+            radius: attackDef.radius || 0,
+            attacker: entityData,
+            entityType: type,
+            attackEntry: att,
+            attackDef: attackDef
+          };
+  
+          this.app.startAction(actionData);
+  
+          // Debugging the attacker’s position:
+          console.log("Attempting to find attacker position for", entityData, "type:", type);
+          const attackerPos = this.app.board.getEntityPosition(type, entityData.id);
+          console.log("attackerPos:", attackerPos);
+          if (!attackerPos) {
+            console.warn("No attacker position found. The entity may not be placed on the board or type/id mismatch.");
+            return;
+          }
+  
+          if (attackDef.type === 'single') {
+            console.log("Highlighting range for single target attack.");
+            console.log("Calling getPositionsInRange with", attackerPos, "range:", attackDef.range);
+            const possiblePositions = this.app.board.getPositionsInRange(attackerPos, attackDef.range);
+            console.log("possiblePositions:", possiblePositions);
+            this.app.board.highlightTiles(possiblePositions, 'target-highlight');
+          } else if (attackDef.type === 'aoe') {
+            console.log("AOE attack selected, highlights on mousemove.");
+          }
+        });
+  
+        attackDiv.appendChild(attackBtn);
+        containerEl.appendChild(attackDiv);
+      }
     }
   }
 
