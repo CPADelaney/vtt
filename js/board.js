@@ -45,7 +45,11 @@ export class Board {
         const cell = document.createElement('td');
         cell.dataset.row = r;
         cell.dataset.col = c;
-        cell.addEventListener('dragover', (ev) => ev.preventDefault());
+        // Allow dropping
+        cell.addEventListener('dragover', (ev) => {
+          ev.preventDefault();
+          ev.dataTransfer.dropEffect = 'move';
+        });
         cell.addEventListener('drop', (ev) => this.handleDrop(ev, r, c));
         rowEl.appendChild(cell);
       }
@@ -404,7 +408,6 @@ export class Board {
     return positions;
   }
 
-  // AoE Helpers
   getAoEAreaPositions(shape, centerPos, radius) {
     let positions = [];
     if (shape === 'circle') {
@@ -420,8 +423,6 @@ export class Board {
         }
       }
     } else if (shape === 'cone') {
-      // Simple example: a cone "forward" direction is assumed upward
-      // Add more complex logic as needed
       for (let rr = centerPos.row - radius; rr <= centerPos.row; rr++) {
         for (let cc = centerPos.col - (radius - (centerPos.row - rr)); cc <= centerPos.col + (radius - (centerPos.row - rr)); cc++) {
           if (rr >= 0 && rr < this.rows && cc >= 0 && cc < this.cols) {
@@ -430,7 +431,6 @@ export class Board {
         }
       }
     }
-    // Add other shapes as needed
     return positions;
   }
 
@@ -446,9 +446,7 @@ export class Board {
   }
 
   filterAoETargets(entities, actionData) {
-    // Check actionData.attackDef.conditions if excludeAllies etc.
     if (actionData.attackDef.conditions && actionData.attackDef.conditions.excludeAllies) {
-      // Suppose attacker is a character: exclude characters owned by same user?
       const attacker = actionData.attacker;
       return entities.filter(ent => {
         if (ent.type === 'character') {
