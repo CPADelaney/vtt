@@ -255,7 +255,7 @@ export class UIManager {
       const attackBtn = document.createElement('button');
       attackBtn.textContent = "Attack!";
       attackBtn.addEventListener('click', () => {
-        performAttack(entityData, type, att, w);
+        performAttack(entityData, type, att, w, this.app);
       });
       attackDiv.appendChild(attackBtn);
       containerEl.appendChild(attackDiv);
