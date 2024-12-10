@@ -1,44 +1,49 @@
 // js/combat.js
-
 import { rollSingleDice } from './dice.js';
 
-/**
- * Performs an attack from an entity to a specified target.
- * @param {Object} entityData - The attacker entity data.
- * @param {string} type - The type of the attacker ("character" or "monster").
- * @param {Object} attackEntry - The attack details.
- * @param {Object} weapon - The weapon used for the attack.
- * @param {App} appInstance - Instance of the App class.
- * @param {Object} target - The target object { type: "character"/"monster", id: number }
- */
 export function performAttack(entityData, type, attackEntry, weapon, appInstance, target) {
-  // No prompt now; target is given directly.
-
   let statVal = entityData[weapon.stat];
   let statMod = Math.floor((statVal - 10) / 2);
   let roll = rollSingleDice(20);
-  let totalAttack = roll + statMod + weapon.baseMod + attackEntry.customMod;
+  let totalAttack = roll + statMod + weapon.baseMod + (attackEntry.customMod || 0);
 
-  let damage = rollDamageDice(weapon.damageDice, statMod, weapon.baseMod, attackEntry.customMod);
+  let damage = rollDamageDice(weapon.damageDice, statMod, weapon.baseMod, (attackEntry.customMod || 0));
 
   appInstance.addMessage({
     sender: entityData.name,
-    text: `Attacks a target with ${weapon.name}!\nAttack Roll: d20(${roll})+Stat(${statMod})+Wep(${weapon.baseMod})+Custom(${attackEntry.customMod}) = ${totalAttack}\nDamage: ${damage.details} = ${damage.total}`,
+    text: `Attacks a target with ${weapon.name}!\nAttack Roll: d20(${roll})+Stat(${statMod})+Wep(${weapon.baseMod})+Custom(${attackEntry.customMod||0}) = ${totalAttack}\nDamage: ${damage.details} = ${damage.total}`,
     private: false
   });
 
-  // Apply damage to the target
   applyDamage(target, damage.total, appInstance);
 }
 
-/**
- * Rolls damage based on a dice expression and modifiers.
- * @param {string} diceExp - Dice expression (e.g., "1d6").
- * @param {number} statMod - Stat modifier.
- * @param {number} baseMod - Weapon base modifier.
- * @param {number} customMod - Custom modifier.
- * @returns {Object} - Details and total damage.
- */
+export function performAoeAttack(attacker, entityType, attackEntry, attackDef, appInstance, targets, aoePositions) {
+  // Calculate damage
+  const statVal = attacker[attackDef.stat] || 10;
+  const statMod = Math.floor((statVal - 10) / 2);
+  const damage = rollDamageDice(attackDef.damageDice, statMod, attackDef.baseMod, attackDef.customMod);
+
+  appInstance.addMessage({
+    sender: attacker.name,
+    text: `${attacker.name} unleashes ${attackDef.name}! Damage: ${damage.details} = ${damage.total}`,
+    private: false
+  });
+
+  for (let t of targets) {
+    applyDamage(t, damage.total, appInstance);
+  }
+
+  if (attackDef.createsTerrainEffect) {
+    if (!appInstance.terrainEffects) appInstance.terrainEffects = {};
+    for (let pos of aoePositions) {
+      const key = `${pos.row},${pos.col}`;
+      appInstance.terrainEffects[key] = { type: attackDef.terrainEffectType, duration: 5 };
+    }
+    appInstance.board.redrawBoard();
+  }
+}
+
 export function rollDamageDice(diceExp, statMod, baseMod, customMod) {
   const match = diceExp.match(/(\d+)d(\d+)/);
   if (!match) return { total: 0, details: "Invalid dice expression." };
@@ -52,12 +57,6 @@ export function rollDamageDice(diceExp, statMod, baseMod, customMod) {
   return { total: sum, details: `(${rolls.join(',')})+Stat(${statMod})+Wep(${baseMod})+Custom(${customMod})` };
 }
 
-/**
- * Applies damage to the target entity.
- * @param {Object} target - The target entity { type, id }.
- * @param {number} damage - The amount of damage to apply.
- * @param {App} appInstance - Instance of the App class.
- */
 function applyDamage(target, damage, appInstance) {
   if (target.type === "character") {
     const character = appInstance.getCharacterById(target.id);
@@ -74,7 +73,6 @@ function applyDamage(target, damage, appInstance) {
           text: `${character.name} has been defeated!`,
           private: false
         });
-        // Optionally remove character from the board or mark as defeated
       }
     }
   } else if (target.type === "monster") {
@@ -92,7 +90,6 @@ function applyDamage(target, damage, appInstance) {
           text: `${monster.name} has been defeated!`,
           private: false
         });
-        // Optionally remove monster from the board or mark as defeated
       }
     }
   }
