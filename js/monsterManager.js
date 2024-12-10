@@ -1,6 +1,4 @@
 // monsterManager.js
-// Contains logic for monster data manipulation only.
-
 export class MonsterManager {
   constructor(app) {
     this.app = app;
