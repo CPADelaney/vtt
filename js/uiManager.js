@@ -198,12 +198,27 @@ export class UIManager {
           this.openMonsterSheet(m);
         }
       });
-  
       div.appendChild(openBtn);
+  
+      // Add attack button if DM
+      if (this.app.isDM()) {
+        let addAttackBtn = document.createElement('button');
+        addAttackBtn.textContent = 'Add Attack';
+        addAttackBtn.addEventListener('click', () => {
+          // Prompt for attackId
+          const attackId = prompt("Enter attackId to add to this monster:");
+          if (attackId && !isNaN(parseInt(attackId, 10))) {
+            this.app.monsterManager.addAttackToMonster(m.id, parseInt(attackId, 10));
+          } else {
+            alert("Invalid attackId.");
+          }
+        });
+        div.appendChild(addAttackBtn);
+      }
+  
       this.monsterListEntries.appendChild(div);
     }
   }
-
 
   openCharacterSheet(ch) {
     document.getElementById('character-name').textContent = ch.name;
