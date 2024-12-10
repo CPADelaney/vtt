@@ -213,3 +213,7 @@ export class App {
     console.log("Entities moved and board redrawn");
   }
 }
+
+// In your main.js:
+// const app = new App();
+// app.initialize();
