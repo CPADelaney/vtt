@@ -5,6 +5,7 @@ import { CharacterManager } from './characterManager.js';
 import { MonsterManager } from './monsterManager.js';
 import { UIManager } from './uiManager.js';
 import { ChatManager } from './chatManager.js';
+import { CampaignManager } from './campaignManager.js';
 
 export class App {
   constructor() {
@@ -38,14 +39,21 @@ export class App {
     this.chatManager = new ChatManager(this);
     this.characterManager = new CharacterManager(this);
     this.monsterManager = new MonsterManager(this);
+
+    this.campaignManager = new CampaignManager(this); // Initialize the campaign manager
   }
 
   initialize() {
+    this.campaignManager.loadState();
+    
     this.board.initialize();
-    // After initialization, explicitly request the UI to render based on current data
     this.uiManager.renderCharacterList();
     this.uiManager.renderMonsterList();
     this.uiManager.renderLog();
+  }
+  
+  saveCampaign() {
+    this.campaignManager.saveState();
   }
 
   isDM() {
