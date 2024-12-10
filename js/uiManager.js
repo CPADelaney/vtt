@@ -297,7 +297,7 @@ export class UIManager {
         containerEl.appendChild(attackDiv);
       }
     }
-  }
+  
 
 
   openCreateCharacterModal() {
