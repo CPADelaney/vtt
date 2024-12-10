@@ -121,8 +121,8 @@ export class Board {
   }
 
   handleGridMouseDown(e) {
-    if (e.button !== 0) return;
-
+    if (e.button !== 0) return; // Only handle left-click
+  
     const rect = this.gridEl.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -130,16 +130,25 @@ export class Board {
     const cellHeight = 40;
     const c = Math.floor(x / cellWidth);
     const r = Math.floor(y / cellHeight);
-
-    if (r < 0 || r >= this.rows || c < 0 || c >= this.cols) return;
-
+  
+    console.log("handleGridMouseDown:", "Click at pixel:", x, y, "Cell:", r, c);
+  
+    if (r < 0 || r >= this.rows || c < 0 || c >= this.cols) {
+      console.log("Clicked outside the grid.");
+      return;
+    }
+  
     // AoE Attack Mode
     if (this.app.currentAction && this.app.currentAction.type === 'aoe') {
+      console.log("AoE attack mode click on cell:", r, c);
       this.app.saveStateForUndo();
       const aoePositions = this.getAoEAreaPositions(this.app.currentAction.aoeShape, { row: r, col: c }, this.app.currentAction.radius);
+      console.log("AOE Positions:", aoePositions);
       const affectedEntities = this.getEntitiesInPositions(aoePositions);
+      console.log("Affected entities by AOE:", affectedEntities);
       const finalTargets = this.filterAoETargets(affectedEntities, this.app.currentAction);
-
+      console.log("Final targets after filtering:", finalTargets);
+  
       performAoeAttack(
         this.app.currentAction.attacker, 
         this.app.currentAction.entityType, 
@@ -149,58 +158,72 @@ export class Board {
         finalTargets, 
         aoePositions
       );
-
+  
       this.clearHighlights();
       this.app.clearAction();
       return;
     }
-
+  
     // Single-target Attack Mode
     if (this.app.currentAction && this.app.currentAction.type === 'attack') {
       const key = `${r},${c}`;
       const entity = this.entityTokens[key];
+      console.log("Attack mode click:", r, c, "entity:", entity, "highlighted:", this.isCellHighlighted(r,c));
+  
       if (entity && this.isCellHighlighted(r, c)) {
         this.app.saveStateForUndo();
         const { attacker, entityType, attackEntry, weapon } = this.app.currentAction;
+        console.log("Performing attack on entity:", entity);
         performAttack(attacker, entityType, attackEntry, weapon, this.app, { type: entity.type, id: entity.id });
         this.clearHighlights();
         this.app.clearAction();
         return;
       } else {
+        console.log("Clicked a cell in attack mode, but no valid entity or not highlighted.");
         return; 
       }
     }
-
-    // Normal selection/marquee
+  
+    // Normal selection/marquee mode
     const key = `${r},${c}`;
     const entity = this.entityTokens[key];
     const ctrlPressed = e.ctrlKey;
-
+    console.log("Normal mode click on cell:", r, c, "Entity:", entity, "Ctrl pressed:", ctrlPressed);
+  
     if (entity) {
       if (ctrlPressed) {
         if (this.isEntitySelected(entity)) {
+          console.log("Entity already selected, removing from selection:", entity);
           this.selectedEntities = this.selectedEntities.filter(se => !(se.type === entity.type && se.id === entity.id));
         } else {
+          console.log("Adding entity to selection:", entity);
           this.selectedEntities.push({ type: entity.type, id: entity.id });
         }
       } else {
         if (!this.isEntitySelected(entity)) {
+          console.log("Selecting only this entity:", entity);
           this.selectedEntities = [{ type: entity.type, id: entity.id }];
+        } else {
+          console.log("Entity already selected, doing nothing:", entity);
         }
       }
-
+  
       if (this.selectedEntities.length > 0 && this.selectedEntities.every(ent => this.app.canControlEntity(ent))) {
+        console.log("Starting token drag for selected entities:", this.selectedEntities);
         this.isDraggingTokens = true;
         this.dragStartPos = { x: e.clientX, y: e.clientY };
         this.originalPositions = this.selectedEntities.map(ent => {
           let pos = this.getEntityPosition(ent.type, ent.id);
+          console.log("Original position for", ent, ":", pos);
           return { ...ent, row: pos.row, col: pos.col };
         });
       }
     } else {
       if (!ctrlPressed) {
+        console.log("Clicking empty cell, clearing selection.");
         this.selectedEntities = [];
       }
+      console.log("Starting marquee selection at:", x, y);
       this.isMarqueeSelecting = true;
       this.marqueeStart = { x: x, y: y };
       this.marqueeEl.style.display = 'block';
@@ -209,6 +232,10 @@ export class Board {
       this.marqueeEl.style.width = '0px';
       this.marqueeEl.style.height = '0px';
     }
+  
+    this.updateSelectionStyles();
+  }
+
 
     this.updateSelectionStyles();
   }
