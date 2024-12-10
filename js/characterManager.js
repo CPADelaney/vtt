@@ -1,5 +1,4 @@
 // characterManager.js
-
 export class CharacterManager {
   constructor(app) {
     this.app = app;
@@ -9,6 +8,22 @@ export class CharacterManager {
     return this.app.characters.find(ch => ch.id === id);
   }
 
+  createCharacter(newCharData, attacks) {
+    // Give every character an Unarmed Strike by default (attackId: 4)
+    attacks.push({ attackId: 4 });
+
+    const newChar = {
+      id: this.app.nextCharacterId++,
+      ...newCharData,
+      placed: false,
+      attacks: attacks
+    };
+    this.app.characters.push(newChar);
+    console.log("Character created:", newChar);
+
+    this.app.uiManager.renderCharacterList();
+  }
+
   placeCharacterOnBoard(charId, row, col) {
     console.log("placeCharacterOnBoard called with", charId, row, col);
     const ch = this.getCharacterById(charId);
@@ -16,11 +31,9 @@ export class CharacterManager {
       console.warn("No character found with id:", charId);
       return;
     }
-    if (ch.placed) {
-      console.warn("Character already placed:", ch);
-      // Temporarily allow re-placement for debugging:
-      // return;
-    }
+    // If you have a condition like ch.placed, comment it out for testing:
+    if (ch.placed) return;
+
     if (!this.app.canControlEntity({ type: "character", id: charId })) {
       console.warn("Cannot control this character:", charId);
       return;
@@ -41,13 +54,15 @@ export class CharacterManager {
     this.app.uiManager.renderCharacterList();
     console.log("After renderCharacterList in placeCharacterOnBoard");
   }
-  
+
   addAttackToCharacter(charId, attackId) {
-    // DM method to add new attacks
     const ch = this.getCharacterById(charId);
-    if (!ch) return;
-    ch.attacks.push({ attackId: attackId });
+    if (!ch) {
+      console.warn("No character with id", charId);
+      return;
+    }
+    ch.attacks.push({ attackId });
+    console.log("Attack added to character", charId, "Attacks:", ch.attacks);
     this.app.uiManager.renderCharacterList();
   }
-  
 }
