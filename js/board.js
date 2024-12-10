@@ -52,27 +52,28 @@ export class Board {
       this.gridEl.appendChild(rowEl);
     }
   }
-redrawBoard() {
-  // Clear all cells first
-  const cells = this.gridEl.querySelectorAll('td');
-  cells.forEach(cell => cell.innerHTML = '');
 
-  // Loop over entityTokens and place them on the grid
-  for (const key in this.entityTokens) {
-    const [r, c] = key.split(',').map(Number);
-    const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
-    if (cell) {
-      const entity = this.entityTokens[key];
-      const token = document.createElement('div');
-      token.classList.add('token', entity.type);
-      token.textContent = entity.type === 'character' ? 'C' : 'M';
-      cell.appendChild(token);
+  redrawBoard() {
+    // Clear all cells first
+    const cells = this.gridEl.querySelectorAll('td');
+    cells.forEach(cell => cell.innerHTML = '');
+
+    // Loop over entityTokens and place them on the grid
+    for (const key in this.entityTokens) {
+      const [r, c] = key.split(',').map(Number);
+      const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
+      if (cell) {
+        const entity = this.entityTokens[key];
+        const token = document.createElement('div');
+        token.classList.add('token', entity.type);
+        token.textContent = entity.type === 'character' ? 'C' : 'M';
+        cell.appendChild(token);
+      }
     }
-  }
 
-  // Update selection styles if needed
-  this.updateSelectionStyles();
-}
+    // Update selection styles if needed
+    this.updateSelectionStyles();
+  }
 
   // Handle Drop Events on Grid Cells
   handleDrop(ev, r, c) {
@@ -121,6 +122,32 @@ redrawBoard() {
 
     if (r < 0 || r >= this.rows || c < 0 || c >= this.cols) return; // Click outside grid
 
+    // Check if we're in an action mode (e.g., attack)
+    if (this.app.currentAction && this.app.currentAction.type === 'attack') {
+      // Player should be clicking on a highlighted tile that contains a target
+      const key = `${r},${c}`;
+      const entity = this.entityTokens[key];
+      if (entity && this.isCellHighlighted(r, c)) {
+        // Valid target chosen
+        this.app.saveStateForUndo(); // Save state before performing attack
+
+        const { attacker, entityType, attackEntry, weapon } = this.app.currentAction;
+        // Call performAttack with direct target
+        // Import performAttack at the top if not already, or use a global reference
+        import('./combat.js').then(({ performAttack }) => {
+          performAttack(attacker, entityType, attackEntry, weapon, this.app, { type: entity.type, id: entity.id });
+        });
+
+        this.clearHighlights();
+        this.app.clearAction();
+        return;
+      } else {
+        // Clicked invalid cell in attack mode - do nothing or show a message
+        return;
+      }
+    }
+
+    // Normal (non-action) behavior
     const key = `${r},${c}`;
     const entity = this.entityTokens[key];
     const ctrlPressed = e.ctrlKey;
@@ -296,21 +323,21 @@ redrawBoard() {
     const cells = this.gridEl.querySelectorAll('td');
     cells.forEach(cell => cell.style.outline = '');
   }
-  
+
   isEntitySelected(entity) {
-  return this.selectedEntities.some(se => se.type === entity.type && se.id === entity.id);
-}
+    return this.selectedEntities.some(se => se.type === entity.type && se.id === entity.id);
+  }
 
   getEntityPosition(type, id) {
-  for (const key in this.entityTokens) {
-    const ent = this.entityTokens[key];
-    if (ent.type === type && ent.id === id) {
-      const [r, c] = key.split(',').map(Number);
-      return { row: r, col: c };
+    for (const key in this.entityTokens) {
+      const ent = this.entityTokens[key];
+      if (ent.type === type && ent.id === id) {
+        const [r, c] = key.split(',').map(Number);
+        return { row: r, col: c };
+      }
     }
+    return null;
   }
-  return null;
-}
 
   // Get Entities Within the Marquee Selection
   getEntitiesInMarquee() {
@@ -334,5 +361,36 @@ redrawBoard() {
       }
     }
     return selected;
+  }
+
+  // Add Range Calculation & Highlighting
+  getPositionsInRange(startPos, range) {
+    let positions = [];
+    for (let rr = startPos.row - range; rr <= startPos.row + range; rr++) {
+      for (let cc = startPos.col - range; cc <= startPos.col + range; cc++) {
+        if (rr >= 0 && rr < this.rows && cc >= 0 && cc < this.cols) {
+          positions.push({ row: rr, col: cc });
+        }
+      }
+    }
+    return positions;
+  }
+
+  highlightTiles(positions, highlightClass) {
+    this.clearHighlights();
+    positions.forEach(pos => {
+      const cell = this.gridEl.querySelector(`td[data-row='${pos.row}'][data-col='${pos.col}']`);
+      if (cell) cell.classList.add(highlightClass);
+    });
+  }
+
+  clearHighlights() {
+    const highlightedCells = this.gridEl.querySelectorAll('td.target-highlight');
+    highlightedCells.forEach(cell => cell.classList.remove('target-highlight'));
+  }
+
+  isCellHighlighted(r, c) {
+    const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
+    return cell && cell.classList.contains('target-highlight');
   }
 }
