@@ -9,7 +9,7 @@ export function performAttack(entityData, type, attackEntry, weapon, appInstance
 
   let damage = rollDamageDice(weapon.damageDice, statMod, weapon.baseMod, (attackEntry.customMod || 0));
 
-  appInstance.addMessage({
+  appInstance.chatManager.addMessage({
     sender: entityData.name,
     text: `Attacks a target with ${weapon.name}!\nAttack Roll: d20(${roll})+Stat(${statMod})+Wep(${weapon.baseMod})+Custom(${attackEntry.customMod||0}) = ${totalAttack}\nDamage: ${damage.details} = ${damage.total}`,
     private: false
@@ -24,7 +24,7 @@ export function performAoeAttack(attacker, entityType, attackEntry, attackDef, a
   const statMod = Math.floor((statVal - 10) / 2);
   const damage = rollDamageDice(attackDef.damageDice, statMod, attackDef.baseMod, attackDef.customMod);
 
-  appInstance.addMessage({
+  appInstance.chatManager.addMessage({
     sender: attacker.name,
     text: `${attacker.name} unleashes ${attackDef.name}! Damage: ${damage.details} = ${damage.total}`,
     private: false
@@ -62,13 +62,13 @@ function applyDamage(target, damage, appInstance) {
     const character = appInstance.getCharacterById(target.id);
     if (character) {
       character.HP -= damage;
-      appInstance.addMessage({
+      appInstance.chatManager.addMessage({
         sender: "System",
         text: `${character.name} takes ${damage} damage!`,
         private: false
       });
       if (character.HP <= 0) {
-        appInstance.addMessage({
+        appInstance.chatManager.addMessage({
           sender: "System",
           text: `${character.name} has been defeated!`,
           private: false
@@ -79,13 +79,13 @@ function applyDamage(target, damage, appInstance) {
     const monster = appInstance.getMonsterById(target.id);
     if (monster) {
       monster.HP -= damage;
-      appInstance.addMessage({
+      appInstance.chatManager.addMessage({
         sender: "System",
         text: `${monster.name} takes ${damage} damage!`,
         private: false
       });
       if (monster.HP <= 0) {
-        appInstance.addMessage({
+        appInstance.chatManager.addMessage({
           sender: "System",
           text: `${monster.name} has been defeated!`,
           private: false
