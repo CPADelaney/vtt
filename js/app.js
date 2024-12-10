@@ -6,6 +6,7 @@ import { MonsterManager } from './monsterManager.js';
 import { UIManager } from './uiManager.js';
 import { ChatManager } from './chatManager.js';
 import { CampaignManager } from './campaignManager.js';
+import { initialMonsters } from './monsters.js';
 
 export class App {
   constructor() {
@@ -23,13 +24,10 @@ export class App {
 
     this.characters = [];
     this.nextCharacterId = 1;
+    
+    // Load monsters from monsters.js
+    this.monsters = initialMonsters;
 
-    this.monsters = [
-      { id: 1, name: "Sand Wurm", HP: 50, AC: 14, STR: 18, DEX: 8, CON: 16, INT: 5, WIS: 10, CHA: 5, habitats: ["Desert"], attacks: [{ weaponId: 1, customMod: 0 }] },
-      { id: 2, name: "Cactus Crawler", HP: 20, AC: 12, STR: 12, DEX: 14, CON: 10, INT: 2, WIS: 8, CHA: 6, habitats: ["Desert", "Grasslands"], attacks: [] },
-      { id: 3, name: "River Drake", HP: 30, AC: 15, STR: 14, DEX: 12, CON: 13, INT: 6, WIS: 10, CHA: 8, habitats: ["Riverlands"], attacks: [] },
-      { id: 4, name: "Plains Stalker", HP: 25, AC: 13, STR: 13, DEX: 16, CON: 11, INT: 4, WIS: 10, CHA: 6, habitats: ["Grasslands"], attacks: [] }
-    ];
 
     this.entityTokens = {};
     this.messages = [];
