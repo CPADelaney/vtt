@@ -5,8 +5,8 @@ export class Board {
   constructor(rows, cols, entityTokens, appInstance) {
     this.rows = rows;
     this.cols = cols;
-    this.app.entityTokens = entityTokens;
     this.app = appInstance;
+    this.app.entityTokens = entityTokens;
 
     this.gridEl = document.getElementById('grid');
     this.marqueeEl = document.getElementById('selection-marquee');
