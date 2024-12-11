@@ -114,6 +114,26 @@ body {
   text-align: center; /* Optional: center the heading above the buttons */
 }
 
+#map-controls button {
+  width: 30px;         /* Fixed width */
+  height: 30px;        /* Fixed height */
+  line-height: 30px;   /* Vertically center the symbol */
+  display: inline-block;
+  text-align: center;
+  border: 1px solid #ccc;
+  background: #f0f0f0;
+  cursor: pointer;
+  font-size: 16px;      /* Adjust as desired for legibility */
+}
+
+#map-controls button:hover {
+  background: #e0e0e0;  /* A simple hover effect, optional */
+}
+
+#map-controls button:active {
+  background: #d0d0d0;  /* Active state, optional */
+}
+
 #selection-marquee {
   position: absolute;
   border: 1px dashed #00f;
