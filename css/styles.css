@@ -61,6 +61,7 @@ body {
   border-collapse: collapse;
   position: absolute;
   top: 0; left:0;
+  z-index: 10; /* Grid behind controls */
 }
 
 #grid td {
@@ -77,6 +78,18 @@ body {
 #grid td.selected {
   background-color: rgba(0, 0, 255, 0.2);
   outline: 2px solid blue;
+}
+
+#map-controls {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2000; /* Higher than grid */
+  background: #fff;
+  border: 1px solid #ccc;
+  padding: 5px;
+  border-radius: 5px;
+  pointer-events: auto; /* Ensure we can interact with it */
 }
 
 #selection-marquee {
