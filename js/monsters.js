@@ -3,7 +3,7 @@
 
 import { attacksData } from './attacks.js';
 
-export const initialMonsters = [
+export const bestiary = [
   {
     id: 1,
     name: "Sand Wurm",
