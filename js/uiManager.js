@@ -281,44 +281,6 @@ renderMonsterList() {
     });
     div.appendChild(openBtn);
 
-    // Add Attack dropdown and buttons if DM
-    if (this.app.isDM()) {
-      const attackSelect = document.createElement('select');
-      const defaultOption = document.createElement('option');
-      defaultOption.value = '';
-      defaultOption.textContent = '--Select Attack--';
-      attackSelect.appendChild(defaultOption);
-
-      for (const [id, atkDef] of Object.entries(attacksData)) {
-        const opt = document.createElement('option');
-        opt.value = id;
-        opt.textContent = atkDef.name || `Attack ${id}`;
-        attackSelect.appendChild(opt);
-      }
-      div.appendChild(attackSelect);
-
-      let addAttackBtn = document.createElement('button');
-      addAttackBtn.textContent = 'Add Selected Attack';
-      addAttackBtn.addEventListener('click', () => {
-        const attackId = attackSelect.value;
-        if (attackId && attacksData[attackId]) {
-          this.app.monsterManager.addAttackToMonster(m.id, attackId);
-          alert("Attack added to monster template!");
-          this.renderMonsterList(); // re-render to show updates
-        } else {
-          alert("Invalid or no attack selected.");
-        }
-      });
-      div.appendChild(addAttackBtn);
-
-      let addCustomAttackBtn = document.createElement('button');
-      addCustomAttackBtn.textContent = 'Add Custom Attack';
-      addCustomAttackBtn.addEventListener('click', () => {
-        this.openCustomAttackModal(m);
-      });
-      div.appendChild(addCustomAttackBtn);
-    }
-
     this.monsterListEntries.appendChild(div);
   }
 }
@@ -365,13 +327,15 @@ renderMonsterList() {
         <tr><th>Habitats</th><td>${m.habitats.join(', ')}</td></tr>
       </table>
     `;
+  
+    // Render attacks normally
     this.renderAttacksSection(m, "monster", document.getElementById('monster-attacks'));
   
-    // If DM, add Add Attack & Add Custom Attack here
+    // If DM, add attacks controls in the sheet
     if (this.app.isDM()) {
       const attacksContainer = document.getElementById('monster-attacks');
   
-      // Add Attack dropdown
+      // Attack select dropdown
       const attackSelect = document.createElement('select');
       const defaultOption = document.createElement('option');
       defaultOption.value = '';
@@ -393,7 +357,7 @@ renderMonsterList() {
         if (attackId && attacksData[attackId]) {
           this.app.monsterManager.addAttackToMonster(m.id, attackId);
           alert("Attack added to monster template!");
-          // Re-render attacks
+          // Re-render attacks to show update
           this.renderAttacksSection(m, "monster", document.getElementById('monster-attacks'));
         } else {
           alert("Invalid or no attack selected.");
@@ -411,6 +375,7 @@ renderMonsterList() {
   
     this.monsterSheetModal.style.display = "block";
   }
+
 
   renderAttacksSection(entityData, type, containerEl) {
     containerEl.innerHTML = `<h4>Attacks</h4>`;
