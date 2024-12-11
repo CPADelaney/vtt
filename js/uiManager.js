@@ -462,7 +462,7 @@ renderMonsterList() {
             attackEntry: att,
             attackDef: attDef
           };
-  
+        
           if (att.weaponId) {
             const foundWeapon = this.app.weapons.find(w => w.id === att.weaponId);
             actionData.weapon = foundWeapon;
@@ -470,8 +470,20 @@ renderMonsterList() {
             // Use unarmed fallback
             actionData.weapon = this.app.weapons.find(w => w.id === 0);
           }
-  
+        
+          // Start the action
           this.app.startAction(actionData);
+          
+          // CLOSE the sheet here:
+          if (type === 'character') {
+            this.sheetModal.style.display = "none";
+          } else if (type === 'monster') {
+            this.monsterSheetModal.style.display = "none";
+          }
+        
+          // After initiating attack, show a cancel button (we will add this feature below)
+          this.showCancelAttackButton(entityData, type);
+        });
   
           // For AoE attacks, no need attacker position if you allow targeting empty spaces
           if (attDef.type === 'single') {
