@@ -1,12 +1,27 @@
 // js/attacks.js
-
-export const weapons = [
-  { id: 1, name: "Short Sword", damageDice: "1d6", stat: "STR", baseMod: 2 },
-  { id: 2, name: "Long Bow", damageDice: "1d8", stat: "DEX", baseMod: 1 },
-  { id: 3, name: "Dagger", damageDice: "1d4", stat: "DEX", baseMod: 3 }
-];
+import { weapons } from './items.js';
 
 export const attacksData = {
+  melee: {
+    id: 'melee',
+    name: "Melee Attack",
+    type: "single",
+    range: 1,
+    // For damage, stat, baseMod, we will look them up from the weapon 
+    // referenced by attackEntry.weaponId at runtime.
+    conditions: { excludeAllies: false },
+    createsTerrainEffect: false
+  },
+  ranged: {
+    id: 'ranged',
+    name: "Ranged Attack",
+    type: "single",
+    range: 10,
+    // Same as melee, we rely on the weapon data when we perform the attack.
+    conditions: { excludeAllies: false },
+    createsTerrainEffect: false
+  }
+};
   1: {
     id: 1,
     name: "Short Sword Strike",
