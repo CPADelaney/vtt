@@ -1,19 +1,66 @@
 body {
+  margin: 0;
   font-family: sans-serif;
+  overflow: hidden;
+}
+
+#main-container {
   display: flex;
-  flex-direction: row;
-  margin: 10px;
+  height: 100vh;
+  width: 100vw;
+}
+
+#board-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
 }
 
 #sidebar {
+  width: 300px;
   display: flex;
   flex-direction: column;
-  margin-right: 20px;
+  background: #f8f8f8;
+  border-left: 1px solid #ccc;
+}
+
+#tab-bar {
+  display: flex;
+  border-bottom: 1px solid #ccc;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 5px;
+  background: #eee;
+  border: none;
+  cursor: pointer;
+}
+
+.tab-btn.active {
+  background: #ddd;
+  font-weight: bold;
+}
+
+#tab-content {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+}
+
+.tab-content {
+  display: none;
+  padding: 10px;
+}
+
+.tab-content.active {
+  display: block;
 }
 
 #grid {
   border-collapse: collapse;
-  position: relative;
+  position: absolute;
+  top: 0; left:0;
 }
 
 #grid td {
@@ -41,12 +88,6 @@ body {
   z-index: 999;
 }
 
-#controls {
-  min-width: 300px;
-  display: flex;
-  flex-direction: column;
-}
-
 #log {
   margin-top: 10px;
   background: #f4f4f4;
@@ -58,18 +99,7 @@ body {
   white-space: pre-wrap;
 }
 
-h2 {
-  margin-top: 0;
-}
-
-#command-input {
-  width: 100%;
-  padding: 5px;
-  box-sizing: border-box;
-  margin-top: 10px;
-}
-
-#character-sheet-modal, #create-character-modal, #monster-sheet-modal {
+.modal {
   display: none; 
   position: fixed; 
   z-index: 999; 
@@ -95,35 +125,6 @@ h2 {
   float: right;
   cursor: pointer;
   font-weight: bold;
-}
-
-#character-details table, #monster-details table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 10px;
-  font-size: 14px;
-  border: 2px solid #000;
-}
-
-#character-details th, #character-details td, #monster-details th, #monster-details td {
-  border: 1px solid #ccc;
-  padding: 4px 6px;
-}
-
-#character-details th, #monster-details th {
-  background: #ddd;
-}
-
-#dice-roller {
-  margin-bottom: 10px;
-}
-
-#dice-expression {
-  width: 120px;
-}
-
-#assign-owner-field {
-  display: none; 
 }
 
 .context-menu {
@@ -154,29 +155,6 @@ h2 {
   background: #eee;
 }
 
-#character-list, #monster-list {
-  margin-top: 20px;
-  background: #fafafa;
-  padding: 10px;
-  border: 1px solid #ccc;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-#character-list h3, #monster-list h3 {
-  margin-top: 0;
-}
-
-.character-list-item, .monster-list-item {
-  margin-bottom: 5px;
-  display: flex;
-  align-items: center;
-}
-
-.character-list-item button, .monster-list-item button {
-  margin-left: 10px;
-}
-
 .drag-icon {
   margin-right: 10px;
   cursor: grab;
@@ -187,11 +165,22 @@ h2 {
   cursor: not-allowed;
 }
 
-#monster-filter {
-  margin-bottom: 10px;
-  width: 100%;
+#attack-creation-section {
+  margin-top: 10px;
+  background: #f0f0f0;
+  padding: 5px;
+  border: 1px solid #ccc;
 }
 
+.target-highlight {
+  outline: 2px solid red !important;
+}
+
+.terrain-acidic {
+  background-color: rgba(0,255,0,0.2);
+}
+
+/* Smaller tweaks for forms */
 #create-character-form label {
   display: block;
   margin-bottom: 8px;
@@ -204,32 +193,18 @@ h2 {
   box-sizing: border-box;
 }
 
-#attack-creation-section {
-  margin-top: 10px;
-  background: #f0f0f0;
-  padding: 5px;
-  border: 1px solid #ccc;
+#monster-filter {
+  margin-bottom: 10px;
+  width: 100%;
 }
 
-#attack-creation-section h4 {
-  margin: 5px 0;
-}
-
-.attack-input-row {
+.character-list-item, .monster-list-item {
+  margin-bottom: 5px;
   display: flex;
   align-items: center;
-  margin-bottom: 5px;
 }
 
-.attack-input-row select, .attack-input-row input {
-  margin-right: 5px;
-}
-
-/* Highlighting and Terrain Effects */
-.target-highlight {
-  outline: 2px solid red !important;
-}
-
-.terrain-acidic {
-  background-color: rgba(0,255,0,0.2);
+/* Scrollbar for sidebar content if needed */
+#tab-content {
+  overflow-y: auto;
 }
