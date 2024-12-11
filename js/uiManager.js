@@ -321,12 +321,44 @@ export class UIManager {
 
   renderAttacksSection(entityData, type, containerEl) {
     containerEl.innerHTML = `<h4>Attacks</h4>`;
-    
+  
+    // Check if this entity is placed on the board
+    let isPlaced = false;
+    if (type === 'character') {
+      // Characters have a 'placed' boolean
+      isPlaced = !!entityData.placed;
+    } else if (type === 'monster') {
+      // Monsters are placed if they have an instance ID that appears in placedMonsters in app
+      // Since getMonsterById returns a placed instance, if entityData came from placed instance, it's placed.
+      // If entityData came from bestiary template, it's not placed.
+      const placedInstance = this.app.getMonsterById(entityData.id);
+      isPlaced = !!placedInstance; 
+    }
+  
+    // If the entity is not placed and type is monster from bestiary, we can look up if there's any placed instance of this monster's template
+    if (type === 'monster' && !isPlaced) {
+      // Check if any placed monster has the same template id (assuming templateId stored somewhere)
+      // If you don't store templateId, store it in placed monsters when cloning.
+      const templateId = entityData.templateId || entityData.id; 
+      // If entityData is a template (best case: templates are identified by low IDs, instances by high IDs)
+      // you can find at least one placed instance of that template:
+      const placed = this.app.placedMonsters.find(m => m.templateId === templateId);
+      if (placed) {
+        // If a placed instance exists, let's show that placed instance's attacks
+        entityData = placed; // override with placed instance data
+        isPlaced = true;
+      }
+    }
+  
     let attacksToShow = entityData.attacks && entityData.attacks.length > 0 ? entityData.attacks : [];
-    
-    // If the entity has no attacks, show an unarmed strike by default
     if (attacksToShow.length === 0) {
-      attacksToShow = [{ attackId: 'unarmed' }]; 
+      // If no attacks defined, show unarmed if isPlaced is true
+      if (isPlaced) {
+        attacksToShow = [{ attackId: 'unarmed' }];
+      } else {
+        containerEl.innerHTML += `<p>No attacks (and not placed on board).</p>`;
+        return;
+      }
     }
   
     for (let att of attacksToShow) {
@@ -335,48 +367,46 @@ export class UIManager {
   
       const attackDiv = document.createElement('div');
       attackDiv.textContent = `${attDef.name} `;
+  
       const attackBtn = document.createElement('button');
       attackBtn.textContent = "Attack!";
   
-      attackBtn.addEventListener('click', () => {
-        const actionData = {
-          type: attDef.type === 'aoe' ? 'aoe' : 'attack',
-          aoeShape: attDef.shape || null,
-          radius: attDef.radius || 0,
-          attacker: entityData,
-          entityType: type,
-          attackEntry: att,
-          attackDef: attDef
-        };
+      // Disable attack if not placed
+      if (!isPlaced) {
+        attackBtn.disabled = true;
+        attackDiv.appendChild(document.createTextNode(" (Not placed on board)"));
+      } else {
+        attackBtn.addEventListener('click', () => {
+          const actionData = {
+            type: attDef.type === 'aoe' ? 'aoe' : 'attack',
+            aoeShape: attDef.shape || null,
+            radius: attDef.radius || 0,
+            attacker: entityData,
+            entityType: type,
+            attackEntry: att,
+            attackDef: attDef
+          };
   
-        // Determine the weapon object
-        if (type === "character" || type === "monster") {
           if (att.weaponId) {
             const foundWeapon = this.app.weapons.find(w => w.id === att.weaponId);
             actionData.weapon = foundWeapon;
           } else {
-            // If no weaponId is found, use the unarmed fallback
-            const unarmedWeapon = this.app.weapons.find(w => w.id === 0);
-            actionData.weapon = unarmedWeapon;
+            // Use unarmed fallback
+            actionData.weapon = this.app.weapons.find(w => w.id === 0);
           }
-        }
   
-        this.app.startAction(actionData);
+          this.app.startAction(actionData);
   
-        // Debugging the attacker’s position:
-        const attackerPos = this.app.board.getEntityPosition(type, entityData.id);
-        if (!attackerPos) {
-          console.warn("No attacker position found.");
-          return;
-        }
-  
-        if (attDef.type === 'single') {
-          const possiblePositions = this.app.board.getPositionsInRange(attackerPos, attDef.range);
-          this.app.board.highlightTiles(possiblePositions, 'target-highlight');
-        } else if (attDef.type === 'aoe') {
-          console.log("AOE attack selected, highlights on mousemove.");
-        }
-      });
+          // For AoE attacks, no need attacker position if you allow targeting empty spaces
+          if (attDef.type === 'single') {
+            const attackerPos = this.app.board.getEntityPosition(type, entityData.id);
+            if (attackerPos) {
+              const possiblePositions = this.app.board.getPositionsInRange(attackerPos, attDef.range);
+              this.app.board.highlightTiles(possiblePositions, 'target-highlight');
+            }
+          }
+        });
+      }
   
       attackDiv.appendChild(attackBtn);
       containerEl.appendChild(attackDiv);
