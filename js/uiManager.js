@@ -251,8 +251,8 @@ export class UIManager {
         let addAttackBtn = document.createElement('button');
         addAttackBtn.textContent = 'Add Selected Attack';
         addAttackBtn.addEventListener('click', () => {
-          const attackId = parseInt(attackSelect.value, 10);
-          if (!isNaN(attackId)) {
+          const attackId = attackSelect.value;
+          if (attackId && attacksData[attackId]) {
             this.app.monsterManager.addAttackToMonster(m.id, attackId);
             alert("Attack added to monster template!");
           } else {
