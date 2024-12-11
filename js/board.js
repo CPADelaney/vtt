@@ -283,10 +283,14 @@ export class Board {
       const gy = (e.clientY - rect.top) / this.scaleFactor;
       const c = Math.floor(gx / this.cellWidth);
       const r = Math.floor(gy / this.cellHeight);
-
+    
       if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
         this.clearHighlights();
-        const aoePositions = this.getAoEAreaPositions(this.app.currentAction.aoeShape, { row: r, col: c }, this.app.currentAction.radius);
+        const aoePositions = this.getAoEAreaPositions(
+          this.app.currentAction.aoeShape, 
+          { row: r, col: c }, 
+          this.app.currentAction.radius
+        );
         this.highlightTiles(aoePositions, 'target-highlight');
       }
     }
