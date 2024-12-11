@@ -1,5 +1,4 @@
 // uiManager.js
-// Now all rendering logic lives here. The UIManager pulls data from App (and indirectly from managers) to display.
 
 import { rollCombinedDiceExpression, rollSingleDice } from './dice.js';
 import { attacksData } from './attacks.js';
@@ -33,6 +32,11 @@ export class UIManager {
     this.addAttackBtn = document.getElementById('add-attack-btn');
     this.assignOwnerField = document.getElementById('assign-owner-field');
     this.createCharacterBtn = document.getElementById('create-character-btn');
+
+    // Custom attack modal elements
+    this.customAttackModal = document.getElementById('monster-custom-attack-modal');
+    this.closeMonsterCustomAttack = document.getElementById('close-monster-custom-attack');
+    this.customAttackForm = document.getElementById('custom-attack-form');
   }
 
   setupUIEventListeners() {
@@ -85,6 +89,32 @@ export class UIManager {
 
     // Monster Filter
     this.monsterFilter.addEventListener('change', () => this.renderMonsterList());
+
+    // Custom attack modal events
+    this.closeMonsterCustomAttack.addEventListener('click', () => {
+      this.customAttackModal.style.display = "none";
+    });
+
+    this.customAttackForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!this.currentMonsterForCustomAttack) return;
+      const formData = new FormData(this.customAttackForm);
+      const customAttack = {
+        name: formData.get('name'),
+        type: formData.get('type'),
+        damageDice: formData.get('damageDice'),
+        baseMod: parseInt(formData.get('baseMod'), 10) || 0,
+        stat: formData.get('stat'),
+        range: parseInt(formData.get('range'), 10) || 1,
+        shape: formData.get('shape') || null,
+        radius: parseInt(formData.get('radius'), 10) || 0
+      };
+
+      this.app.monsterManager.addCustomAttackToMonster(this.currentMonsterForCustomAttack.id, customAttack);
+      this.customAttackModal.style.display = "none";
+      alert("Custom attack added!");
+      this.renderMonsterList();
+    });
   }
 
   renderLog() {
@@ -121,8 +151,8 @@ export class UIManager {
       dragIcon.setAttribute('draggable', canPlace ? 'true' : 'false');
       if (canPlace) {
         dragIcon.addEventListener('dragstart', (ev) => {
-          ev.dataTransfer.setData('text', ''); // essential for Chrome/Firefox to initiate a valid drag
-          this.app.board.draggedCharId = ch.id; // or draggedMonsterId if monster
+          ev.dataTransfer.setData('text', '');
+          this.app.board.draggedCharId = ch.id;
           this.app.board.draggedMonsterId = null;
           ev.dataTransfer.effectAllowed = 'move';
         });
@@ -149,6 +179,7 @@ export class UIManager {
       container.appendChild(div);
     }
   }
+
   renderMonsterList() {
     if (this.app.isDM()) {
       this.monsterList.style.display = "block";
@@ -156,20 +187,20 @@ export class UIManager {
       this.monsterList.style.display = "none";
       return;
     }
-  
+
     this.monsterListEntries.innerHTML = '';
     const filter = this.monsterFilter.value;
     let filtered = this.app.monsters;
     if (filter) {
       filtered = this.app.monsters.filter(m => m.habitats.includes(filter));
     }
-  
+
     for (let m of filtered) {
       const div = document.createElement('div');
       div.className = 'monster-list-item';
-  
+
       const canPlace = this.app.isDM();
-  
+
       const dragIcon = document.createElement('span');
       dragIcon.textContent = '⚔';
       dragIcon.className = 'drag-icon';
@@ -177,7 +208,7 @@ export class UIManager {
       if (canPlace) {
         dragIcon.addEventListener('dragstart', (ev) => {
           ev.dataTransfer.setData('text', '');
-          this.app.board.draggedMonsterId = m.id;
+          this.app.board.draggedMonsterId = m.id; 
           this.app.board.draggedCharId = null;
           ev.dataTransfer.effectAllowed = 'move';
         });
@@ -185,12 +216,12 @@ export class UIManager {
           this.app.board.draggedMonsterId = null;
         });
       }
-  
+
       div.appendChild(dragIcon);
-  
+
       let textNode = document.createTextNode(`${m.name}`);
       div.appendChild(textNode);
-  
+
       let openBtn = document.createElement('button');
       openBtn.textContent = 'View Stats';
       openBtn.addEventListener('click', () => {
@@ -199,25 +230,54 @@ export class UIManager {
         }
       });
       div.appendChild(openBtn);
-  
-      // Add attack button if DM
+
+      // DM-only features:
       if (this.app.isDM()) {
+        // Add Attack dropdown
+        const attackSelect = document.createElement('select');
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = '--Select Attack--';
+        attackSelect.appendChild(defaultOption);
+
+        for (const [id, atkDef] of Object.entries(attacksData)) {
+          const opt = document.createElement('option');
+          opt.value = id;
+          opt.textContent = atkDef.name || `Attack ${id}`;
+          attackSelect.appendChild(opt);
+        }
+        div.appendChild(attackSelect);
+
         let addAttackBtn = document.createElement('button');
-        addAttackBtn.textContent = 'Add Attack';
+        addAttackBtn.textContent = 'Add Selected Attack';
         addAttackBtn.addEventListener('click', () => {
-          // Prompt for attackId
-          const attackId = prompt("Enter attackId to add to this monster:");
-          if (attackId && !isNaN(parseInt(attackId, 10))) {
-            this.app.monsterManager.addAttackToMonster(m.id, parseInt(attackId, 10));
+          const attackId = parseInt(attackSelect.value, 10);
+          if (!isNaN(attackId)) {
+            this.app.monsterManager.addAttackToMonster(m.id, attackId);
+            alert("Attack added to monster template!");
           } else {
-            alert("Invalid attackId.");
+            alert("Invalid or no attack selected.");
           }
         });
         div.appendChild(addAttackBtn);
+
+        // Add Custom Attack
+        let addCustomAttackBtn = document.createElement('button');
+        addCustomAttackBtn.textContent = 'Add Custom Attack';
+        addCustomAttackBtn.addEventListener('click', () => {
+          this.openCustomAttackModal(m);
+        });
+        div.appendChild(addCustomAttackBtn);
       }
-  
+
       this.monsterListEntries.appendChild(div);
     }
+  }
+
+  openCustomAttackModal(monster) {
+    this.currentMonsterForCustomAttack = monster;
+    this.customAttackForm.reset();
+    this.customAttackModal.style.display = "block";
   }
 
   openCharacterSheet(ch) {
@@ -259,61 +319,77 @@ export class UIManager {
     this.monsterSheetModal.style.display = "block";
   }
 
-    renderAttacksSection(entityData, type, containerEl) {
-      containerEl.innerHTML = `<h4>Attacks</h4>`;
-      if (!entityData.attacks || entityData.attacks.length === 0) {
-        containerEl.innerHTML += `<p>No attacks.</p>`;
-        return;
-      }
-  
-      for (let att of entityData.attacks) {
-        const attackDef = attacksData[att.attackId];
-        if (!attackDef) continue;
-  
-        const attackDiv = document.createElement('div');
-        attackDiv.textContent = `${attackDef.name} `;
-        const attackBtn = document.createElement('button');
-        attackBtn.textContent = "Attack!";
-  
-        attackBtn.addEventListener('click', () => {
-          const actionData = {
-            type: attackDef.type === 'aoe' ? 'aoe' : 'attack',
-            aoeShape: attackDef.shape || null,
-            radius: attackDef.radius || 0,
-            attacker: entityData,
-            entityType: type,
-            attackEntry: att,
-            attackDef: attackDef
-          };
-  
-          this.app.startAction(actionData);
-  
-          // Debugging the attacker’s position:
-          console.log("Attempting to find attacker position for", entityData, "type:", type);
-          const attackerPos = this.app.board.getEntityPosition(type, entityData.id);
-          console.log("attackerPos:", attackerPos);
-          if (!attackerPos) {
-            console.warn("No attacker position found. The entity may not be placed on the board or type/id mismatch.");
-            return;
-          }
-  
-          if (attackDef.type === 'single') {
-            console.log("Highlighting range for single target attack.");
-            console.log("Calling getPositionsInRange with", attackerPos, "range:", attackDef.range);
-            const possiblePositions = this.app.board.getPositionsInRange(attackerPos, attackDef.range);
-            console.log("possiblePositions:", possiblePositions);
-            this.app.board.highlightTiles(possiblePositions, 'target-highlight');
-          } else if (attackDef.type === 'aoe') {
-            console.log("AOE attack selected, highlights on mousemove.");
-          }
-        });
-  
-        attackDiv.appendChild(attackBtn);
-        containerEl.appendChild(attackDiv);
-      }
+  renderAttacksSection(entityData, type, containerEl) {
+    containerEl.innerHTML = `<h4>Attacks</h4>`;
+    if (!entityData.attacks || entityData.attacks.length === 0) {
+      containerEl.innerHTML += `<p>No attacks.</p>`;
+      return;
     }
-  
 
+    for (let att of entityData.attacks) {
+      const attDef = att.custom ? att.custom : attacksData[att.attackId];
+      if (!attDef) continue;
+
+      const attackDiv = document.createElement('div');
+      attackDiv.textContent = `${attDef.name} `;
+      const attackBtn = document.createElement('button');
+      attackBtn.textContent = "Attack!";
+
+      attackBtn.addEventListener('click', () => {
+        const actionData = {
+          type: attDef.type === 'aoe' ? 'aoe' : 'attack',
+          aoeShape: attDef.shape || null,
+          radius: attDef.radius || 0,
+          attacker: entityData,
+          entityType: type,
+          attackEntry: att,
+          attackDef: attDef
+        };
+
+        // Determine the weapon object based on entity type
+        if (type === "character") {
+          // Characters should have a weaponId in their attackEntry
+          if (att.weaponId) {
+            const foundWeapon = this.app.weapons.find(w => w.id === att.weaponId);
+            if (foundWeapon) {
+              actionData.weapon = foundWeapon;
+            } else {
+              console.warn(`No weapon found for weaponId: ${att.weaponId}`);
+            }
+          } else {
+            console.warn("Character attack entry does not have a weaponId:", att);
+          }
+        } else if (type === "monster") {
+          // For monsters, treat the attackDef itself as the 'weapon'
+          actionData.weapon = attDef;
+        }
+
+        this.app.startAction(actionData);
+
+        // Debugging the attacker’s position:
+        console.log("Attempting to find attacker position for", entityData, "type:", type);
+        const attackerPos = this.app.board.getEntityPosition(type, entityData.id);
+        console.log("attackerPos:", attackerPos);
+        if (!attackerPos) {
+          console.warn("No attacker position found. The entity may not be placed on the board or type/id mismatch.");
+          return;
+        }
+
+        if (attDef.type === 'single') {
+          console.log("Highlighting range for single target attack.");
+          console.log("Calling getPositionsInRange with", attackerPos, "range:", attDef.range);
+          const possiblePositions = this.app.board.getPositionsInRange(attackerPos, attDef.range);
+          console.log("possiblePositions:", possiblePositions);
+          this.app.board.highlightTiles(possiblePositions, 'target-highlight');
+        } else if (attDef.type === 'aoe') {
+          console.log("AOE attack selected, highlights on mousemove.");
+        }
+      });
+
+      attackDiv.appendChild(attackBtn);
+      containerEl.appendChild(attackDiv);
+    }
+  }
 
   openCreateCharacterModal() {
     if (this.app.isDM()) {
