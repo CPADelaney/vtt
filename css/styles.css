@@ -12,11 +12,18 @@ body {
 
 #board-container {
   position: relative;
-  overflow: hidden;
   flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  /* Remove align-items:center; justify-content:center; so we can scroll freely */
+  overflow: hidden;
+}
+
+#board-scroll-container {
+  position: relative;
+  flex: 1;
+  overflow: auto; /* Enable scrollbars */
+  background: #ddd; /* Optional background to see the scroll area */
 }
 
 #sidebar {
