@@ -128,6 +128,27 @@ export class UIManager {
         this.app.board.zoomOut();
       });
     }
+
+    const mapControls = document.getElementById('map-controls');
+    let isDragging = false;
+    let dragOffsetX, dragOffsetY;
+    
+    mapControls.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      dragOffsetX = e.clientX - mapControls.offsetLeft;
+      dragOffsetY = e.clientY - mapControls.offsetTop;
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        mapControls.style.left = (e.clientX - dragOffsetX) + 'px';
+        mapControls.style.top = (e.clientY - dragOffsetY) + 'px';
+      }
+    });
+    
+    document.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
   
     // Resize Grid controls
     const resizeGridBtn = document.getElementById('resize-grid-btn');
