@@ -29,22 +29,27 @@
       <div id="tab-content">
         <!-- Chat Tab -->
         <div id="chat-tab" class="tab-content active">
-          <h3>Dice Roller</h3>
-          <div id="dice-roller">
-            <input type="text" id="dice-expression" placeholder="e.g. 2d6+3" />
-            <button id="roll-expression">Roll</button>
+          <div id="chat-container">
+            <div id="log"></div>
+            <input type="text" id="command-input" placeholder="Type a command or chat message..." />
+            <button id="cancel-attack-btn" style="display:none; margin-top:10px;">Cancel Attack</button>
           </div>
-          <div>
-            <button class="dice-button" data-sides="4">d4</button>
-            <button class="dice-button" data-sides="6">d6</button>
-            <button class="dice-button" data-sides="8">d8</button>
-            <button class="dice-button" data-sides="10">d10</button>
-            <button class="dice-button" data-sides="12">d12</button>
-            <button class="dice-button" data-sides="20">d20</button>
+
+          <div id="dice-container">
+            <h3>Dice Roller</h3>
+            <div id="dice-roller">
+              <input type="text" id="dice-expression" placeholder="e.g. 2d6+3" />
+              <button id="roll-expression">Roll</button>
+            </div>
+            <div>
+              <button class="dice-button" data-sides="4">d4</button>
+              <button class="dice-button" data-sides="6">d6</button>
+              <button class="dice-button" data-sides="8">d8</button>
+              <button class="dice-button" data-sides="10">d10</button>
+              <button class="dice-button" data-sides="12">d12</button>
+              <button class="dice-button" data-sides="20">d20</button>
+            </div>
           </div>
-          <div id="log"></div>
-          <input type="text" id="command-input" placeholder="Type a command or chat message..." />
-          <button id="cancel-attack-btn" style="display:none; margin-top:10px;">Cancel Attack</button>
         </div>
 
         <!-- Characters Tab -->
@@ -76,46 +81,6 @@
             <option value="Player2">Player2</option>
           </select>
 
-          <h4>Grid Resize</h4>
-          <label>Rows: <input type="number" id="grid-rows" value="8" style="width:50px;" /></label>
-          <label>Cols: <input type="number" id="grid-cols" value="8" style="width:50px;" /></label>
-          <button id="resize-grid-btn">Resize</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-
-        <!-- Characters Tab -->
-        <div id="characters-tab" class="tab-content">
-          <h3>All Characters</h3>
-          <div id="character-list-entries"></div>
-          <button id="create-character-btn">Create Character</button>
-        </div>
-
-        <!-- Monsters Tab -->
-        <div id="monsters-tab" class="tab-content">
-          <h3>Monsters</h3>
-          <select id="monster-filter">
-            <option value="">-- Select Environment --</option>
-            <option value="Desert">Desert</option>
-            <option value="Grasslands">Grasslands</option>
-            <option value="Riverlands">Riverlands</option>
-          </select>
-          <div id="monster-list-entries"></div>
-        </div>
-
-        <!-- DM Tab -->
-        <div id="dm-tab" class="tab-content">
-          <h3>DM Tools</h3>
-          <p>Change user:</p>
-          <select id="user-select">
-            <option value="DM">DM</option>
-            <option value="Player1">Player1</option>
-            <option value="Player2">Player2</option>
-          </select>
-
-          <!-- Grid Resize Controls moved here -->
           <h4>Grid Resize</h4>
           <label>Rows: <input type="number" id="grid-rows" value="8" style="width:50px;" /></label>
           <label>Cols: <input type="number" id="grid-cols" value="8" style="width:50px;" /></label>
