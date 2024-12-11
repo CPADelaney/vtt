@@ -34,122 +34,159 @@ export class UIManager {
     // Custom attack modal elements
     this.customAttackModal = document.getElementById('monster-custom-attack-modal');
     this.closeMonsterCustomAttack = document.getElementById('close-monster-custom-attack');
+    this.customAttackForm = document.getElementById('custom-attack-form');
 
     // Send command button
     this.sendCommandBtn = document.getElementById('send-command-btn');
+
+    // Optional elements
+    this.mapControls = document.getElementById('map-controls');
+    this.zoomInBtn = document.getElementById('zoom-in-btn');
+    this.zoomOutBtn = document.getElementById('zoom-out-btn');
+    this.resizeGridBtn = document.getElementById('resize-grid-btn');
+    this.userSelect = document.getElementById('user-select');
   }
 
   setupUIEventListeners() {
     // Chat input (Enter press in command input)
-    this.commandInput.addEventListener('keypress', (e) => {
-      this.app.chatManager.handleCommandInput(e);
-    });
+    if (this.commandInput) {
+      this.commandInput.addEventListener('keypress', (e) => {
+        this.app.chatManager.handleCommandInput(e);
+      });
+    }
 
     // Click on Send button simulates pressing 'Enter'
-    this.sendCommandBtn.addEventListener('click', () => {
-      const enterKeyEvent = new KeyboardEvent('keypress', { key: 'Enter' });
-      this.commandInput.dispatchEvent(enterKeyEvent);
-    });
+    if (this.sendCommandBtn && this.commandInput) {
+      this.sendCommandBtn.addEventListener('click', () => {
+        const enterKeyEvent = new KeyboardEvent('keypress', { key: 'Enter' });
+        this.commandInput.dispatchEvent(enterKeyEvent);
+      });
+    }
   
     // Close modals
-    this.closeSheet.addEventListener('click', () => {
-      this.sheetModal.style.display = "none";
-    });
-    this.closeMonsterSheet.addEventListener('click', () => {
-      this.monsterSheetModal.style.display = "none";
-    });
+    if (this.closeSheet && this.sheetModal) {
+      this.closeSheet.addEventListener('click', () => {
+        this.sheetModal.style.display = "none";
+      });
+    }
+
+    if (this.closeMonsterSheet && this.monsterSheetModal) {
+      this.closeMonsterSheet.addEventListener('click', () => {
+        this.monsterSheetModal.style.display = "none";
+      });
+    }
   
     // Create Character Modal
-    this.createCharacterBtn.addEventListener('click', () => this.openCreateCharacterModal());
-    this.closeCreateCharacter.addEventListener('click', () => {
-      this.createCharacterModal.style.display = "none";
-    });
-    this.addAttackBtn.addEventListener('click', () => this.addAttackInput());
-    this.createCharacterForm.addEventListener('submit', (e) => this.handleCreateCharacterSubmit(e));
+    if (this.createCharacterBtn) {
+      this.createCharacterBtn.addEventListener('click', () => this.openCreateCharacterModal());
+    }
+
+    if (this.closeCreateCharacter && this.createCharacterModal) {
+      this.closeCreateCharacter.addEventListener('click', () => {
+        this.createCharacterModal.style.display = "none";
+      });
+    }
+
+    if (this.addAttackBtn) {
+      this.addAttackBtn.addEventListener('click', () => this.addAttackInput());
+    }
+
+    if (this.createCharacterForm) {
+      this.createCharacterForm.addEventListener('submit', (e) => this.handleCreateCharacterSubmit(e));
+    }
   
     // User selection (changes currentUser)
-    document.getElementById('user-select').addEventListener('change', (e) => {
-      this.app.currentUser = e.target.value;
-      this.renderCharacterList();
-      this.renderMonsterList();
-      this.renderLog();
-    
-      // Hide the monsters tab button if not DM
-      const monstersTabButton = document.querySelector('[data-tab="monsters-tab"]');
-      if (!this.app.isDM()) {
-        monstersTabButton.style.display = "none";
-      } else {
-        monstersTabButton.style.display = "inline-block";
-      }
-    });
+    if (this.userSelect) {
+      this.userSelect.addEventListener('change', (e) => {
+        this.app.currentUser = e.target.value;
+        this.renderCharacterList();
+        this.renderMonsterList();
+        this.renderLog();
+      
+        // Hide the monsters tab button if not DM
+        const monstersTabButton = document.querySelector('[data-tab="monsters-tab"]');
+        if (monstersTabButton) {
+          if (!this.app.isDM()) {
+            monstersTabButton.style.display = "none";
+          } else {
+            monstersTabButton.style.display = "inline-block";
+          }
+        }
+      });
+    }
   
     // Monster Filter
-    this.monsterFilter.addEventListener('change', () => this.renderMonsterList());
+    if (this.monsterFilter) {
+      this.monsterFilter.addEventListener('change', () => this.renderMonsterList());
+    }
   
     // Custom attack modal events
-    this.closeMonsterCustomAttack.addEventListener('click', () => {
-      this.customAttackModal.style.display = "none";
-    });
+    if (this.closeMonsterCustomAttack && this.customAttackModal) {
+      this.closeMonsterCustomAttack.addEventListener('click', () => {
+        this.customAttackModal.style.display = "none";
+      });
+    }
   
-    this.customAttackForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      if (!this.currentMonsterForCustomAttack) return;
-  
-      const formData = new FormData(this.customAttackForm);
-      const customAttack = {
-        name: formData.get('name'),
-        type: formData.get('type'),
-        damageDice: formData.get('damageDice'),
-        baseMod: parseInt(formData.get('baseMod'), 10) || 0,
-        stat: formData.get('stat'),
-        range: parseInt(formData.get('range'), 10) || 1,
-        shape: formData.get('shape') || null,
-        radius: parseInt(formData.get('radius'), 10) || 0
-      };
-  
-      this.app.monsterManager.addCustomAttackToMonster(this.currentMonsterForCustomAttack.id, customAttack);
-      this.customAttackModal.style.display = "none";
-      alert("Custom attack added!");
-      this.renderMonsterList();
-    });
+    if (this.customAttackForm) {
+      this.customAttackForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (!this.currentMonsterForCustomAttack) return;
+    
+        const formData = new FormData(this.customAttackForm);
+        const customAttack = {
+          name: formData.get('name'),
+          type: formData.get('type'),
+          damageDice: formData.get('damageDice'),
+          baseMod: parseInt(formData.get('baseMod'), 10) || 0,
+          stat: formData.get('stat'),
+          range: parseInt(formData.get('range'), 10) || 1,
+          shape: formData.get('shape') || null,
+          radius: parseInt(formData.get('radius'), 10) || 0
+        };
+    
+        this.app.monsterManager.addCustomAttackToMonster(this.currentMonsterForCustomAttack.id, customAttack);
+        this.customAttackModal.style.display = "none";
+        alert("Custom attack added!");
+        this.renderMonsterList();
+      });
+    }
   
     // Zoom controls
-    const zoomInBtn = document.getElementById('zoom-in-btn');
-    const zoomOutBtn = document.getElementById('zoom-out-btn');
-    if (zoomInBtn && zoomOutBtn) {
-      zoomInBtn.addEventListener('click', () => {
+    if (this.zoomInBtn && this.zoomOutBtn) {
+      this.zoomInBtn.addEventListener('click', () => {
         this.app.board.zoomIn();
       });
-      zoomOutBtn.addEventListener('click', () => {
+      this.zoomOutBtn.addEventListener('click', () => {
         this.app.board.zoomOut();
       });
     }
 
-    const mapControls = document.getElementById('map-controls');
-    let isDragging = false;
-    let dragOffsetX, dragOffsetY;
-    
-    mapControls.addEventListener('mousedown', (e) => {
-      isDragging = true;
-      dragOffsetX = e.clientX - mapControls.offsetLeft;
-      dragOffsetY = e.clientY - mapControls.offsetTop;
-    });
-    
-    document.addEventListener('mousemove', (e) => {
-      if (isDragging) {
-        mapControls.style.left = (e.clientX - dragOffsetX) + 'px';
-        mapControls.style.top = (e.clientY - dragOffsetY) + 'px';
-      }
-    });
-    
-    document.addEventListener('mouseup', () => {
-      isDragging = false;
-    });
+    // Map controls dragging
+    if (this.mapControls) {
+      let isDragging = false;
+      let dragOffsetX, dragOffsetY;
+      
+      this.mapControls.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        dragOffsetX = e.clientX - this.mapControls.offsetLeft;
+        dragOffsetY = e.clientY - this.mapControls.offsetTop;
+      });
+      
+      document.addEventListener('mousemove', (e) => {
+        if (isDragging) {
+          this.mapControls.style.left = (e.clientX - dragOffsetX) + 'px';
+          this.mapControls.style.top = (e.clientY - dragOffsetY) + 'px';
+        }
+      });
+      
+      document.addEventListener('mouseup', () => {
+        isDragging = false;
+      });
+    }
   
     // Resize Grid controls
-    const resizeGridBtn = document.getElementById('resize-grid-btn');
-    if (resizeGridBtn) {
-      resizeGridBtn.addEventListener('click', () => {
+    if (this.resizeGridBtn) {
+      this.resizeGridBtn.addEventListener('click', () => {
         if (!this.app.isDM()) {
           alert("Only DM can resize the grid!");
           return;
@@ -175,36 +212,37 @@ export class UIManager {
         document.querySelectorAll('#tab-content .tab-content').forEach(tc => {
           tc.classList.remove('active');
         });
-        document.getElementById(tabId).classList.add('active');
+        const targetTab = document.getElementById(tabId);
+        if (targetTab) targetTab.classList.add('active');
       });
     });
 
     // Cancel attack button event
-    this.cancelAttackBtn.addEventListener('click', () => {
-      this.cancelAttackAndReopenSheet();
-    });
+    if (this.cancelAttackBtn) {
+      this.cancelAttackBtn.addEventListener('click', () => {
+        this.cancelAttackAndReopenSheet();
+      });
+    }
   }
 
   showCancelAttackButton(entityData, type) {
-    this.cancelAttackBtn.style.display = 'block';
-    // Store who we need to reopen after cancel
+    if (this.cancelAttackBtn) {
+      this.cancelAttackBtn.style.display = 'block';
+    }
     this.lastEntityForAttack = { entityData, type };
   }
 
   hideCancelAttackButton() {
-    this.cancelAttackBtn.style.display = 'none';
+    if (this.cancelAttackBtn) {
+      this.cancelAttackBtn.style.display = 'none';
+    }
     this.lastEntityForAttack = null;
   }
 
   cancelAttackAndReopenSheet() {
-    // Cancel current action
     this.app.clearAction();
     this.app.board.clearHighlights();
-
-    // Hide cancel button
     this.hideCancelAttackButton();
-
-    // Reopen the character or monster sheet
     if (this.lastEntityForAttack) {
       if (this.lastEntityForAttack.type === 'character') {
         this.openCharacterSheet(this.lastEntityForAttack.entityData);
@@ -226,8 +264,10 @@ export class UIManager {
         }
       }
     }
-    this.logEl.textContent = displayText;
-    this.logEl.scrollTop = this.logEl.scrollHeight;
+    if (this.logEl) {
+      this.logEl.textContent = displayText;
+      this.logEl.scrollTop = this.logEl.scrollHeight;
+    }
   }
 
   renderCharacterList() {
