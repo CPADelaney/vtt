@@ -26,8 +26,12 @@ export class App {
     this.characters = [];
     this.nextCharacterId = 1;
     
-    // Load monsters from monsters.js
+    // Monsters are templates
     this.monsters = initialMonsters;
+
+    // Placed instances of monsters
+    this.placedMonsters = [];
+    this.nextMonsterInstanceId = 10000;
 
     this.entityTokens = {};
     this.messages = [];
@@ -139,6 +143,15 @@ export class App {
           console.log("Marked character as not placed:", ch);
         }
       }
+
+      // If monster, remove from placedMonsters
+      if (ent.type === 'monster') {
+        const idx = this.placedMonsters.findIndex(pm => pm.id === ent.id);
+        if (idx !== -1) {
+          this.placedMonsters.splice(idx, 1);
+          console.log("Removed placed monster instance:", ent.id);
+        }
+      }
     }
 
     this.board.selectedEntities = [];
@@ -164,7 +177,8 @@ export class App {
   }
 
   getMonsterById(id) {
-    return this.monsterManager.getMonsterById(id);
+    // Look up placed monsters instead of the template monsters
+    return this.placedMonsters.find(m => m.id === id) || null;
   }
 
   isEntitySelected(ent) {
@@ -213,7 +227,3 @@ export class App {
     console.log("Entities moved and board redrawn");
   }
 }
-
-// In your main.js:
-// const app = new App();
-// app.initialize();
