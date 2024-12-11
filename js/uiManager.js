@@ -321,20 +321,23 @@ export class UIManager {
 
   renderAttacksSection(entityData, type, containerEl) {
     containerEl.innerHTML = `<h4>Attacks</h4>`;
-    if (!entityData.attacks || entityData.attacks.length === 0) {
-      containerEl.innerHTML += `<p>No attacks.</p>`;
-      return;
+    
+    let attacksToShow = entityData.attacks && entityData.attacks.length > 0 ? entityData.attacks : [];
+    
+    // If the entity has no attacks, show an unarmed strike by default
+    if (attacksToShow.length === 0) {
+      attacksToShow = [{ attackId: 'unarmed' }]; 
     }
-
-    for (let att of entityData.attacks) {
+  
+    for (let att of attacksToShow) {
       const attDef = att.custom ? att.custom : attacksData[att.attackId];
       if (!attDef) continue;
-
+  
       const attackDiv = document.createElement('div');
       attackDiv.textContent = `${attDef.name} `;
       const attackBtn = document.createElement('button');
       attackBtn.textContent = "Attack!";
-
+  
       attackBtn.addEventListener('click', () => {
         const actionData = {
           type: attDef.type === 'aoe' ? 'aoe' : 'attack',
@@ -345,47 +348,36 @@ export class UIManager {
           attackEntry: att,
           attackDef: attDef
         };
-
-        // Determine the weapon object based on entity type
-        if (type === "character") {
-          // Characters should have a weaponId in their attackEntry
+  
+        // Determine the weapon object
+        if (type === "character" || type === "monster") {
           if (att.weaponId) {
             const foundWeapon = this.app.weapons.find(w => w.id === att.weaponId);
-            if (foundWeapon) {
-              actionData.weapon = foundWeapon;
-            } else {
-              console.warn(`No weapon found for weaponId: ${att.weaponId}`);
-            }
+            actionData.weapon = foundWeapon;
           } else {
-            console.warn("Character attack entry does not have a weaponId:", att);
+            // If no weaponId is found, use the unarmed fallback
+            const unarmedWeapon = this.app.weapons.find(w => w.id === 0);
+            actionData.weapon = unarmedWeapon;
           }
-        } else if (type === "monster") {
-          // For monsters, treat the attackDef itself as the 'weapon'
-          actionData.weapon = attDef;
         }
-
+  
         this.app.startAction(actionData);
-
+  
         // Debugging the attacker’s position:
-        console.log("Attempting to find attacker position for", entityData, "type:", type);
         const attackerPos = this.app.board.getEntityPosition(type, entityData.id);
-        console.log("attackerPos:", attackerPos);
         if (!attackerPos) {
-          console.warn("No attacker position found. The entity may not be placed on the board or type/id mismatch.");
+          console.warn("No attacker position found.");
           return;
         }
-
+  
         if (attDef.type === 'single') {
-          console.log("Highlighting range for single target attack.");
-          console.log("Calling getPositionsInRange with", attackerPos, "range:", attDef.range);
           const possiblePositions = this.app.board.getPositionsInRange(attackerPos, attDef.range);
-          console.log("possiblePositions:", possiblePositions);
           this.app.board.highlightTiles(possiblePositions, 'target-highlight');
         } else if (attDef.type === 'aoe') {
           console.log("AOE attack selected, highlights on mousemove.");
         }
       });
-
+  
       attackDiv.appendChild(attackBtn);
       containerEl.appendChild(attackDiv);
     }
