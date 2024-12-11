@@ -146,6 +146,10 @@ h2 {
   cursor: pointer;
 }
 
+.delete-option {
+  color: red;
+}
+
 .context-menu ul li:hover {
   background: #eee;
 }
