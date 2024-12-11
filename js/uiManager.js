@@ -39,12 +39,12 @@ export class UIManager {
     this.customAttackForm = document.getElementById('custom-attack-form');
   }
 
-  setupUIEventListeners() {
+   setupUIEventListeners() {
     // Chat input
     this.commandInput.addEventListener('keypress', (e) => {
       this.app.chatManager.handleCommandInput(e);
     });
-
+  
     // Dice buttons
     document.querySelectorAll('.dice-button').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -53,7 +53,7 @@ export class UIManager {
         this.app.chatManager.addMessage({ text: `Rolled d${sides}: ${result}`, sender: this.app.currentUser, private: false });
       });
     });
-
+  
     // Roll expression
     document.getElementById('roll-expression').addEventListener('click', () => {
       const expr = document.getElementById('dice-expression').value;
@@ -62,7 +62,7 @@ export class UIManager {
         this.app.chatManager.addMessage({ text: result, sender: this.app.currentUser, private: false });
       }
     });
-
+  
     // Close modals
     this.closeSheet.addEventListener('click', () => {
       this.sheetModal.style.display = "none";
@@ -70,7 +70,7 @@ export class UIManager {
     this.closeMonsterSheet.addEventListener('click', () => {
       this.monsterSheetModal.style.display = "none";
     });
-
+  
     // Create Character Modal
     this.createCharacterBtn.addEventListener('click', () => this.openCreateCharacterModal());
     this.closeCreateCharacter.addEventListener('click', () => {
@@ -78,26 +78,27 @@ export class UIManager {
     });
     this.addAttackBtn.addEventListener('click', () => this.addAttackInput());
     this.createCharacterForm.addEventListener('submit', (e) => this.handleCreateCharacterSubmit(e));
-
-    // User selection
+  
+    // User selection (changes currentUser)
     document.getElementById('user-select').addEventListener('change', (e) => {
       this.app.currentUser = e.target.value;
       this.renderCharacterList();
       this.renderMonsterList();
       this.renderLog();
     });
-
+  
     // Monster Filter
     this.monsterFilter.addEventListener('change', () => this.renderMonsterList());
-
+  
     // Custom attack modal events
     this.closeMonsterCustomAttack.addEventListener('click', () => {
       this.customAttackModal.style.display = "none";
     });
-
+  
     this.customAttackForm.addEventListener('submit', (e) => {
       e.preventDefault();
       if (!this.currentMonsterForCustomAttack) return;
+  
       const formData = new FormData(this.customAttackForm);
       const customAttack = {
         name: formData.get('name'),
@@ -109,11 +110,56 @@ export class UIManager {
         shape: formData.get('shape') || null,
         radius: parseInt(formData.get('radius'), 10) || 0
       };
-
+  
       this.app.monsterManager.addCustomAttackToMonster(this.currentMonsterForCustomAttack.id, customAttack);
       this.customAttackModal.style.display = "none";
       alert("Custom attack added!");
       this.renderMonsterList();
+    });
+  
+    // Zoom controls
+    const zoomInBtn = document.getElementById('zoom-in-btn');
+    const zoomOutBtn = document.getElementById('zoom-out-btn');
+    if (zoomInBtn && zoomOutBtn) {
+      zoomInBtn.addEventListener('click', () => {
+        this.app.board.zoomIn();
+      });
+      zoomOutBtn.addEventListener('click', () => {
+        this.app.board.zoomOut();
+      });
+    }
+  
+    // Resize Grid controls
+    const resizeGridBtn = document.getElementById('resize-grid-btn');
+    if (resizeGridBtn) {
+      resizeGridBtn.addEventListener('click', () => {
+        if (!this.app.isDM()) {
+          alert("Only DM can resize the grid!");
+          return;
+        }
+        const rows = parseInt(document.getElementById('grid-rows').value, 10);
+        const cols = parseInt(document.getElementById('grid-cols').value, 10);
+        if (!isNaN(rows) && !isNaN(cols) && rows > 0 && cols > 0) {
+          this.app.board.resizeGrid(rows, cols);
+        } else {
+          alert("Invalid row/col values.");
+        }
+      });
+    }
+  
+    // Tab switching
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+  
+        const tabId = btn.dataset.tab;
+        document.querySelectorAll('#tab-content .tab-content').forEach(tc => {
+          tc.classList.remove('active');
+        });
+        document.getElementById(tabId).classList.add('active');
+      });
     });
   }
 
@@ -479,48 +525,4 @@ export class UIManager {
     this.createCharacterForm.reset();
     this.attackCreationList.innerHTML = '';
   }
-    // Zoom controls
-    const zoomInBtn = document.getElementById('zoom-in-btn');
-    const zoomOutBtn = document.getElementById('zoom-out-btn');
-    if (zoomInBtn && zoomOutBtn) {
-      zoomInBtn.addEventListener('click', () => {
-        this.app.board.zoomIn();
-      });
-      zoomOutBtn.addEventListener('click', () => {
-        this.app.board.zoomOut();
-      });
-    }
-  
-    // Resize Grid controls
-    const resizeGridBtn = document.getElementById('resize-grid-btn');
-    if (resizeGridBtn) {
-      resizeGridBtn.addEventListener('click', () => {
-        if (!this.app.isDM()) {
-          alert("Only DM can resize the grid!");
-          return;
-        }
-        const rows = parseInt(document.getElementById('grid-rows').value, 10);
-        const cols = parseInt(document.getElementById('grid-cols').value, 10);
-        if (!isNaN(rows) && !isNaN(cols) && rows > 0 && cols > 0) {
-          this.app.board.resizeGrid(rows, cols);
-        } else {
-          alert("Invalid row/col values.");
-        }
-      });
-    }
-  
-    // Tab switching
-    const tabButtons = document.querySelectorAll('.tab-btn');
-    tabButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        tabButtons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-  
-        const tabId = btn.dataset.tab;
-        document.querySelectorAll('#tab-content .tab-content').forEach(tc => {
-          tc.classList.remove('active');
-        });
-        document.getElementById(tabId).classList.add('active');
-      });
-    });
   }
