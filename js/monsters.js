@@ -9,7 +9,7 @@ export const initialMonsters = [
     name: "Sand Wurm",
     HP: 50, AC: 14, STR: 18, DEX: 8, CON: 16, INT: 5, WIS: 10, CHA: 5,
     habitats: ["Desert"],
-    attacks: [{ attackId: 1 }] // Short Sword Strike (just a placeholder to test)
+    attacks: [{  }] // Short Sword Strike (just a placeholder to test)
   },
   {
     id: 2,
