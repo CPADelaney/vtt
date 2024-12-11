@@ -313,6 +313,21 @@ export class Board {
     }
   }
 
+  openEntitySheet(entity) {
+  if (entity.type === 'character') {
+    const ch = this.app.getCharacterById(entity.id);
+    if (ch) {
+      this.app.uiManager.openCharacterSheet(ch);
+    }
+  } else if (entity.type === 'monster') {
+    const mon = this.app.getMonsterById(entity.id);
+    if (mon) {
+      this.app.uiManager.openMonsterSheet(mon);
+    }
+  }
+}
+
+
   handleContextMenu(e) {
     e.preventDefault();
     const cell = e.target.closest('td');
@@ -320,13 +335,29 @@ export class Board {
       this.hideContextMenu();
       return;
     }
-
+  
     const r = parseInt(cell.dataset.row, 10);
     const c = parseInt(cell.dataset.col, 10);
     const entity = this.app.entityTokens[`${r},${c}`];
-
-    if (entity && this.isEntitySelected(entity) && this.app.canControlEntity(entity)) {
+  
+    if (!entity) {
+      this.hideContextMenu();
+      return;
+    }
+  
+    // If we have a selected entity and can control it, show context menu
+    if (this.isEntitySelected(entity) && this.app.canControlEntity(entity)) {
       this.showContextMenu(e.pageX, e.pageY);
+  
+      // Find the Open Character Sheet menu item
+      const openSheetItem = document.getElementById('context-open-sheet');
+      openSheetItem.style.display = 'block'; // ensure it's visible
+  
+      // Add a click handler for opening the sheet
+      openSheetItem.onclick = () => {
+        this.hideContextMenu();
+        this.openEntitySheet(entity);
+      };
     } else {
       this.hideContextMenu();
     }
