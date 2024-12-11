@@ -1,6 +1,4 @@
-// uiManager.js
-
-import { rollCombinedDiceExpression, rollSingleDice } from './dice.js';
+import { rollCombinedDiceExpression } from './dice.js';
 import { attacksData } from './attacks.js';
 
 export class UIManager {
@@ -15,7 +13,6 @@ export class UIManager {
     this.logEl = document.getElementById('log');
     this.commandInput = document.getElementById('command-input');
     this.characterListEntries = document.getElementById('character-list-entries');
-    this.monsterList = document.getElementById('monster-list');
     this.monsterFilter = document.getElementById('monster-filter');
     this.monsterListEntries = document.getElementById('monster-list-entries');
     this.cancelAttackBtn = document.getElementById('cancel-attack-btn');
@@ -37,31 +34,21 @@ export class UIManager {
     // Custom attack modal elements
     this.customAttackModal = document.getElementById('monster-custom-attack-modal');
     this.closeMonsterCustomAttack = document.getElementById('close-monster-custom-attack');
-    this.customAttackForm = document.getElementById('custom-attack-form');
+
+    // Send command button
+    this.sendCommandBtn = document.getElementById('send-command-btn');
   }
 
   setupUIEventListeners() {
-    // Chat input
+    // Chat input (Enter press in command input)
     this.commandInput.addEventListener('keypress', (e) => {
       this.app.chatManager.handleCommandInput(e);
     });
-  
-    // Dice buttons
-    document.querySelectorAll('.dice-button').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const sides = parseInt(btn.dataset.sides, 10);
-        const result = rollSingleDice(sides);
-        this.app.chatManager.addMessage({ text: `Rolled d${sides}: ${result}`, sender: this.app.currentUser, private: false });
-      });
-    });
-  
-    // Roll expression
-    document.getElementById('roll-expression').addEventListener('click', () => {
-      const expr = document.getElementById('dice-expression').value;
-      if (expr) {
-        const result = rollCombinedDiceExpression(expr);
-        this.app.chatManager.addMessage({ text: result, sender: this.app.currentUser, private: false });
-      }
+
+    // Click on Send button simulates pressing 'Enter'
+    this.sendCommandBtn.addEventListener('click', () => {
+      const enterKeyEvent = new KeyboardEvent('keypress', { key: 'Enter' });
+      this.commandInput.dispatchEvent(enterKeyEvent);
     });
   
     // Close modals
@@ -196,7 +183,7 @@ export class UIManager {
     this.cancelAttackBtn.addEventListener('click', () => {
       this.cancelAttackAndReopenSheet();
     });
-  } // End of setupUIEventListeners
+  }
 
   showCancelAttackButton(entityData, type) {
     this.cancelAttackBtn.style.display = 'block';
@@ -380,14 +367,11 @@ export class UIManager {
       </table>
     `;
   
-    // Render attacks normally
     this.renderAttacksSection(m, "monster", document.getElementById('monster-attacks'));
   
-    // If DM, add attacks controls in the sheet
     if (this.app.isDM()) {
       const attacksContainer = document.getElementById('monster-attacks');
   
-      // Attack select dropdown
       const attackSelect = document.createElement('select');
       const defaultOption = document.createElement('option');
       defaultOption.value = '';
@@ -409,7 +393,6 @@ export class UIManager {
         if (attackId && attacksData[attackId]) {
           this.app.monsterManager.addAttackToMonster(m.id, attackId);
           alert("Attack added to monster template!");
-          // Re-render attacks to show update
           this.renderAttacksSection(m, "monster", document.getElementById('monster-attacks'));
         } else {
           alert("Invalid or no attack selected.");
@@ -431,23 +414,19 @@ export class UIManager {
   renderAttacksSection(entityData, type, containerEl) {
     containerEl.innerHTML = `<h4>Attacks</h4>`;
   
-    // Check if this entity is placed on the board
     let isPlaced = false;
     if (type === 'character') {
-      // Characters have a 'placed' boolean
       isPlaced = !!entityData.placed;
     } else if (type === 'monster') {
       const placedInstance = this.app.getMonsterById(entityData.id);
       isPlaced = !!placedInstance; 
-    }
-  
-    // If the entity is a monster from bestiary and not placed, check if there's a placed instance
-    if (type === 'monster' && !isPlaced) {
-      const templateId = entityData.templateId || entityData.id; 
-      const placed = this.app.placedMonsters.find(m => m.templateId === templateId);
-      if (placed) {
-        entityData = placed; // override with placed instance data
-        isPlaced = true;
+      if (!isPlaced) {
+        const templateId = entityData.templateId || entityData.id; 
+        const placed = this.app.placedMonsters.find(m => m.templateId === templateId);
+        if (placed) {
+          entityData = placed;
+          isPlaced = true;
+        }
       }
     }
   
@@ -495,17 +474,14 @@ export class UIManager {
         
           this.app.startAction(actionData);
           
-          // CLOSE the sheet here
           if (type === 'character') {
             this.sheetModal.style.display = "none";
           } else if (type === 'monster') {
             this.monsterSheetModal.style.display = "none";
           }
         
-          // Show cancel attack button
           this.showCancelAttackButton(entityData, type);
 
-          // For AoE attacks, no need attacker position if you allow targeting empty spaces
           if (attDef.type === 'single') {
             const attackerPos = this.app.board.getEntityPosition(type, entityData.id);
             if (attackerPos) {
