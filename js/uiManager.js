@@ -479,4 +479,48 @@ export class UIManager {
     this.createCharacterForm.reset();
     this.attackCreationList.innerHTML = '';
   }
-}
+    // Zoom controls
+    const zoomInBtn = document.getElementById('zoom-in-btn');
+    const zoomOutBtn = document.getElementById('zoom-out-btn');
+    if (zoomInBtn && zoomOutBtn) {
+      zoomInBtn.addEventListener('click', () => {
+        this.app.board.zoomIn();
+      });
+      zoomOutBtn.addEventListener('click', () => {
+        this.app.board.zoomOut();
+      });
+    }
+  
+    // Resize Grid controls
+    const resizeGridBtn = document.getElementById('resize-grid-btn');
+    if (resizeGridBtn) {
+      resizeGridBtn.addEventListener('click', () => {
+        if (!this.app.isDM()) {
+          alert("Only DM can resize the grid!");
+          return;
+        }
+        const rows = parseInt(document.getElementById('grid-rows').value, 10);
+        const cols = parseInt(document.getElementById('grid-cols').value, 10);
+        if (!isNaN(rows) && !isNaN(cols) && rows > 0 && cols > 0) {
+          this.app.board.resizeGrid(rows, cols);
+        } else {
+          alert("Invalid row/col values.");
+        }
+      });
+    }
+  
+    // Tab switching
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+  
+        const tabId = btn.dataset.tab;
+        document.querySelectorAll('#tab-content .tab-content').forEach(tc => {
+          tc.classList.remove('active');
+        });
+        document.getElementById(tabId).classList.add('active');
+      });
+    });
+  }
