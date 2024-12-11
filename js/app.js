@@ -7,6 +7,7 @@ import { UIManager } from './uiManager.js';
 import { ChatManager } from './chatManager.js';
 import { CampaignManager } from './campaignManager.js';
 import { initialMonsters } from './monsters.js';
+import { attacksData, weapons } from './attacks.js'; // Import weapons here
 
 export class App {
   constructor() {
@@ -17,11 +18,8 @@ export class App {
     this.users = ["DM", "Player1", "Player2"];
     this.currentUser = "DM"; // Default to DM for easier testing
 
-    this.weapons = [
-      { id: 1, name: "Short Sword", damageDice: "1d6", stat: "STR", baseMod: 2 },
-      { id: 2, name: "Long Bow", damageDice: "1d8", stat: "DEX", baseMod: 1 },
-      { id: 3, name: "Dagger", damageDice: "1d4", stat: "DEX", baseMod: 3 }
-    ];
+    // Use the imported weapons array instead of defining inline
+    this.weapons = weapons;
 
     this.characters = [];
     this.nextCharacterId = 1;
