@@ -41,6 +41,12 @@ export class Board {
     this.buildGrid();
     this.setupEventListeners();
     this.redrawBoard();
+    this.centerViewOnGrid(); // center view on initial load
+  }
+
+  // Apply zoom scaling by CSS transform
+  applyScale() {
+    this.gridEl.style.transform = `scale(${this.scaleFactor})`;
   }
 
   // Apply zoom scaling by CSS transform
@@ -50,15 +56,45 @@ export class Board {
   }
 
   zoomIn() {
-    this.scaleFactor += 0.1;
+    this.scaleFactor = Math.min(this.scaleFactor + 0.1, this.maxScale);
     this.applyScale();
   }
 
   zoomOut() {
-    if (this.scaleFactor > 0.2) {
-      this.scaleFactor -= 0.1;
-      this.applyScale();
-    }
+    this.scaleFactor = Math.max(this.scaleFactor - 0.1, this.minScale);
+    this.applyScale();
+  }
+
+  // Mouse wheel zooming around cursor
+  handleWheelZoom(e) {
+    e.preventDefault();
+
+    // Determine mouse position relative to grid
+    const rect = this.gridEl.getBoundingClientRect();
+    const offsetX = (e.clientX - rect.left) / this.scaleFactor;
+    const offsetY = (e.clientY - rect.top) / this.scaleFactor;
+
+    // Adjust scale
+    const zoomAmount = -e.deltaY * 0.001; // negative for natural scroll
+    const oldScale = this.scaleFactor;
+    this.scaleFactor = Math.min(Math.max(this.scaleFactor + zoomAmount, this.minScale), this.maxScale);
+
+    this.applyScale();
+
+    // After scaling, scroll so that the point under the cursor remains under the cursor
+    const newRect = this.gridEl.getBoundingClientRect();
+
+    // Calculate new scroll offsets so that the same point stays at the cursor
+    // The ratio of offset positions changes with scale
+    const newOffsetX = offsetX * this.scaleFactor;
+    const newOffsetY = offsetY * this.scaleFactor;
+
+    const dx = (newOffsetX - (e.clientX - newRect.left));
+    const dy = (newOffsetY - (e.clientY - newRect.top));
+
+    // Adjust scroll of boardScrollContainer
+    this.boardScrollContainer.scrollLeft += dx;
+    this.boardScrollContainer.scrollTop += dy;
   }
 
   resizeGrid(newRows, newCols) {
@@ -72,6 +108,7 @@ export class Board {
     this.cols = newCols;
     this.buildGrid();
     this.redrawBoard();
+    this.centerViewOnGrid(); // re-center view after resizing
   }
 
   buildGrid() {
@@ -132,6 +169,16 @@ export class Board {
     this.updateSelectionStyles();
   }
 
+  centerViewOnGrid() {
+    // Center the scroll on the grid
+    const scrollW = this.boardScrollContainer.clientWidth;
+    const scrollH = this.boardScrollContainer.clientHeight;
+    const gridW = this.cols * this.cellWidth * this.scaleFactor;
+    const gridH = this.rows * this.cellHeight * this.scaleFactor;
+    this.boardScrollContainer.scrollLeft = (gridW - scrollW) / 2;
+    this.boardScrollContainer.scrollTop = (gridH - scrollH) / 2;
+  }
+
   handleDrop(ev, r, c) {
     ev.preventDefault();
     console.log('handleDrop fired', r, c, 'draggedCharId:', this.draggedCharId, 'draggedMonsterId:', this.draggedMonsterId);
@@ -160,6 +207,9 @@ export class Board {
         this.hideContextMenu();
       }
     });
+
+    // Mouse wheel zoom event on the scroll container
+    this.boardScrollContainer.addEventListener('wheel', (e) => this.handleWheelZoom(e), { passive: false });
   }
 
   handleGridMouseDown(e) {
@@ -175,7 +225,7 @@ export class Board {
     const c = parseInt(cell.dataset.col, 10);
 
     console.log("handleGridMouseDown: Cell:", r, c);
-  
+    
     // AoE Attack Mode
     if (this.app.currentAction && this.app.currentAction.type === 'aoe') {
       console.log("AoE attack mode click on cell:", r, c);
