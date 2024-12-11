@@ -1,65 +1,86 @@
 <!DOCTYPE html>
-
 <html lang="en">
-  
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Virtual Tabletop</title>
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css" />
 </head>
-  
 <body>
-  <div id="sidebar">
-    <h2>Current User</h2>
-    <select id="user-select">
-      <option value="DM">DM</option>
-      <option value="Player1">Player1</option>
-      <option value="Player2">Player2</option>
-    </select>
-
-    <h2>Board</h2>
-    <div style="position: relative;">
+  <div id="main-container">
+    <div id="board-container">
+      <div id="map-controls">
+        <h4>Map Controls</h4>
+        <button id="zoom-in-btn">+</button>
+        <button id="zoom-out-btn">-</button>
+        <div id="resize-grid-controls">
+          <label>Rows: <input type="number" id="grid-rows" value="8" style="width:50px;" /></label>
+          <label>Cols: <input type="number" id="grid-cols" value="8" style="width:50px;" /></label>
+          <button id="resize-grid-btn">Resize</button>
+        </div>
+      </div>
       <table id="grid"></table>
       <div id="selection-marquee"></div>
     </div>
-  </div>
 
-  <div id="controls">
-    <h2>Character Management</h2>
-    <button id="create-character-btn">Create Character</button>
+    <div id="sidebar">
+      <div id="tab-bar">
+        <button class="tab-btn active" data-tab="chat-tab">Chat</button>
+        <button class="tab-btn" data-tab="characters-tab">Characters</button>
+        <button class="tab-btn" data-tab="monsters-tab">Monsters</button>
+        <button class="tab-btn" data-tab="dm-tab">DM</button>
+      </div>
 
-    <h2>Dice Roller</h2>
-    <div id="dice-roller">
-      <input type="text" id="dice-expression" placeholder="e.g. 2d6+3">
-      <button id="roll-expression">Roll</button>
-    </div>
-    <div>
-      <button class="dice-button" data-sides="4">d4</button>
-      <button class="dice-button" data-sides="6">d6</button>
-      <button class="dice-button" data-sides="8">d8</button>
-      <button class="dice-button" data-sides="10">d10</button>
-      <button class="dice-button" data-sides="12">d12</button>
-      <button class="dice-button" data-sides="20">d20</button>
-    </div>
+      <div id="tab-content">
+        <!-- Chat Tab -->
+        <div id="chat-tab" class="tab-content active">
+          <h3>Dice Roller</h3>
+          <div id="dice-roller">
+            <input type="text" id="dice-expression" placeholder="e.g. 2d6+3" />
+            <button id="roll-expression">Roll</button>
+          </div>
+          <div>
+            <button class="dice-button" data-sides="4">d4</button>
+            <button class="dice-button" data-sides="6">d6</button>
+            <button class="dice-button" data-sides="8">d8</button>
+            <button class="dice-button" data-sides="10">d10</button>
+            <button class="dice-button" data-sides="12">d12</button>
+            <button class="dice-button" data-sides="20">d20</button>
+          </div>
+          <div id="log"></div>
+          <input type="text" id="command-input" placeholder="Type a command or chat message..." />
+        </div>
 
-    <div id="log"></div>
-    <input type="text" id="command-input" placeholder="Type a command or chat message..." />
+        <!-- Characters Tab -->
+        <div id="characters-tab" class="tab-content">
+          <h3>All Characters</h3>
+          <div id="character-list-entries"></div>
+          <button id="create-character-btn">Create Character</button>
+        </div>
 
-    <div id="character-list">
-      <h3>All Characters</h3>
-      <div id="character-list-entries"></div>
-    </div>
+        <!-- Monsters Tab -->
+        <div id="monsters-tab" class="tab-content">
+          <h3>Monsters</h3>
+          <select id="monster-filter">
+            <option value="">-- Select Environment --</option>
+            <option value="Desert">Desert</option>
+            <option value="Grasslands">Grasslands</option>
+            <option value="Riverlands">Riverlands</option>
+          </select>
+          <div id="monster-list-entries"></div>
+        </div>
 
-    <div id="monster-list" style="display:none;">
-      <h3>Monsters</h3>
-      <select id="monster-filter">
-        <option value="">-- Select Environment --</option>
-        <option value="Desert">Desert</option>
-        <option value="Grasslands">Grasslands</option>
-        <option value="Riverlands">Riverlands</option>
-      </select>
-      <div id="monster-list-entries"></div>
+        <!-- DM Tab -->
+        <div id="dm-tab" class="tab-content">
+          <h3>DM Tools</h3>
+          <p>Change user:</p>
+          <select id="user-select">
+            <option value="DM">DM</option>
+            <option value="Player1">Player1</option>
+            <option value="Player2">Player2</option>
+          </select>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -125,7 +146,7 @@
   <!-- Custom Attack Modal for Monsters -->
   <div id="monster-custom-attack-modal" class="modal">
     <div class="modal-content">
-      <span id="close-monster-custom-attack" class="close">&times;</span>
+      <span id="close-monster-custom-attack" class="close-modal">&times;</span>
       <h2>Add Custom Attack</h2>
       <form id="custom-attack-form">
         <label>Name: <input name="name" required></label><br>
@@ -154,7 +175,6 @@
     </ul>
   </div>
 
-
-<script type="module" src="js/main.js"></script>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>
