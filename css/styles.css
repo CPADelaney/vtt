@@ -118,8 +118,7 @@ body {
   z-index: 10;
   background-color: #fff;
   table-layout: fixed;
-  width: 480px;
-  transform-origin: top left; 
+  transform-origin: top left;
 }
 
 #grid td {
