@@ -29,8 +29,8 @@ export class Board {
     this.terrainEffects = {};
 
     // Cell dimensions
-    this.cellWidth = 40;
-    this.cellHeight = 40;
+    this.cellWidth = 60;
+    this.cellHeight = 60;
 
     // Zoom factor
     this.scaleFactor = 1; 
