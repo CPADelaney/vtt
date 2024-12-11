@@ -1,4 +1,3 @@
-// js/board.js
 import { performAttack, performAoeAttack } from './combat.js';
 
 export class Board {
@@ -94,8 +93,9 @@ export class Board {
       }
       this.gridEl.appendChild(rowEl);
     }
-  this.gridEl.style.width = (this.cols * this.cellWidth) + 'px';
-  this.gridEl.style.height = (this.rows * this.cellHeight) + 'px';  
+    // Dynamically set grid size based on current rows, cols, and cell size
+    this.gridEl.style.width = (this.cols * this.cellWidth) + 'px';
+    this.gridEl.style.height = (this.rows * this.cellHeight) + 'px';  
   }
 
   redrawBoard() {
@@ -279,8 +279,9 @@ export class Board {
   }
 
   handleMouseMove(e) {
+    const rect = this.gridEl.getBoundingClientRect();
+
     if (this.app.currentAction && this.app.currentAction.type === 'aoe') {
-      const rect = this.gridEl.getBoundingClientRect();
       const gx = (e.clientX - rect.left) / this.scaleFactor;
       const gy = (e.clientY - rect.top) / this.scaleFactor;
       const c = Math.floor(gx / this.cellWidth);
@@ -298,6 +299,7 @@ export class Board {
     }
 
     if (this.isDraggingTokens && this.selectedEntities.length > 0) {
+      // Compute drag offsets in grid space
       const dx = (e.clientX - this.dragStartPos.x) / this.scaleFactor;
       const dy = (e.clientY - this.dragStartPos.y) / this.scaleFactor;
       const rowOffset = Math.round(dy / this.cellHeight);
@@ -306,10 +308,10 @@ export class Board {
     }
 
     if (this.isMarqueeSelecting) {
-      const rect = this.gridEl.getBoundingClientRect();
       let currentX = (e.clientX - rect.left) / this.scaleFactor;
       let currentY = (e.clientY - rect.top) / this.scaleFactor;
 
+      // Clamp to grid boundaries
       currentX = Math.max(0, Math.min(currentX, this.cols * this.cellWidth));
       currentY = Math.max(0, Math.min(currentY, this.rows * this.cellHeight));
 
@@ -337,12 +339,39 @@ export class Board {
       this.isDraggingTokens = false;
       const dx = (e.clientX - this.dragStartPos.x) / this.scaleFactor;
       const dy = (e.clientY - this.dragStartPos.y) / this.scaleFactor;
-      const rowOffset = Math.round(dy / this.cellHeight);
-      const colOffset = Math.round(dx / this.cellWidth);
+      let rowOffset = Math.round(dy / this.cellHeight);
+      let colOffset = Math.round(dx / this.cellWidth);
+
+      // Clamp final positions so we don't drag entities off-grid
+      let minRowOffset = rowOffset;
+      let minColOffset = colOffset;
+
+      for (const pos of this.originalPositions) {
+        const targetRow = pos.row + rowOffset;
+        const targetCol = pos.col + colOffset;
+        if (targetRow < 0) {
+          minRowOffset = Math.min(minRowOffset, -pos.row);
+        }
+        if (targetRow >= this.rows) {
+          minRowOffset = Math.min(minRowOffset, this.rows - 1 - pos.row);
+        }
+        if (targetCol < 0) {
+          minColOffset = Math.min(minColOffset, -pos.col);
+        }
+        if (targetCol >= this.cols) {
+          minColOffset = Math.min(minColOffset, this.cols - 1 - pos.col);
+        }
+      }
+
+      if (minRowOffset !== rowOffset || minColOffset !== colOffset) {
+        rowOffset = minRowOffset;
+        colOffset = minColOffset;
+      }
 
       if (rowOffset !== 0 || colOffset !== 0) {
         this.app.moveSelectedEntities(rowOffset, colOffset);
       }
+
       this.clearDragHighlights();
     }
 
@@ -433,12 +462,13 @@ export class Board {
     for (let i = 0; i < this.selectedEntities.length; i++) {
       const ent = this.selectedEntities[i];
       const oldPos = this.originalPositions[i];
-      const nr = oldPos.row + rowOffset;
-      const nc = oldPos.col + colOffset;
-      if (nr >= 0 && nr < this.rows && nc >= 0 && nc < this.cols) {
-        const cell = this.gridEl.querySelector(`td[data-row='${nr}'][data-col='${nc}']`);
-        if (cell) cell.style.outline = '2px dashed green';
-      }
+
+      // Clamp positions here so you don't highlight cells outside the board
+      const nr = Math.max(0, Math.min(this.rows - 1, oldPos.row + rowOffset));
+      const nc = Math.max(0, Math.min(this.cols - 1, oldPos.col + colOffset));
+
+      const cell = this.gridEl.querySelector(`td[data-row='${nr}'][data-col='${nc}']`);
+      if (cell) cell.style.outline = '2px dashed green';
     }
   }
 
