@@ -32,9 +32,9 @@ export class MonsterManager {
       return;
     }
 
-    // Clone the monster template to create a distinct instance
     const newMonster = JSON.parse(JSON.stringify(template));
     newMonster.id = this.app.nextMonsterInstanceId++;
+    newMonster.templateId = monId; // store the original template ID
     this.app.placedMonsters.push(newMonster);
 
     this.app.entityTokens[key] = { type: "monster", id: newMonster.id };
