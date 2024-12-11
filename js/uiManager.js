@@ -85,6 +85,14 @@ export class UIManager {
       this.renderCharacterList();
       this.renderMonsterList();
       this.renderLog();
+    
+      // Hide the monsters tab button if not DM
+      const monstersTabButton = document.querySelector('[data-tab="monsters-tab"]');
+      if (!this.app.isDM()) {
+        monstersTabButton.style.display = "none";
+      } else {
+        monstersTabButton.style.display = "inline-block";
+      }
     });
   
     // Monster Filter
@@ -248,17 +256,6 @@ export class UIManager {
   }
 
 renderMonsterList() {
-  const monstersTab = document.getElementById('monsters-tab');
-  if (!this.app.isDM()) {
-    // Hide the monsters tab if not DM
-    // Or you can choose to show a message instead
-    monstersTab.style.display = "none";
-    return;
-  } else {
-    // Show the tab if DM
-    monstersTab.style.display = "block";
-  }
-
   this.monsterListEntries.innerHTML = '';
   const filter = this.monsterFilter.value;
   let filtered = this.app.monsters;
