@@ -4,15 +4,21 @@ export class MonsterManager {
     this.app = app;
   }
 
-  getMonsterById(id) {
+  // Find template monster by ID
+  getTemplateMonsterById(id) {
     return this.app.monsters.find(m => m.id === id);
+  }
+
+  // Find placed monster instance by ID
+  getMonsterById(id) {
+    return this.app.placedMonsters.find(m => m.id === id) || null;
   }
 
   placeMonsterOnBoard(monId, row, col) {
     console.log("placeMonsterOnBoard called with", monId, row, col);
-    const m = this.getMonsterById(monId);
-    if (!m) {
-      console.warn("No monster found with id:", monId);
+    const template = this.getTemplateMonsterById(monId);
+    if (!template) {
+      console.warn("No monster template found with id:", monId);
       return;
     }
     if (!this.app.isDM()) {
@@ -25,7 +31,13 @@ export class MonsterManager {
       console.warn("Cell occupied at", key);
       return;
     }
-    this.app.entityTokens[key] = { type: "monster", id: monId };
+
+    // Clone the monster template to create a distinct instance
+    const newMonster = JSON.parse(JSON.stringify(template));
+    newMonster.id = this.app.nextMonsterInstanceId++;
+    this.app.placedMonsters.push(newMonster);
+
+    this.app.entityTokens[key] = { type: "monster", id: newMonster.id };
     console.log("Monster placed on board at", key, this.app.entityTokens[key]);
     console.log("Current entityTokens:", this.app.entityTokens);
 
@@ -36,14 +48,28 @@ export class MonsterManager {
   }
 
   addAttackToMonster(monId, attackId) {
-    const m = this.getMonsterById(monId);
-    if (!m) {
-      console.warn("No monster with id", monId);
+    const template = this.getTemplateMonsterById(monId);
+    if (!template) {
+      console.warn("No monster template with id", monId);
       return;
     }
-    if (!m.attacks) m.attacks = [];
-    m.attacks.push({ attackId });
-    console.log("Attack added to monster", monId, "Attacks:", m.attacks);
+    if (!template.attacks) template.attacks = [];
+    template.attacks.push({ attackId });
+    console.log("Attack added to monster template", monId, "Attacks:", template.attacks);
+    this.app.uiManager.renderMonsterList();
+  }
+
+  addCustomAttackToMonster(monId, customAttack) {
+    const template = this.getTemplateMonsterById(monId);
+    if (!template) {
+      console.warn("No monster template found with id:", monId);
+      return;
+    }
+    if (!template.attacks) template.attacks = [];
+    // Assign a unique pseudo attackId
+    const attackId = Date.now();
+    template.attacks.push({ attackId, custom: customAttack });
+    console.log("Custom attack added to monster template", monId, customAttack);
     this.app.uiManager.renderMonsterList();
   }
 }
