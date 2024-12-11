@@ -95,20 +95,20 @@ body {
   padding: 5px;
   border-radius: 5px;
   cursor: move;
-  
-  /* Add these new properties: */
-  display: inline-block;    /* Keep the controls compact */
-  white-space: nowrap;      /* Prevent line breaks inside */
-  width: auto;              /* Let the width shrink to fit content */
-  max-width: 120px;         /* Just an example to ensure it doesn't get too wide */
-  overflow: hidden;         /* Hide overflow if necessary */
+
+  /* You can remove the inline-block and white-space now if you want a vertical layout */
+  display: inline-block;  /* Still fine to keep if you like. */
+  width: auto;            
+  max-width: 120px;       
+  overflow: hidden;       
 }
 
 #map-controls h4 {
   margin: 0;
   font-size: 14px;
-  display: inline; /* Make the heading inline to sit next to buttons */
-  margin-right: 10px;
+  display: block;    /* Make it block so "Zoom" is on its own line */
+  margin-bottom: 5px;
+  text-align: center; /* Optional: center the heading above the buttons */
 }
 
 #selection-marquee {
