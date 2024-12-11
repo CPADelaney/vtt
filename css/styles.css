@@ -63,7 +63,6 @@ body {
 #grid {
   border: 1px solid #000;
   border-collapse: collapse;
-  position: absolute;
   top: 0; 
   left: 0;
   z-index: 10;
@@ -100,18 +99,15 @@ body {
   cursor: move;
 
   /* You can remove the inline-block and white-space now if you want a vertical layout */
-  display: inline-block;  /* Still fine to keep if you like. */
-  width: auto;            
-  max-width: 120px;       
-  overflow: hidden;       
+  width: 70px;         /* Fixed width to match button sizes */
+  text-align: center;  /* Center content horizontally */   
 }
 
 #map-controls h4 {
-  margin: 0;
+  margin: 0 0 5px 0;   /* Add some spacing below the heading */
   font-size: 14px;
   display: block;    /* Make it block so "Zoom" is on its own line */
   margin-bottom: 5px;
-  text-align: center; /* Optional: center the heading above the buttons */
 }
 
 #map-controls button {
@@ -124,6 +120,7 @@ body {
   background: #f0f0f0;
   cursor: pointer;
   font-size: 16px;      /* Adjust as desired for legibility */
+  margin: 0 2px;        /* Small gap between buttons */
 }
 
 #map-controls button:hover {
