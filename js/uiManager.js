@@ -226,99 +226,103 @@ export class UIManager {
     }
   }
 
-  renderMonsterList() {
-    if (this.app.isDM()) {
-      this.monsterList.style.display = "block";
-    } else {
-      this.monsterList.style.display = "none";
-      return;
+renderMonsterList() {
+  const monstersTab = document.getElementById('monsters-tab');
+  if (!this.app.isDM()) {
+    // Hide the monsters tab if not DM
+    // Or you can choose to show a message instead
+    monstersTab.style.display = "none";
+    return;
+  } else {
+    // Show the tab if DM
+    monstersTab.style.display = "block";
+  }
+
+  this.monsterListEntries.innerHTML = '';
+  const filter = this.monsterFilter.value;
+  let filtered = this.app.monsters;
+  if (filter) {
+    filtered = filtered.filter(m => m.habitats.includes(filter));
+  }
+
+  for (let m of filtered) {
+    const div = document.createElement('div');
+    div.className = 'monster-list-item';
+
+    const canPlace = this.app.isDM();
+
+    const dragIcon = document.createElement('span');
+    dragIcon.textContent = '⚔';
+    dragIcon.className = 'drag-icon';
+    dragIcon.setAttribute('draggable', canPlace ? 'true' : 'false');
+    if (canPlace) {
+      dragIcon.addEventListener('dragstart', (ev) => {
+        ev.dataTransfer.setData('text', '');
+        this.app.board.draggedMonsterId = m.id; 
+        this.app.board.draggedCharId = null;
+        ev.dataTransfer.effectAllowed = 'move';
+      });
+      dragIcon.addEventListener('dragend', () => {
+        this.app.board.draggedMonsterId = null;
+      });
     }
 
-    this.monsterListEntries.innerHTML = '';
-    const filter = this.monsterFilter.value;
-    let filtered = this.app.monsters;
-    if (filter) {
-      filtered = this.app.monsters.filter(m => m.habitats.includes(filter));
-    }
+    div.appendChild(dragIcon);
 
-    for (let m of filtered) {
-      const div = document.createElement('div');
-      div.className = 'monster-list-item';
+    let textNode = document.createTextNode(`${m.name}`);
+    div.appendChild(textNode);
 
-      const canPlace = this.app.isDM();
-
-      const dragIcon = document.createElement('span');
-      dragIcon.textContent = '⚔';
-      dragIcon.className = 'drag-icon';
-      dragIcon.setAttribute('draggable', canPlace ? 'true' : 'false');
-      if (canPlace) {
-        dragIcon.addEventListener('dragstart', (ev) => {
-          ev.dataTransfer.setData('text', '');
-          this.app.board.draggedMonsterId = m.id; 
-          this.app.board.draggedCharId = null;
-          ev.dataTransfer.effectAllowed = 'move';
-        });
-        dragIcon.addEventListener('dragend', () => {
-          this.app.board.draggedMonsterId = null;
-        });
+    let openBtn = document.createElement('button');
+    openBtn.textContent = 'View Stats';
+    openBtn.addEventListener('click', () => {
+      if (this.app.isDM()) {
+        this.openMonsterSheet(m);
       }
+    });
+    div.appendChild(openBtn);
 
-      div.appendChild(dragIcon);
+    // Add Attack dropdown and buttons if DM
+    if (this.app.isDM()) {
+      const attackSelect = document.createElement('select');
+      const defaultOption = document.createElement('option');
+      defaultOption.value = '';
+      defaultOption.textContent = '--Select Attack--';
+      attackSelect.appendChild(defaultOption);
 
-      let textNode = document.createTextNode(`${m.name}`);
-      div.appendChild(textNode);
+      for (const [id, atkDef] of Object.entries(attacksData)) {
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = atkDef.name || `Attack ${id}`;
+        attackSelect.appendChild(opt);
+      }
+      div.appendChild(attackSelect);
 
-      let openBtn = document.createElement('button');
-      openBtn.textContent = 'View Stats';
-      openBtn.addEventListener('click', () => {
-        if (this.app.isDM()) {
-          this.openMonsterSheet(m);
+      let addAttackBtn = document.createElement('button');
+      addAttackBtn.textContent = 'Add Selected Attack';
+      addAttackBtn.addEventListener('click', () => {
+        const attackId = attackSelect.value;
+        if (attackId && attacksData[attackId]) {
+          this.app.monsterManager.addAttackToMonster(m.id, attackId);
+          alert("Attack added to monster template!");
+          this.renderMonsterList(); // re-render to show updates
+        } else {
+          alert("Invalid or no attack selected.");
         }
       });
-      div.appendChild(openBtn);
+      div.appendChild(addAttackBtn);
 
-      // DM-only features:
-      if (this.app.isDM()) {
-        // Add Attack dropdown
-        const attackSelect = document.createElement('select');
-        const defaultOption = document.createElement('option');
-        defaultOption.value = '';
-        defaultOption.textContent = '--Select Attack--';
-        attackSelect.appendChild(defaultOption);
-
-        for (const [id, atkDef] of Object.entries(attacksData)) {
-          const opt = document.createElement('option');
-          opt.value = id;
-          opt.textContent = atkDef.name || `Attack ${id}`;
-          attackSelect.appendChild(opt);
-        }
-        div.appendChild(attackSelect);
-
-        let addAttackBtn = document.createElement('button');
-        addAttackBtn.textContent = 'Add Selected Attack';
-        addAttackBtn.addEventListener('click', () => {
-          const attackId = attackSelect.value;
-          if (attackId && attacksData[attackId]) {
-            this.app.monsterManager.addAttackToMonster(m.id, attackId);
-            alert("Attack added to monster template!");
-          } else {
-            alert("Invalid or no attack selected.");
-          }
-        });
-        div.appendChild(addAttackBtn);
-
-        // Add Custom Attack
-        let addCustomAttackBtn = document.createElement('button');
-        addCustomAttackBtn.textContent = 'Add Custom Attack';
-        addCustomAttackBtn.addEventListener('click', () => {
-          this.openCustomAttackModal(m);
-        });
-        div.appendChild(addCustomAttackBtn);
-      }
-
-      this.monsterListEntries.appendChild(div);
+      let addCustomAttackBtn = document.createElement('button');
+      addCustomAttackBtn.textContent = 'Add Custom Attack';
+      addCustomAttackBtn.addEventListener('click', () => {
+        this.openCustomAttackModal(m);
+      });
+      div.appendChild(addCustomAttackBtn);
     }
+
+    this.monsterListEntries.appendChild(div);
   }
+}
+
 
   openCustomAttackModal(monster) {
     this.currentMonsterForCustomAttack = monster;
