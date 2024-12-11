@@ -7,6 +7,7 @@ import { UIManager } from './uiManager.js';
 import { ChatManager } from './chatManager.js';
 import { CampaignManager } from './campaignManager.js';
 import { bestiary } from './monsters.js';
+import { mergeMonstersWithBestiary } from './update.js';
 import { weapons } from './items.js'; // Import weapons
 import { attacksData } from './attacks.js'; // Import attacks data if needed
 
