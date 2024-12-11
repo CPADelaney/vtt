@@ -12,6 +12,10 @@ export class Board {
     this.contextMenu = document.getElementById('context-menu');
     this.contextDelete = document.getElementById('context-delete');
 
+    // Add references for scroll container and map controls
+    this.boardScrollContainer = document.getElementById('board-scroll-container');
+    this.mapControls = document.getElementById('map-controls');
+
     this.selectedEntities = [];
     this.isDraggingTokens = false;
     this.dragStartPos = { x: 0, y: 0 };
@@ -31,9 +35,12 @@ export class Board {
     this.cellWidth = 60;
     this.cellHeight = 60;
 
-    // Zoom factor
+    // Zoom factor and bounds
     this.scaleFactor = 1; 
-    // Apply initial scale
+    this.minScale = 0.2;
+    this.maxScale = 3;
+
+    this.gridEl.style.transformOrigin = 'top left';
     this.applyScale();
   }
 
@@ -49,12 +56,6 @@ export class Board {
     this.gridEl.style.transform = `scale(${this.scaleFactor})`;
   }
 
-  // Apply zoom scaling by CSS transform
-  applyScale() {
-    this.gridEl.style.transformOrigin = 'top left';
-    this.gridEl.style.transform = `scale(${this.scaleFactor})`;
-  }
-
   zoomIn() {
     this.scaleFactor = Math.min(this.scaleFactor + 0.1, this.maxScale);
     this.applyScale();
@@ -67,6 +68,8 @@ export class Board {
 
   // Mouse wheel zooming around cursor
   handleWheelZoom(e) {
+    if (!this.boardScrollContainer) return; // Safety check
+
     e.preventDefault();
 
     // Determine mouse position relative to grid
@@ -75,24 +78,19 @@ export class Board {
     const offsetY = (e.clientY - rect.top) / this.scaleFactor;
 
     // Adjust scale
-    const zoomAmount = -e.deltaY * 0.001; // negative for natural scroll
+    const zoomAmount = -e.deltaY * 0.001; 
     const oldScale = this.scaleFactor;
     this.scaleFactor = Math.min(Math.max(this.scaleFactor + zoomAmount, this.minScale), this.maxScale);
 
     this.applyScale();
 
-    // After scaling, scroll so that the point under the cursor remains under the cursor
     const newRect = this.gridEl.getBoundingClientRect();
-
-    // Calculate new scroll offsets so that the same point stays at the cursor
-    // The ratio of offset positions changes with scale
     const newOffsetX = offsetX * this.scaleFactor;
     const newOffsetY = offsetY * this.scaleFactor;
 
     const dx = (newOffsetX - (e.clientX - newRect.left));
     const dy = (newOffsetY - (e.clientY - newRect.top));
 
-    // Adjust scroll of boardScrollContainer
     this.boardScrollContainer.scrollLeft += dx;
     this.boardScrollContainer.scrollTop += dy;
   }
@@ -170,7 +168,7 @@ export class Board {
   }
 
   centerViewOnGrid() {
-    // Center the scroll on the grid
+    if (!this.boardScrollContainer) return;
     const scrollW = this.boardScrollContainer.clientWidth;
     const scrollH = this.boardScrollContainer.clientHeight;
     const gridW = this.cols * this.cellWidth * this.scaleFactor;
@@ -193,23 +191,57 @@ export class Board {
   }
 
   setupEventListeners() {
-    this.gridEl.addEventListener('mousedown', (e) => this.handleGridMouseDown(e));
-    this.gridEl.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-    this.gridEl.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+    // Check elements before adding event listeners
+    if (this.gridEl) {
+      this.gridEl.addEventListener('mousedown', (e) => this.handleGridMouseDown(e));
+      this.gridEl.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+      this.gridEl.addEventListener('mouseup', (e) => this.handleMouseUp(e));
 
-    this.gridEl.addEventListener('contextmenu', (e) => this.handleContextMenu(e));
-    this.contextDelete.addEventListener('click', () => {
-      this.app.deleteSelectedEntities();
-      this.hideContextMenu();
-    });
-    this.gridEl.addEventListener('click', (e) => {
-      if (this.contextMenuVisible && !this.contextMenu.contains(e.target)) {
+      this.gridEl.addEventListener('contextmenu', (e) => this.handleContextMenu(e));
+    }
+
+    if (this.contextDelete) {
+      this.contextDelete.addEventListener('click', () => {
+        this.app.deleteSelectedEntities();
         this.hideContextMenu();
-      }
-    });
+      });
+    }
+
+    if (this.gridEl) {
+      this.gridEl.addEventListener('click', (e) => {
+        if (this.contextMenuVisible && !this.contextMenu.contains(e.target)) {
+          this.hideContextMenu();
+        }
+      });
+    }
 
     // Mouse wheel zoom event on the scroll container
-    this.boardScrollContainer.addEventListener('wheel', (e) => this.handleWheelZoom(e), { passive: false });
+    if (this.boardScrollContainer) {
+      this.boardScrollContainer.addEventListener('wheel', (e) => this.handleWheelZoom(e), { passive: false });
+    }
+
+    // If you also want mapControls dragging (like you did previously), ensure it exists
+    if (this.mapControls) {
+      let isDragging = false;
+      let dragOffsetX, dragOffsetY;
+
+      this.mapControls.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        dragOffsetX = e.clientX - this.mapControls.offsetLeft;
+        dragOffsetY = e.clientY - this.mapControls.offsetTop;
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (isDragging) {
+          this.mapControls.style.left = (e.clientX - dragOffsetX) + 'px';
+          this.mapControls.style.top = (e.clientY - dragOffsetY) + 'px';
+        }
+      });
+
+      document.addEventListener('mouseup', () => {
+        isDragging = false;
+      });
+    }
   }
 
   handleGridMouseDown(e) {
