@@ -68,17 +68,5 @@ export const attacksData = {
     conditions: { excludeAllies: false },
     createsTerrainEffect: true,
     terrainEffectType: "acidic"
-  },
-  4: {
-    id: 4,
-    name: "Unarmed Strike",
-    type: "single",
-    range: 1,
-    damageDice: "1d4",
-    stat: "STR",
-    baseMod: 0,
-    customMod: 0,
-    conditions: { excludeAllies: false },
-    createsTerrainEffect: false
   }
 };
