@@ -11,10 +11,12 @@ export function mergeMonstersWithBestiary(loadedMonsters, bestiary) {
     let loadedMonster = loadedMonsters.find(m => m.id === templateMonster.id);
 
     if (!loadedMonster) {
-      // New monster added to bestiary since last load
+      // New monster from bestiary
       loadedMonsters.push(JSON.parse(JSON.stringify(templateMonster)));
     } else {
-      // Merge any new attacks or fields
+      // Monster already exists in loaded state
+      
+      // Merge attacks
       if (templateMonster.attacks && templateMonster.attacks.length > 0) {
         if (!loadedMonster.attacks) loadedMonster.attacks = [];
         
@@ -26,15 +28,18 @@ export function mergeMonstersWithBestiary(loadedMonsters, bestiary) {
         }
       }
 
-      // Merge other fields as needed
-      // For example, update habitats from template:
+      // Merge other fields like habitats
       loadedMonster.habitats = JSON.parse(JSON.stringify(templateMonster.habitats));
-      // Update static stats if you want them to always reflect bestiary changes:
+      
+      // Update AC if you want the latest AC from the template
       loadedMonster.AC = templateMonster.AC;
+
+      // Do NOT overwrite HP if you want to preserve the old/current HP.
+      // Just omit a line that sets HP from the template.
     }
   }
 
-  // Remove monsters that no longer exist in the bestiary, if desired
+  // If removing monsters not in bestiary is desired:
   loadedMonsters = loadedMonsters.filter(m =>
     bestiary.some(tm => tm.id === m.id)
   );
