@@ -145,15 +145,15 @@ export class Board {
 
   setupEventListeners() {
     this.gridEl.addEventListener('mousedown', (e) => this.handleGridMouseDown(e));
-    document.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-    document.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+    this.gridEl.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+    this.gridEl.addEventListener('mouseup', (e) => this.handleMouseUp(e));
 
-    document.addEventListener('contextmenu', (e) => this.handleContextMenu(e));
+    this.gridEl.addEventListener('contextmenu', (e) => this.handleContextMenu(e));
     this.contextDelete.addEventListener('click', () => {
       this.app.deleteSelectedEntities();
       this.hideContextMenu();
     });
-    document.addEventListener('click', (e) => {
+    this.gridEl.addEventListener('click', (e) => {
       if (this.contextMenuVisible && !this.contextMenu.contains(e.target)) {
         this.hideContextMenu();
       }
