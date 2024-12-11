@@ -11,9 +11,12 @@ body {
 }
 
 #board-container {
-  flex: 1;
   position: relative;
   overflow: hidden;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 #sidebar {
@@ -64,9 +67,10 @@ body {
   z-index: 10; /* Grid behind controls */
 }
 
+// This controls the grid squares
 #grid td {
-  width: 40px;
-  height: 40px;
+  width: 60px;
+  height: 60px;
   border: 1px solid #333;
   text-align: center;
   vertical-align: middle;
