@@ -23,7 +23,10 @@ export const bestiary = [
     name: "River Drake",
     HP: 30, AC: 15, STR: 14, DEX: 12, CON: 13, INT: 6, WIS: 10, CHA: 8,
     habitats: ["Riverlands"],
-    attacks: [{ attackId: "3" }] // Dragon's Acid Breath (cone aoe)
+    attacks: [
+      { attackId: "2" },
+      { attackId: "3" }
+    ], // Dragon's Acid Breath (cone aoe)
   },
   {
     id: 4,
