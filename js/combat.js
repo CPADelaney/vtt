@@ -2,7 +2,14 @@
 import { rollSingleDice } from './dice.js';
 
 export function performAttack(entityData, type, attackEntry, weapon, appInstance, target) {
-  let statVal = entityData[weapon.stat];
+  if (!weapon) {
+    // Fallback to unarmed weapon if still not found
+    const unarmedWeapon = appInstance.weapons.find(w => w.id === 0);
+    weapon = unarmedWeapon || { damageDice: "1d4", stat: "STR", baseMod: 0, name: "Unarmed" };
+  }
+
+  // Rest of performAttack logic remains unchanged
+  let statVal = entityData[weapon.stat] || 10;
   let statMod = Math.floor((statVal - 10) / 2);
   let roll = rollSingleDice(20);
   let totalAttack = roll + statMod + weapon.baseMod + (attackEntry.customMod || 0);
@@ -17,6 +24,7 @@ export function performAttack(entityData, type, attackEntry, weapon, appInstance
 
   applyDamage(target, damage.total, appInstance);
 }
+
 
 export function performAoeAttack(attacker, entityType, attackEntry, attackDef, appInstance, targets, aoePositions) {
   // Calculate damage
