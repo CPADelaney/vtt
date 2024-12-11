@@ -64,11 +64,14 @@ body {
   border: 1px solid #000;
   border-collapse: collapse;
   position: absolute;
-  top: 0; left:0;
-  z-index: 10; /* Grid behind controls */
+  top: 0; 
+  left: 0;
+  z-index: 10;
+  background-color: #fff;
+  table-layout: fixed;    /* Enforce fixed layout */
+  width: 480px;           /* 8 columns * 60px = 480px */
 }
 
-// This controls the grid squares
 #grid td {
   width: 60px;
   height: 60px;
