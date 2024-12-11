@@ -360,110 +360,102 @@ export class Board {
     this.updateSelectionStyles();
   }
 
-  handleMouseMove(e) {
-    const rect = this.gridEl.getBoundingClientRect();
+ handleMouseMove(e) {
+  const rect = this.gridEl.getBoundingClientRect();
 
-    if (this.app.currentAction && this.app.currentAction.type === 'aoe') {
-      const gx = (e.clientX - rect.left) / this.scaleFactor;
-      const gy = (e.clientY - rect.top) / this.scaleFactor;
-      const c = Math.floor(gx / this.cellWidth);
-      const r = Math.floor(gy / this.cellHeight);
-    
-      if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
-        this.clearHighlights();
-        const aoePositions = this.getAoEAreaPositions(
-          this.app.currentAction.aoeShape, 
-          { row: r, col: c }, 
-          this.app.currentAction.radius
-        );
-        this.highlightTiles(aoePositions, 'target-highlight');
-      }
-    }
-
-    if (this.isDraggingTokens && this.selectedEntities.length > 0) {
-      // Compute drag offsets in grid space
-      const dx = (e.clientX - this.dragStartPos.x) / this.scaleFactor;
-      const dy = (e.clientY - this.dragStartPos.y) / this.scaleFactor;
-      const rowOffset = Math.round(dy / this.cellHeight);
-      const colOffset = Math.round(dx / this.cellWidth);
-      this.highlightDragPositions(rowOffset, colOffset);
-    }
-
-    if (this.isMarqueeSelecting) {
-      let currentX = (e.clientX - rect.left) / this.scaleFactor;
-      let currentY = (e.clientY - rect.top) / this.scaleFactor;
-
-      // Clamp to grid boundaries
-      currentX = Math.max(0, Math.min(currentX, this.cols * this.cellWidth));
-      currentY = Math.max(0, Math.min(currentY, this.rows * this.cellHeight));
-
-      const x1 = Math.min(currentX, this.marqueeStart.x);
-      const y1 = Math.min(currentY, this.marqueeStart.y);
-      const x2 = Math.max(currentX, this.marqueeStart.x);
-      const y2 = Math.max(currentY, this.marqueeStart.y);
-
-      this.marqueeRect = {
-        x: x1,
-        y: y1,
-        w: x2 - x1,
-        h: y2 - y1
-      };
-
-      this.marqueeEl.style.left = `${x1}px`;
-      this.marqueeEl.style.top = `${y1}px`;
-      this.marqueeEl.style.width = `${this.marqueeRect.w}px`;
-      this.marqueeEl.style.height = `${this.marqueeRect.h}px`;
+  // AoE logic remains unchanged
+  if (this.app.currentAction && this.app.currentAction.type === 'aoe') {
+    const gx = (e.clientX - rect.left) / this.scaleFactor;
+    const gy = (e.clientY - rect.top) / this.scaleFactor;
+    const c = Math.floor(gx / this.cellWidth);
+    const r = Math.floor(gy / this.cellHeight);
+  
+    if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
+      this.clearHighlights();
+      const aoePositions = this.getAoEAreaPositions(
+        this.app.currentAction.aoeShape, 
+        { row: r, col: c }, 
+        this.app.currentAction.radius
+      );
+      this.highlightTiles(aoePositions, 'target-highlight');
     }
   }
 
-  handleMouseUp(e) {
-    if (this.isDraggingTokens) {
-      this.isDraggingTokens = false;
-      const dx = (e.clientX - this.dragStartPos.x) / this.scaleFactor;
-      const dy = (e.clientY - this.dragStartPos.y) / this.scaleFactor;
-      let rowOffset = Math.round(dy / this.cellHeight);
-      let colOffset = Math.round(dx / this.cellWidth);
+  // New token dragging logic
+  if (this.isDraggingTokens && this.selectedEntities.length > 0) {
+    // Clear old highlights
+    this.clearDragHighlights();
 
-      // Clamp final positions so we don't drag entities off-grid
-      let minRowOffset = rowOffset;
-      let minColOffset = colOffset;
+    // Determine which cell the mouse is currently over
+    const gx = (e.clientX - rect.left) / this.scaleFactor;
+    const gy = (e.clientY - rect.top) / this.scaleFactor;
+    const c = Math.floor(gx / this.cellWidth);
+    const r = Math.floor(gy / this.cellHeight);
 
-      for (const pos of this.originalPositions) {
-        const targetRow = pos.row + rowOffset;
-        const targetCol = pos.col + colOffset;
-        if (targetRow < 0) {
-          minRowOffset = Math.min(minRowOffset, -pos.row);
-        }
-        if (targetRow >= this.rows) {
-          minRowOffset = Math.min(minRowOffset, this.rows - 1 - pos.row);
-        }
-        if (targetCol < 0) {
-          minColOffset = Math.min(minColOffset, -pos.col);
-        }
-        if (targetCol >= this.cols) {
-          minColOffset = Math.min(minColOffset, this.cols - 1 - pos.col);
-        }
-      }
-
-      if (minRowOffset !== rowOffset || minColOffset !== colOffset) {
-        rowOffset = minRowOffset;
-        colOffset = minColOffset;
-      }
-
-      if (rowOffset !== 0 || colOffset !== 0) {
-        this.app.moveSelectedEntities(rowOffset, colOffset);
-      }
-
-      this.clearDragHighlights();
-    }
-
-    if (this.isMarqueeSelecting) {
-      this.isMarqueeSelecting = false;
-      this.marqueeEl.style.display = 'none';
-      this.selectedEntities = this.getEntitiesInMarquee();
-      this.updateSelectionStyles();
+    // If within bounds, highlight that cell and store it
+    if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
+      const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
+      if (cell) cell.style.outline = '2px dashed green';
+      this.currentDragCell = { row: r, col: c };
+    } else {
+      this.currentDragCell = null;
     }
   }
+
+  // Marquee selection logic unchanged
+  if (this.isMarqueeSelecting) {
+    let currentX = (e.clientX - rect.left) / this.scaleFactor;
+    let currentY = (e.clientY - rect.top) / this.scaleFactor;
+
+    currentX = Math.max(0, Math.min(currentX, this.cols * this.cellWidth));
+    currentY = Math.max(0, Math.min(currentY, this.rows * this.cellHeight));
+
+    const x1 = Math.min(currentX, this.marqueeStart.x);
+    const y1 = Math.min(currentY, this.marqueeStart.y);
+    const x2 = Math.max(currentX, this.marqueeStart.x);
+    const y2 = Math.max(currentY, this.marqueeStart.y);
+
+    this.marqueeRect = {
+      x: x1,
+      y: y1,
+      w: x2 - x1,
+      h: y2 - y1
+    };
+
+    this.marqueeEl.style.left = `${x1}px`;
+    this.marqueeEl.style.top = `${y1}px`;
+    this.marqueeEl.style.width = `${this.marqueeRect.w}px`;
+    this.marqueeEl.style.height = `${this.marqueeRect.h}px`;
+  }
+}
+
+handleMouseUp(e) {
+  if (this.isDraggingTokens) {
+    this.isDraggingTokens = false;
+    this.clearDragHighlights();
+
+    // If we have a valid cell under the mouse, move all selected entities there
+    if (this.currentDragCell && 
+        this.currentDragCell.row >= 0 && this.currentDragCell.row < this.rows &&
+        this.currentDragCell.col >= 0 && this.currentDragCell.col < this.cols) {
+      
+      for (let ent of this.selectedEntities) {
+        // Move the entity directly to the hovered cell
+        this.app.moveEntity(ent.type, ent.id, this.currentDragCell.row, this.currentDragCell.col);
+      }
+    }
+
+    this.currentDragCell = null; // reset
+  }
+
+  if (this.isMarqueeSelecting) {
+    this.isMarqueeSelecting = false;
+    this.marqueeEl.style.display = 'none';
+    this.selectedEntities = this.getEntitiesInMarquee();
+    this.updateSelectionStyles();
+  }
+}
+
 
   openEntitySheet(entity) {
     if (entity.type === 'character') {
