@@ -20,8 +20,16 @@ export const attacksData = {
     // Same as melee, we rely on the weapon data when we perform the attack.
     conditions: { excludeAllies: false },
     createsTerrainEffect: false
-  }
-};
+  },
+  unarmed: {
+    id: 'unarmed',
+    name: "Unarmed Strike",
+    type: "single",
+    range: 1,
+    // No weaponId required, we'll handle it as a fallback
+    conditions: { excludeAllies: false },
+    createsTerrainEffect: false
+  },
   1: {
     id: 1,
     name: "Short Sword Strike",
