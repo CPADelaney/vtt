@@ -9,15 +9,11 @@
 <body>
   <div id="main-container">
     <div id="board-container">
+      <!-- map-controls now only has zoom in/out -->
       <div id="map-controls">
         <h4>Map Controls</h4>
         <button id="zoom-in-btn">+</button>
         <button id="zoom-out-btn">-</button>
-        <div id="resize-grid-controls">
-          <label>Rows: <input type="number" id="grid-rows" value="8" style="width:50px;" /></label>
-          <label>Cols: <input type="number" id="grid-cols" value="8" style="width:50px;" /></label>
-          <button id="resize-grid-btn">Resize</button>
-        </div>
       </div>
       <table id="grid"></table>
       <div id="selection-marquee"></div>
@@ -79,6 +75,12 @@
             <option value="Player1">Player1</option>
             <option value="Player2">Player2</option>
           </select>
+
+          <!-- Grid Resize Controls moved here -->
+          <h4>Grid Resize</h4>
+          <label>Rows: <input type="number" id="grid-rows" value="8" style="width:50px;" /></label>
+          <label>Cols: <input type="number" id="grid-cols" value="8" style="width:50px;" /></label>
+          <button id="resize-grid-btn">Resize</button>
         </div>
       </div>
     </div>
