@@ -366,6 +366,49 @@ renderMonsterList() {
       </table>
     `;
     this.renderAttacksSection(m, "monster", document.getElementById('monster-attacks'));
+  
+    // If DM, add Add Attack & Add Custom Attack here
+    if (this.app.isDM()) {
+      const attacksContainer = document.getElementById('monster-attacks');
+  
+      // Add Attack dropdown
+      const attackSelect = document.createElement('select');
+      const defaultOption = document.createElement('option');
+      defaultOption.value = '';
+      defaultOption.textContent = '--Select Attack--';
+      attackSelect.appendChild(defaultOption);
+  
+      for (const [id, atkDef] of Object.entries(attacksData)) {
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = atkDef.name || `Attack ${id}`;
+        attackSelect.appendChild(opt);
+      }
+      attacksContainer.appendChild(attackSelect);
+  
+      const addAttackBtn = document.createElement('button');
+      addAttackBtn.textContent = 'Add Selected Attack';
+      addAttackBtn.addEventListener('click', () => {
+        const attackId = attackSelect.value;
+        if (attackId && attacksData[attackId]) {
+          this.app.monsterManager.addAttackToMonster(m.id, attackId);
+          alert("Attack added to monster template!");
+          // Re-render attacks
+          this.renderAttacksSection(m, "monster", document.getElementById('monster-attacks'));
+        } else {
+          alert("Invalid or no attack selected.");
+        }
+      });
+      attacksContainer.appendChild(addAttackBtn);
+  
+      const addCustomAttackBtn = document.createElement('button');
+      addCustomAttackBtn.textContent = 'Add Custom Attack';
+      addCustomAttackBtn.addEventListener('click', () => {
+        this.openCustomAttackModal(m);
+      });
+      attacksContainer.appendChild(addCustomAttackBtn);
+    }
+  
     this.monsterSheetModal.style.display = "block";
   }
 
