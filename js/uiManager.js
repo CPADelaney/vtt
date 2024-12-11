@@ -18,6 +18,7 @@ export class UIManager {
     this.monsterList = document.getElementById('monster-list');
     this.monsterFilter = document.getElementById('monster-filter');
     this.monsterListEntries = document.getElementById('monster-list-entries');
+    this.cancelAttackBtn = document.getElementById('cancel-attack-btn');
 
     // Modals
     this.sheetModal = document.getElementById('character-sheet-modal');
@@ -39,7 +40,7 @@ export class UIManager {
     this.customAttackForm = document.getElementById('custom-attack-form');
   }
 
-   setupUIEventListeners() {
+  setupUIEventListeners() {
     // Chat input
     this.commandInput.addEventListener('keypress', (e) => {
       this.app.chatManager.handleCommandInput(e);
@@ -190,6 +191,40 @@ export class UIManager {
         document.getElementById(tabId).classList.add('active');
       });
     });
+
+    // Cancel attack button event
+    this.cancelAttackBtn.addEventListener('click', () => {
+      this.cancelAttackAndReopenSheet();
+    });
+  } // End of setupUIEventListeners
+
+  showCancelAttackButton(entityData, type) {
+    this.cancelAttackBtn.style.display = 'block';
+    // Store who we need to reopen after cancel
+    this.lastEntityForAttack = { entityData, type };
+  }
+
+  hideCancelAttackButton() {
+    this.cancelAttackBtn.style.display = 'none';
+    this.lastEntityForAttack = null;
+  }
+
+  cancelAttackAndReopenSheet() {
+    // Cancel current action
+    this.app.clearAction();
+    this.app.board.clearHighlights();
+
+    // Hide cancel button
+    this.hideCancelAttackButton();
+
+    // Reopen the character or monster sheet
+    if (this.lastEntityForAttack) {
+      if (this.lastEntityForAttack.type === 'character') {
+        this.openCharacterSheet(this.lastEntityForAttack.entityData);
+      } else {
+        this.openMonsterSheet(this.lastEntityForAttack.entityData);
+      }
+    }
   }
 
   renderLog() {
@@ -255,54 +290,53 @@ export class UIManager {
     }
   }
 
-renderMonsterList() {
-  this.monsterListEntries.innerHTML = '';
-  const filter = this.monsterFilter.value;
-  let filtered = this.app.monsters;
-  if (filter) {
-    filtered = filtered.filter(m => m.habitats.includes(filter));
-  }
-
-  for (let m of filtered) {
-    const div = document.createElement('div');
-    div.className = 'monster-list-item';
-
-    const canPlace = this.app.isDM();
-
-    const dragIcon = document.createElement('span');
-    dragIcon.textContent = '⚔';
-    dragIcon.className = 'drag-icon';
-    dragIcon.setAttribute('draggable', canPlace ? 'true' : 'false');
-    if (canPlace) {
-      dragIcon.addEventListener('dragstart', (ev) => {
-        ev.dataTransfer.setData('text', '');
-        this.app.board.draggedMonsterId = m.id; 
-        this.app.board.draggedCharId = null;
-        ev.dataTransfer.effectAllowed = 'move';
-      });
-      dragIcon.addEventListener('dragend', () => {
-        this.app.board.draggedMonsterId = null;
-      });
+  renderMonsterList() {
+    this.monsterListEntries.innerHTML = '';
+    const filter = this.monsterFilter.value;
+    let filtered = this.app.monsters;
+    if (filter) {
+      filtered = filtered.filter(m => m.habitats.includes(filter));
     }
 
-    div.appendChild(dragIcon);
+    for (let m of filtered) {
+      const div = document.createElement('div');
+      div.className = 'monster-list-item';
 
-    let textNode = document.createTextNode(`${m.name}`);
-    div.appendChild(textNode);
+      const canPlace = this.app.isDM();
 
-    let openBtn = document.createElement('button');
-    openBtn.textContent = 'View Stats';
-    openBtn.addEventListener('click', () => {
-      if (this.app.isDM()) {
-        this.openMonsterSheet(m);
+      const dragIcon = document.createElement('span');
+      dragIcon.textContent = '⚔';
+      dragIcon.className = 'drag-icon';
+      dragIcon.setAttribute('draggable', canPlace ? 'true' : 'false');
+      if (canPlace) {
+        dragIcon.addEventListener('dragstart', (ev) => {
+          ev.dataTransfer.setData('text', '');
+          this.app.board.draggedMonsterId = m.id; 
+          this.app.board.draggedCharId = null;
+          ev.dataTransfer.effectAllowed = 'move';
+        });
+        dragIcon.addEventListener('dragend', () => {
+          this.app.board.draggedMonsterId = null;
+        });
       }
-    });
-    div.appendChild(openBtn);
 
-    this.monsterListEntries.appendChild(div);
+      div.appendChild(dragIcon);
+
+      let textNode = document.createTextNode(`${m.name}`);
+      div.appendChild(textNode);
+
+      let openBtn = document.createElement('button');
+      openBtn.textContent = 'View Stats';
+      openBtn.addEventListener('click', () => {
+        if (this.app.isDM()) {
+          this.openMonsterSheet(m);
+        }
+      });
+      div.appendChild(openBtn);
+
+      this.monsterListEntries.appendChild(div);
+    }
   }
-}
-
 
   openCustomAttackModal(monster) {
     this.currentMonsterForCustomAttack = monster;
@@ -394,7 +428,6 @@ renderMonsterList() {
     this.monsterSheetModal.style.display = "block";
   }
 
-
   renderAttacksSection(entityData, type, containerEl) {
     containerEl.innerHTML = `<h4>Attacks</h4>`;
   
@@ -404,23 +437,15 @@ renderMonsterList() {
       // Characters have a 'placed' boolean
       isPlaced = !!entityData.placed;
     } else if (type === 'monster') {
-      // Monsters are placed if they have an instance ID that appears in placedMonsters in app
-      // Since getMonsterById returns a placed instance, if entityData came from placed instance, it's placed.
-      // If entityData came from bestiary template, it's not placed.
       const placedInstance = this.app.getMonsterById(entityData.id);
       isPlaced = !!placedInstance; 
     }
   
-    // If the entity is not placed and type is monster from bestiary, we can look up if there's any placed instance of this monster's template
+    // If the entity is a monster from bestiary and not placed, check if there's a placed instance
     if (type === 'monster' && !isPlaced) {
-      // Check if any placed monster has the same template id (assuming templateId stored somewhere)
-      // If you don't store templateId, store it in placed monsters when cloning.
       const templateId = entityData.templateId || entityData.id; 
-      // If entityData is a template (best case: templates are identified by low IDs, instances by high IDs)
-      // you can find at least one placed instance of that template:
       const placed = this.app.placedMonsters.find(m => m.templateId === templateId);
       if (placed) {
-        // If a placed instance exists, let's show that placed instance's attacks
         entityData = placed; // override with placed instance data
         isPlaced = true;
       }
@@ -428,7 +453,6 @@ renderMonsterList() {
   
     let attacksToShow = entityData.attacks && entityData.attacks.length > 0 ? entityData.attacks : [];
     if (attacksToShow.length === 0) {
-      // If no attacks defined, show unarmed if isPlaced is true
       if (isPlaced) {
         attacksToShow = [{ attackId: 'unarmed' }];
       } else {
@@ -447,7 +471,6 @@ renderMonsterList() {
       const attackBtn = document.createElement('button');
       attackBtn.textContent = "Attack!";
   
-      // Disable attack if not placed
       if (!isPlaced) {
         attackBtn.disabled = true;
         attackDiv.appendChild(document.createTextNode(" (Not placed on board)"));
@@ -467,24 +490,21 @@ renderMonsterList() {
             const foundWeapon = this.app.weapons.find(w => w.id === att.weaponId);
             actionData.weapon = foundWeapon;
           } else {
-            // Use unarmed fallback
             actionData.weapon = this.app.weapons.find(w => w.id === 0);
           }
         
-          // Start the action
           this.app.startAction(actionData);
           
-          // CLOSE the sheet here:
+          // CLOSE the sheet here
           if (type === 'character') {
             this.sheetModal.style.display = "none";
           } else if (type === 'monster') {
             this.monsterSheetModal.style.display = "none";
           }
         
-          // After initiating attack, show a cancel button (we will add this feature below)
+          // Show cancel attack button
           this.showCancelAttackButton(entityData, type);
-        });
-  
+
           // For AoE attacks, no need attacker position if you allow targeting empty spaces
           if (attDef.type === 'single') {
             const attackerPos = this.app.board.getEntityPosition(type, entityData.id);
@@ -567,4 +587,4 @@ renderMonsterList() {
     this.createCharacterForm.reset();
     this.attackCreationList.innerHTML = '';
   }
-  }
+}
