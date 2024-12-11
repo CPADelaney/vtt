@@ -84,12 +84,12 @@ body {
   position: absolute;
   top: 10px;
   right: 10px;
-  z-index: 2000; /* Higher than grid */
+  z-index: 2000;
   background: #fff;
   border: 1px solid #ccc;
   padding: 5px;
   border-radius: 5px;
-  pointer-events: auto; /* Ensure we can interact with it */
+  cursor: move;
 }
 
 #selection-marquee {
