@@ -6,7 +6,7 @@ import { MonsterManager } from './monsterManager.js';
 import { UIManager } from './uiManager.js';
 import { ChatManager } from './chatManager.js';
 import { CampaignManager } from './campaignManager.js';
-import { initialMonsters } from './monsters.js';
+import { bestiary } from './monsters.js';
 import { weapons } from './items.js'; // Import weapons
 import { attacksData } from './attacks.js'; // Import attacks data if needed
 
@@ -26,7 +26,7 @@ export class App {
     this.nextCharacterId = 1;
     
     // Monsters are templates
-    this.monsters = initialMonsters;
+    this.monsters = bestiary;
 
     // Placed instances of monsters
     this.placedMonsters = [];
@@ -53,6 +53,9 @@ export class App {
   initialize() {
     console.log("App initialize called");
     this.campaignManager.loadState();
+
+    // Load any updates to the game
+    this.monsters = mergeMonstersWithBestiary(this.monsters, bestiary);
     
     // Initialize board after loading state
     this.board.initialize();
