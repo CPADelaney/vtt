@@ -47,7 +47,7 @@ export class App {
     this.recentStates = []; 
     this.maxUndo = 5;
 
-    this.campaignManager = new CampaignManager(this);
+    // this.campaignManager = new CampaignManager(this);
   }
 
   initialize() {
