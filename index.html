@@ -64,7 +64,7 @@
   </div>
 
   <!-- Character Sheet Modal -->
-  <div id="character-sheet-modal">
+  <div id="character-sheet-modal" class="modal">
     <div class="modal-content">
       <span class="close-modal" id="close-sheet">&times;</span>
       <h3 id="character-name"></h3>
@@ -74,7 +74,7 @@
   </div>
 
   <!-- Monster Sheet Modal -->
-  <div id="monster-sheet-modal">
+  <div id="monster-sheet-modal" class="modal">
     <div class="modal-content">
       <span class="close-modal" id="close-monster-sheet">&times;</span>
       <h3 id="monster-name"></h3>
@@ -84,7 +84,7 @@
   </div>
 
   <!-- Create Character Modal -->
-  <div id="create-character-modal">
+  <div id="create-character-modal" class="modal">
     <div class="modal-content">
       <span class="close-modal" id="close-create-character">&times;</span>
       <h3>Create Character</h3>
@@ -118,6 +118,30 @@
         </div>
 
         <button type="submit">Create</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Custom Attack Modal for Monsters -->
+  <div id="monster-custom-attack-modal" class="modal">
+    <div class="modal-content">
+      <span id="close-monster-custom-attack" class="close">&times;</span>
+      <h2>Add Custom Attack</h2>
+      <form id="custom-attack-form">
+        <label>Name: <input name="name" required></label><br>
+        <label>Type: 
+          <select name="type">
+            <option value="single">Single</option>
+            <option value="aoe">AoE</option>
+          </select>
+        </label><br>
+        <label>Damage Dice (e.g. 1d6): <input name="damageDice" required></label><br>
+        <label>Base Mod: <input name="baseMod" type="number" value="0"></label><br>
+        <label>Stat (STR, DEX, etc.): <input name="stat" value="STR"></label><br>
+        <label>Range (for single): <input name="range" type="number" value="1"></label><br>
+        <label>AOE Shape (for AoE): <input name="shape"></label><br>
+        <label>AOE Radius: <input name="radius" type="number" value="1"></label><br>
+        <button type="submit">Add Attack</button>
       </form>
     </div>
   </div>
