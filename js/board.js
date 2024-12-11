@@ -94,6 +94,8 @@ export class Board {
       }
       this.gridEl.appendChild(rowEl);
     }
+  this.gridEl.style.width = (this.cols * this.cellWidth) + 'px';
+  this.gridEl.style.height = (this.rows * this.cellHeight) + 'px';  
   }
 
   redrawBoard() {
