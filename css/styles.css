@@ -94,6 +94,20 @@ body {
   padding: 5px;
   border-radius: 5px;
   cursor: move;
+  
+  /* Add these new properties: */
+  display: inline-block;    /* Keep the controls compact */
+  white-space: nowrap;      /* Prevent line breaks inside */
+  width: auto;              /* Let the width shrink to fit content */
+  max-width: 120px;         /* Just an example to ensure it doesn't get too wide */
+  overflow: hidden;         /* Hide overflow if necessary */
+}
+
+#map-controls h4 {
+  margin: 0;
+  font-size: 14px;
+  display: inline; /* Make the heading inline to sit next to buttons */
+  margin-right: 10px;
 }
 
 #selection-marquee {
