@@ -27,11 +27,51 @@ export class Board {
 
     this.contextMenuVisible = false;
     this.terrainEffects = {};
+
+    // Cell dimensions
+    this.cellWidth = 40;
+    this.cellHeight = 40;
+
+    // Zoom factor
+    this.scaleFactor = 1; 
+    // Apply initial scale
+    this.applyScale();
   }
 
   initialize() {
     this.buildGrid();
     this.setupEventListeners();
+    this.redrawBoard();
+  }
+
+  // Apply zoom scaling by CSS transform
+  applyScale() {
+    this.gridEl.style.transformOrigin = 'top left';
+    this.gridEl.style.transform = `scale(${this.scaleFactor})`;
+  }
+
+  zoomIn() {
+    this.scaleFactor += 0.1;
+    this.applyScale();
+  }
+
+  zoomOut() {
+    if (this.scaleFactor > 0.2) {
+      this.scaleFactor -= 0.1;
+      this.applyScale();
+    }
+  }
+
+  resizeGrid(newRows, newCols) {
+    if (!this.app.isDM()) {
+      console.warn("Only DM can resize the grid.");
+      return;
+    }
+    // Clear the current grid
+    this.gridEl.innerHTML = '';
+    this.rows = newRows;
+    this.cols = newCols;
+    this.buildGrid();
     this.redrawBoard();
   }
 
@@ -122,21 +162,17 @@ export class Board {
 
   handleGridMouseDown(e) {
     if (e.button !== 0) return; // Only handle left-click
-  
-    const rect = this.gridEl.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const cellWidth = 40;
-    const cellHeight = 40;
-    const c = Math.floor(x / cellWidth);
-    const r = Math.floor(y / cellHeight);
-  
-    console.log("handleGridMouseDown:", "Click at pixel:", x, y, "Cell:", r, c);
-  
-    if (r < 0 || r >= this.rows || c < 0 || c >= this.cols) {
-      console.log("Clicked outside the grid.");
+    
+    const cell = e.target.closest('td');
+    if (!cell) {
+      console.log("Clicked outside the grid or not on a cell.");
       return;
     }
+
+    const r = parseInt(cell.dataset.row, 10);
+    const c = parseInt(cell.dataset.col, 10);
+
+    console.log("handleGridMouseDown: Cell:", r, c);
   
     // AoE Attack Mode
     if (this.app.currentAction && this.app.currentAction.type === 'aoe') {
@@ -223,9 +259,14 @@ export class Board {
         console.log("Clicking empty cell, clearing selection.");
         this.selectedEntities = [];
       }
-      console.log("Starting marquee selection at:", x, y);
+      // Start marquee selection
+      const rect = this.gridEl.getBoundingClientRect();
+      // Convert to grid space considering scale
+      const gx = (e.clientX - rect.left) / this.scaleFactor;
+      const gy = (e.clientY - rect.top) / this.scaleFactor;
+      console.log("Starting marquee selection at:", gx, gy);
       this.isMarqueeSelecting = true;
-      this.marqueeStart = { x: x, y: y };
+      this.marqueeStart = { x: gx, y: gy };
       this.marqueeEl.style.display = 'block';
       this.marqueeEl.style.left = `${this.marqueeStart.x}px`;
       this.marqueeEl.style.top = `${this.marqueeStart.y}px`;
@@ -238,12 +279,10 @@ export class Board {
   handleMouseMove(e) {
     if (this.app.currentAction && this.app.currentAction.type === 'aoe') {
       const rect = this.gridEl.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      const cellWidth = 40;
-      const cellHeight = 40;
-      const c = Math.floor(x / cellWidth);
-      const r = Math.floor(y / cellHeight);
+      const gx = (e.clientX - rect.left) / this.scaleFactor;
+      const gy = (e.clientY - rect.top) / this.scaleFactor;
+      const c = Math.floor(gx / this.cellWidth);
+      const r = Math.floor(gy / this.cellHeight);
 
       if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
         this.clearHighlights();
@@ -253,22 +292,20 @@ export class Board {
     }
 
     if (this.isDraggingTokens && this.selectedEntities.length > 0) {
-      const dx = e.clientX - this.dragStartPos.x;
-      const dy = e.clientY - this.dragStartPos.y;
-      const cellWidth = 40;
-      const cellHeight = 40;
-      const rowOffset = Math.round(dy / cellHeight);
-      const colOffset = Math.round(dx / cellWidth);
+      const dx = (e.clientX - this.dragStartPos.x) / this.scaleFactor;
+      const dy = (e.clientY - this.dragStartPos.y) / this.scaleFactor;
+      const rowOffset = Math.round(dy / this.cellHeight);
+      const colOffset = Math.round(dx / this.cellWidth);
       this.highlightDragPositions(rowOffset, colOffset);
     }
 
     if (this.isMarqueeSelecting) {
       const rect = this.gridEl.getBoundingClientRect();
-      let currentX = e.clientX - rect.left;
-      let currentY = e.clientY - rect.top;
+      let currentX = (e.clientX - rect.left) / this.scaleFactor;
+      let currentY = (e.clientY - rect.top) / this.scaleFactor;
 
-      currentX = Math.max(0, Math.min(currentX, this.cols * 40));
-      currentY = Math.max(0, Math.min(currentY, this.rows * 40));
+      currentX = Math.max(0, Math.min(currentX, this.cols * this.cellWidth));
+      currentY = Math.max(0, Math.min(currentY, this.rows * this.cellHeight));
 
       const x1 = Math.min(currentX, this.marqueeStart.x);
       const y1 = Math.min(currentY, this.marqueeStart.y);
@@ -292,12 +329,10 @@ export class Board {
   handleMouseUp(e) {
     if (this.isDraggingTokens) {
       this.isDraggingTokens = false;
-      const dx = e.clientX - this.dragStartPos.x;
-      const dy = e.clientY - this.dragStartPos.y;
-      const cellWidth = 40;
-      const cellHeight = 40;
-      const rowOffset = Math.round(dy / cellHeight);
-      const colOffset = Math.round(dx / cellWidth);
+      const dx = (e.clientX - this.dragStartPos.x) / this.scaleFactor;
+      const dy = (e.clientY - this.dragStartPos.y) / this.scaleFactor;
+      const rowOffset = Math.round(dy / this.cellHeight);
+      const colOffset = Math.round(dx / this.cellWidth);
 
       if (rowOffset !== 0 || colOffset !== 0) {
         this.app.moveSelectedEntities(rowOffset, colOffset);
@@ -314,19 +349,18 @@ export class Board {
   }
 
   openEntitySheet(entity) {
-  if (entity.type === 'character') {
-    const ch = this.app.getCharacterById(entity.id);
-    if (ch) {
-      this.app.uiManager.openCharacterSheet(ch);
-    }
-  } else if (entity.type === 'monster') {
-    const mon = this.app.getMonsterById(entity.id);
-    if (mon) {
-      this.app.uiManager.openMonsterSheet(mon);
+    if (entity.type === 'character') {
+      const ch = this.app.getCharacterById(entity.id);
+      if (ch) {
+        this.app.uiManager.openCharacterSheet(ch);
+      }
+    } else if (entity.type === 'monster') {
+      const mon = this.app.getMonsterById(entity.id);
+      if (mon) {
+        this.app.uiManager.openMonsterSheet(mon);
+      }
     }
   }
-}
-
 
   handleContextMenu(e) {
     e.preventDefault();
@@ -335,24 +369,24 @@ export class Board {
       this.hideContextMenu();
       return;
     }
-  
+
     const r = parseInt(cell.dataset.row, 10);
     const c = parseInt(cell.dataset.col, 10);
     const entity = this.app.entityTokens[`${r},${c}`];
-  
+
     if (!entity) {
       this.hideContextMenu();
       return;
     }
-  
+
     // If we have a selected entity and can control it, show context menu
     if (this.isEntitySelected(entity) && this.app.canControlEntity(entity)) {
       this.showContextMenu(e.pageX, e.pageY);
-  
+
       // Find the Open Character Sheet menu item
       const openSheetItem = document.getElementById('context-open-sheet');
       openSheetItem.style.display = 'block'; // ensure it's visible
-  
+
       // Add a click handler for opening the sheet
       openSheetItem.onclick = () => {
         this.hideContextMenu();
@@ -427,20 +461,17 @@ export class Board {
   }
 
   getEntitiesInMarquee() {
-    const cellWidth = 40;
-    const cellHeight = 40;
     let selected = [];
-
     for (const key in this.app.entityTokens) {
       const [r, c] = key.split(',').map(Number);
-      const cellX = c * cellWidth;
-      const cellY = r * cellHeight;
+      const cellX = c * this.cellWidth;
+      const cellY = r * this.cellHeight;
 
       const isSelected =
         cellX < this.marqueeRect.x + this.marqueeRect.w &&
-        cellX + cellWidth > this.marqueeRect.x &&
+        cellX + this.cellWidth > this.marqueeRect.x &&
         cellY < this.marqueeRect.y + this.marqueeRect.h &&
-        cellY + cellHeight > this.marqueeRect.y;
+        cellY + this.cellHeight > this.marqueeRect.y;
 
       if (isSelected) {
         selected.push({ type: this.app.entityTokens[key].type, id: this.app.entityTokens[key].id });
