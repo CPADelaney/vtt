@@ -1,292 +1,243 @@
 body {
-  margin: 0;
-  font-family: sans-serif;
-  overflow: hidden;
-}
-
-#main-container {
-  display: flex;
-  height: 100vh;
-  width: 100vw;
-}
-
-#board-container {
-  position: relative;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  /* Remove align-items:center; justify-content:center; so we can scroll freely */
-  overflow: hidden;
-}
-
-#board-scroll-container {
-  position: relative;
-  flex: 1;
-  overflow: auto; /* Enable scrollbars */
-  background: #ddd; /* Optional background to see the scroll area */
-}
-
-#sidebar {
-  width: 300px;
-  display: flex;
-  flex-direction: column;
-  background: #f8f8f8;
-  border-left: 1px solid #ccc;
-}
-
-#tab-bar {
-  display: flex;
-  border-bottom: 1px solid #ccc;
-}
-
-.tab-btn {
-  flex: 1;
-  padding: 5px;
-  background: #eee;
-  border: none;
-  cursor: pointer;
-}
-
-.tab-btn.active {
-  background: #ddd;
-  font-weight: bold;
-}
-
-#tab-content {
-  flex: 1;
-  overflow-y: auto;
-  position: relative;
-}
-
-.tab-content {
-  display: none;
-  padding: 10px;
-}
-
-.tab-content.active {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-/* Chat container styling */
-#chat-container {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  overflow: hidden;
-}
-
-#log {
-  flex: 1;
-  background: #f4f4f4;
-  padding: 10px;
-  border: 1px solid #ccc;
-  font-size: 14px;
-  white-space: pre-wrap;
-  overflow-y: auto;
-}
-
-#command-area {
-  display: flex;
-  align-items: center;
-  border-top: 1px solid #ccc;
-  padding: 5px;
-  background: #f0f0f0;
-}
-
-#cancel-attack-btn {
-  margin-right: 5px;
-}
-
-#command-input {
-  flex: 1;
-  margin-right: 5px;
-  box-sizing: border-box;
-}
-
-#send-command-btn {
-  width: 60px;
-  box-sizing: border-box;
-}
-
-/* Grid and other existing styles remain unchanged */
-#grid {
-  border: 1px solid #000;
-  border-collapse: collapse;
-  top: 0; 
-  left: 0;
-  z-index: 10;
-  background-color: #fff;
-  table-layout: fixed;
-  transform-origin: top left;
-}
-
-#grid td {
-  width: 60px;
-  height: 60px;
-  border: 1px solid #333;
-  text-align: center;
-  vertical-align: middle;
-  font-size: 24px;
-  user-select: none;
-  position: relative;
-}
-
-#grid td.selected {
-  background-color: rgba(0, 0, 255, 0.2);
-  outline: 2px solid blue;
-}
-
-#map-controls {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 2000;
-  background: #fff;
-  border: 1px solid #ccc;
-  padding: 5px;
-  border-radius: 5px;
-  cursor: move;
-  width: 70px;
-  text-align: center;
-}
-
-#map-controls h4 {
-  margin: 0 0 5px 0;
-  font-size: 14px;
-}
-
-#map-controls button {
-  width: 30px;
-  height: 30px;
-  line-height: 30px;
-  display: inline-block;
-  text-align: center;
-  border: 1px solid #ccc;
-  background: #f0f0f0;
-  cursor: pointer;
-  font-size: 16px;
-  margin: 0 2px;
-}
-
-#map-controls button:hover {
-  background: #e0e0e0;
-}
-
-#map-controls button:active {
-  background: #d0d0d0;
-}
-
-#selection-marquee {
-  position: absolute;
-  border: 1px dashed #00f;
-  background: rgba(0, 0, 255, 0.1);
-  display: none;
-  pointer-events: none;
-  z-index: 999;
-}
-
-.modal {
-  display: none; 
-  position: fixed; 
-  z-index: 999; 
-  left: 0;
-  top: 0;
-  width: 100%; 
-  height: 100%; 
-  overflow: auto; 
-  background-color: rgba(0,0,0,0.4);
-}
-
-.modal-content {
-  background-color: #fff;
-  margin: 5% auto; 
-  padding: 20px;
-  border: 1px solid #888;
-  width: 300px;
-  border-radius: 5px;
-  position: relative;
-}
-
-.close-modal {
-  float: right;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-.context-menu {
-  position: absolute;
-  background: #fff;
-  border: 1px solid #aaa;
-  z-index: 1000;
-  display: none;
-  font-size: 14px;
-}
-
-.context-menu ul {
-  list-style: none;
-  margin: 0;
-  padding: 5px 0;
-}
-
-.context-menu ul li {
-  padding: 5px 10px;
-  cursor: pointer;
-}
-
-.delete-option {
-  color: red;
-}
-
-.context-menu ul li:hover {
-  background: #eee;
-}
-
-.drag-icon {
-  margin-right: 10px;
-  cursor: grab;
-}
-
-.drag-icon[draggable="false"] {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-#attack-creation-section {
-  margin-top: 10px;
-  background: #f0f0f0;
-  padding: 5px;
-  border: 1px solid #ccc;
-}
-
-.target-highlight {
-  outline: 2px solid red !important;
-}
-
-.terrain-acidic {
-  background-color: rgba(0,255,0,0.2);
-}
-
-#create-character-form label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: bold;
-}
-
-#create-character-form input, #create-character-form select {
-  margin-top: 4px;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-#monster-filter {
-  margin-bottom: 10px;
-  width: 100%;
-}
-
-.character-list-item, .monster-list-item {
-  margin-bottom: 5px;
-  display: flex;
-  align-items: center;
-}
+    font-family: sans-serif;
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Prevent scrollbars on body level */
+  }
+  
+  #main-container {
+      display: flex;
+      height: 100vh;
+  }
+  
+  #board-container {
+    flex: 3;
+    position: relative; /* To allow absolute positioning within */
+    overflow: hidden; /* Hide overflowing content */
+  }
+  
+  #board-scroll-container {
+    overflow: auto;
+    height: 100%; /* Make sure scroll container covers full board container */
+  }
+  
+  #map-controls {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background-color: #f0f0f0;
+    padding: 10px;
+    border: 1px solid #ddd;
+    z-index: 100;
+    cursor: move; /* Move cursor on controls */
+  }
+  
+  #sidebar {
+    flex: 1;
+    background-color: #eee;
+    padding: 10px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  #tab-bar {
+    display: flex;
+  }
+  
+  .tab-btn {
+    padding: 10px;
+    border: none;
+    background-color: #ddd;
+    cursor: pointer;
+  }
+  
+  .tab-btn.active {
+    background-color: #ccc;
+  }
+  
+  .tab-content {
+    display: none;
+  }
+  
+  .tab-content.active {
+    display: block;
+  }
+  
+  #grid {
+    border-collapse: collapse;
+    margin: 0; /* Remove default table margin */
+  }
+  
+  #grid td {
+      width: 60px;
+      height: 60px;
+      border: 1px solid #ccc;
+      position: relative;
+      text-align: center;
+      vertical-align: middle;
+      padding: 0;
+  }
+  
+  .token {
+    width: 80%;
+    height: 80%;
+    background-color: #555;
+    border-radius: 50%;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-weight: bold;
+    user-select: none;
+  }
+  
+  .token.character {
+    background-color: blue;
+  }
+  
+  .token.monster {
+    background-color: red;
+  }
+  
+  .selected {
+    background-color: rgba(0, 0, 255, 0.2);
+  }
+  
+  #selection-marquee {
+    position: absolute;
+    border: 2px dashed blue;
+    background-color: rgba(0, 0, 255, 0.1);
+    pointer-events: none;
+    display: none;
+  }
+  
+  .context-menu {
+    position: absolute;
+    background-color: white;
+    border: 1px solid #ccc;
+    display: none;
+    z-index: 1000;
+  }
+  
+  .context-menu ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .context-menu li {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .context-menu li:hover {
+    background-color: #f0f0f0;
+  }
+  
+  .delete-option {
+    color: red;
+  }
+  
+  #command-area {
+    display: flex;
+    align-items: center;
+    padding: 5px;
+    margin-top: 10px;
+  }
+  
+  #command-input {
+      flex: 1;
+      padding: 8px;
+      margin-right: 5px;
+  }
+  
+  #log {
+      height: 200px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 5px;
+  }
+  
+  /* Modal styles */
+  .modal {
+      display: none; /* Hidden by default */
+      position: fixed; /* Stay in place */
+      z-index: 1; /* Sit on top */
+      left: 0;
+      top: 0;
+      width: 100%; /* Full width */
+      height: 100%; /* Full height */
+      overflow: auto; /* Enable scroll if needed */
+      background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+  }
+  
+  .modal-content {
+      background-color: #fefefe;
+      margin: 15% auto;
+      padding: 20px;
+      border: 1px solid #888;
+      width: 80%;
+  }
+  
+  .close-modal {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+  }
+  
+  .close-modal:hover,
+  .close-modal:focus {
+      color: black;
+      text-decoration: none;
+      cursor: pointer;
+  }
+  
+  /* List styles */
+  .character-list-item,
+  .monster-list-item {
+    border: 1px solid #ddd;
+    padding: 8px;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .drag-icon {
+      cursor: grab;
+      margin-right: 8px;
+    }
+  
+    .character-list-item button, .monster-list-item button {
+      margin-left: 8px;
+    }
+  
+  .attack-input-row {
+    display: flex;
+    margin-bottom: 5px;
+    align-items: center;
+  }
+  .attack-input-row > * {
+    margin-right: 5px;
+  }
+  
+  .terrain-acidic {
+    background-color: rgba(0, 255, 0, 0.3); /* light green for acidic */
+  }
+  
+  .target-highlight {
+    background-color: rgba(0, 255, 0, 0.5);
+    cursor: pointer;
+  }
+  
+  .target-select:hover {
+    background-color: rgba(0, 255, 0, 0.7);
+  }
