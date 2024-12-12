@@ -234,22 +234,22 @@ export class Board {
         }
     }
 
-    handleGridMouseDown(e) {
+handleGridMouseDown(e) {
         if (e.button !== 0) return; // Only handle left-click
-
+    
         const cell = e.target.closest('td');
         if (!cell) return;
-
+    
         const r = parseInt(cell.dataset.row, 10);
         const c = parseInt(cell.dataset.col, 10);
-
+    
         // AoE Attack Mode
         if (this.app.currentAction && this.app.currentAction.type === 'aoe') {
             this.app.saveStateForUndo();
             const aoePositions = this.getAoEAreaPositions(this.app.currentAction.aoeShape, { row: r, col: c }, this.app.currentAction.radius);
             const affectedEntities = this.getEntitiesInPositions(aoePositions);
             const finalTargets = this.filterAoETargets(affectedEntities, this.app.currentAction);
-
+    
             performAoeAttack(
                 this.app.currentAction.attacker,
                 this.app.currentAction.entityType,
@@ -259,34 +259,34 @@ export class Board {
                 finalTargets,
                 aoePositions
             );
-
+    
             this.clearHighlights();
             this.app.clearAction();
             return;
         }
-
+    
         // Single-target Attack Mode
         if (this.app.currentAction && this.app.currentAction.type === 'attack') {
-            const key = `${r},${c}`;
-            const entity = this.app.entityTokens[key];
-
-            if (entity && this.isCellHighlighted(r, c)) {
-                this.app.saveStateForUndo();
-                const { attacker, entityType, attackEntry, weapon } = this.app.currentAction;
-                performAttack(attacker, entityType, attackEntry, weapon, this.app, { type: entity.type, id: entity.id });
-                this.clearHighlights();
-                this.app.clearAction();
-                return;
+          const key = `${r},${c}`;
+          const entity = this.app.entityTokens[key];
+    
+          if (entity && this.isCellHighlighted(r, c)) {
+              this.app.saveStateForUndo();
+              const { attacker, entityType, attackEntry, weapon } = this.app.currentAction;
+              performAttack(attacker, entityType, attackEntry, weapon, this.app, { type: entity.type, id: entity.id });
+              this.clearHighlights();
+              this.app.clearAction();
+              return;
             } else {
                 return;
             }
         }
-
+    
         // Normal selection/marquee mode
         const key = `${r},${c}`;
         const entity = this.app.entityTokens[key];
         const ctrlPressed = e.ctrlKey;
-
+        
         if (entity) {
             if (ctrlPressed) {
                 if (this.isEntitySelected(entity)) {
@@ -299,7 +299,7 @@ export class Board {
                     this.selectedEntities = [{ type: entity.type, id: entity.id }];
                 }
             }
-
+    
             if (this.selectedEntities.length > 0 && this.selectedEntities.every(ent => this.app.canControlEntity(ent))) {
                 this.isDraggingTokens = true;
                 this.originalPositions = this.selectedEntities.map(ent => {
@@ -319,22 +319,22 @@ export class Board {
                     this.currentDragCell = null;
                 }
             }
-        } else {
+         } else {
             if (!ctrlPressed) {
-                this.selectedEntities = [];
-            }
-            const rect = this.gridEl.getBoundingClientRect();
-            const gx = (e.clientX - rect.left) / this.scaleFactor;
-            const gy = (e.clientY - rect.top) / this.scaleFactor;
-            this.isMarqueeSelecting = true;
-            this.marqueeStart = { x: gx, y: gy };
-            this.marqueeEl.style.display = 'block';
-            this.marqueeEl.style.left = `${this.marqueeStart.x}px`;
-            this.marqueeEl.style.top = `${this.marqueeStart.y}px`;
-            this.marqueeEl.style.width = '0px';
-            this.marqueeEl.style.height = '0px';
-        }
-        this.updateSelectionStyles();
+               this.selectedEntities = [];
+           }
+           const rect = this.gridEl.getBoundingClientRect();
+           const gx = (e.clientX - rect.left) / this.scaleFactor;
+           const gy = (e.clientY - rect.top) / this.scaleFactor;
+           this.isMarqueeSelecting = true;
+           this.marqueeStart = { x: gx, y: gy };
+           this.marqueeEl.style.display = 'block';
+           this.marqueeEl.style.left = `${this.marqueeStart.x}px`;
+           this.marqueeEl.style.top = `${this.marqueeStart.y}px`;
+           this.marqueeEl.style.width = '0px';
+           this.marqueeEl.style.height = '0px';
+       }
+       this.updateSelectionStyles();
     }
 
 
