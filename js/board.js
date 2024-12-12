@@ -332,89 +332,188 @@ export class Board {
     // AoE logic
     if (this.app.currentAction && this.app.currentAction.type === 'aoe') {
       const gx = (e.clientX - rect.left) / this.scaleFactor;
-      const gy = (e.clientY - rect.top) / this.scaleFactor;
-      const c = Math.floor(gx / this.cellWidth);
-      const r = Math.floor(gy / this.cellHeight);
-      if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
-        this.clearHighlights();
-        const aoePositions = this.getAoEAreaPositions(
-          this.app.currentAction.aoeShape, 
-          { row: r, col: c }, 
-          this.app.currentAction.radius
-        );
-        this.highlightTiles(aoePositions, 'target-highlight');
-      }
-    }
 
-    // Token dragging logic
-    if (this.isDraggingTokens && this.selectedEntities.length > 0) {
-      this.clearDragHighlights();
-      const gx = (e.clientX - rect.left) / this.scaleFactor;
-      const gy = (e.clientY - rect.top) / this.scaleFactor;
-      const c = Math.floor(gx / this.cellWidth);
-      const r = Math.floor(gy / this.cellHeight);
-
-      if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
-        const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
-        if (cell) cell.style.outline = '2px dashed green';
-        this.currentDragCell = { row: r, col: c };
-      } else {
-        this.currentDragCell = null;
-      }
-    }
-
-    // Marquee selection logic
-    if (this.isMarqueeSelecting) {
-      let currentX = (e.clientX - rect.left) / this.scaleFactor;
-      let currentY = (e.clientY - rect.top) / this.scaleFactor;
-
-      currentX = Math.max(0, Math.min(currentX, this.cols * this.cellWidth));
-      currentY = Math.max(0, Math.min(currentY, this.rows * this.cellHeight));
-
-      const x1 = Math.min(currentX, this.marqueeStart.x);
-      const y1 = Math.min(currentY, this.marqueeStart.y);
-      const x2 = Math.max(currentX, this.marqueeStart.x);
-      const y2 = Math.max(currentY, this.marqueeStart.y);
-
-      this.marqueeRect = {
-        x: x1,
-        y: y1,
-        w: x2 - x1,
-        h: y2 - y1
-      };
-
-      this.marqueeEl.style.left = `${x1}px`;
-      this.marqueeEl.style.top = `${y1}px`;
-      this.marqueeEl.style.width = `${this.marqueeRect.w}px`;
-      this.marqueeEl.style.height = `${this.marqueeRect.h}px`;
-    }
-  }
-
-  handleMouseUp(e) {
-    if (this.isDraggingTokens) {
-      this.isDraggingTokens = false;
-      this.clearDragHighlights();
-
-      // Move entities directly to the current drag cell if valid
-      if (this.currentDragCell &&
-          this.currentDragCell.row >= 0 && this.currentDragCell.row < this.rows &&
-          this.currentDragCell.col >= 0 && this.currentDragCell.col < this.cols) {
-        
-        for (let ent of this.selectedEntities) {
-          this.app.moveEntity(ent.type, ent.id, this.currentDragCell.row, this.currentDragCell.col);
-        }
-      }
-
-      this.currentDragCell = null; 
-    }
-
-    if (this.isMarqueeSelecting) {
-      this.isMarqueeSelecting = false;
-      this.marqueeEl.style.display = 'none';
-      this.selectedEntities = this.getEntitiesInMarquee();
-      this.updateSelectionStyles();
-    }
-  }
+   handleGridMouseDown(e) {
+       if (e.button !== 0) return; // Only handle left-click
+       
+       const cell = e.target.closest('td');
+       if (!cell) return;
+   
+       const r = parseInt(cell.dataset.row, 10);
+       const c = parseInt(cell.dataset.col, 10);
+   
+       // AoE Attack Mode
+       if (this.app.currentAction && this.app.currentAction.type === 'aoe') {
+           this.app.saveStateForUndo();
+           const aoePositions = this.getAoEAreaPositions(this.app.currentAction.aoeShape, { row: r, col: c }, this.app.currentAction.radius);
+           const affectedEntities = this.getEntitiesInPositions(aoePositions);
+           const finalTargets = this.filterAoETargets(affectedEntities, this.app.currentAction);
+   
+           performAoeAttack(
+               this.app.currentAction.attacker,
+               this.app.currentAction.entityType,
+               this.app.currentAction.attackEntry,
+               this.app.currentAction.attackDef,
+               this.app,
+               finalTargets,
+               aoePositions
+           );
+   
+           this.clearHighlights();
+           this.app.clearAction();
+           return;
+       }
+   
+       // Single-target Attack Mode
+       if (this.app.currentAction && this.app.currentAction.type === 'attack') {
+           return;
+       }
+   
+       // Normal selection/marquee mode
+       const key = `${r},${c}`;
+       const entity = this.app.entityTokens[key];
+       const ctrlPressed = e.ctrlKey;
+   
+       if (entity) {
+           if (ctrlPressed) {
+               if (this.isEntitySelected(entity)) {
+                   this.selectedEntities = this.selectedEntities.filter(se => !(se.type === entity.type && se.id === entity.id));
+               } else {
+                   this.selectedEntities.push({ type: entity.type, id: entity.id });
+               }
+           } else {
+               if (!this.isEntitySelected(entity)) {
+                   this.selectedEntities = [{ type: entity.type, id: entity.id }];
+               }
+           }
+   
+           if (this.selectedEntities.length > 0 && this.selectedEntities.every(ent => this.app.canControlEntity(ent))) {
+               this.isDraggingTokens = true;
+               this.originalPositions = this.selectedEntities.map(ent => {
+                   let pos = this.getEntityPosition(ent.type, ent.id);
+                   return { ...ent, row: pos.row, col: pos.col };
+               });
+               this.clearDragHighlights();
+               const gx = (e.clientX - this.gridEl.getBoundingClientRect().left) / this.scaleFactor;
+               const gy = (e.clientY - this.gridEl.getBoundingClientRect().top) / this.scaleFactor;
+               const c = Math.floor(gx / this.cellWidth);
+               const r = Math.floor(gy / this.cellHeight);
+               if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
+                   const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
+                   if (cell) cell.style.outline = '2px dashed green';
+                   this.currentDragCell = { row: r, col: c };
+               } else {
+                   this.currentDragCell = null;
+               }
+           }
+       } else {
+           if (!ctrlPressed) {
+               this.selectedEntities = [];
+           }
+           const rect = this.gridEl.getBoundingClientRect();
+           const gx = (e.clientX - rect.left) / this.scaleFactor;
+           const gy = (e.clientY - rect.top) / this.scaleFactor;
+           this.isMarqueeSelecting = true;
+           this.marqueeStart = { x: gx, y: gy };
+           this.marqueeEl.style.display = 'block';
+           this.marqueeEl.style.left = `${this.marqueeStart.x}px`;
+           this.marqueeEl.style.top = `${this.marqueeStart.y}px`;
+           this.marqueeEl.style.width = '0px';
+           this.marqueeEl.style.height = '0px';
+       }
+       this.updateSelectionStyles();
+   }
+   
+   handleMouseMove(e) {
+       const rect = this.gridEl.getBoundingClientRect();
+   
+       // AoE logic
+       if (this.app.currentAction && this.app.currentAction.type === 'aoe') {
+           const gx = (e.clientX - rect.left) / this.scaleFactor;
+           const gy = (e.clientY - rect.top) / this.scaleFactor;
+           const c = Math.floor(gx / this.cellWidth);
+           const r = Math.floor(gy / this.cellHeight);
+           if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
+               this.clearHighlights();
+               const aoePositions = this.getAoEAreaPositions(
+                   this.app.currentAction.aoeShape,
+                   { row: r, col: c },
+                   this.app.currentAction.radius
+               );
+               this.highlightTiles(aoePositions, 'target-highlight');
+           }
+       }
+   
+       // Token dragging logic
+       if (this.isDraggingTokens && this.selectedEntities.length > 0) {
+           this.clearDragHighlights();
+           const gx = (e.clientX - rect.left) / this.scaleFactor;
+           const gy = (e.clientY - rect.top) / this.scaleFactor;
+           const c = Math.floor(gx / this.cellWidth);
+           const r = Math.floor(gy / this.cellHeight);
+           
+            if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
+              const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
+              if (cell) cell.style.outline = '2px dashed green';
+              this.currentDragCell = { row: r, col: c };
+            } else {
+               this.currentDragCell = null;
+           }
+       }
+   
+       // Marquee selection logic
+       if (this.isMarqueeSelecting) {
+           let currentX = (e.clientX - rect.left) / this.scaleFactor;
+           let currentY = (e.clientY - rect.top) / this.scaleFactor;
+   
+           currentX = Math.max(0, Math.min(currentX, this.cols * this.cellWidth));
+           currentY = Math.max(0, Math.min(currentY, this.rows * this.cellHeight));
+   
+           const x1 = Math.min(currentX, this.marqueeStart.x);
+           const y1 = Math.min(currentY, this.marqueeStart.y);
+           const x2 = Math.max(currentX, this.marqueeStart.x);
+           const y2 = Math.max(currentY, this.marqueeStart.y);
+   
+           this.marqueeRect = {
+               x: x1,
+               y: y1,
+               w: x2 - x1,
+               h: y2 - y1
+           };
+   
+           this.marqueeEl.style.left = `${x1}px`;
+           this.marqueeEl.style.top = `${y1}px`;
+           this.marqueeEl.style.width = `${this.marqueeRect.w}px`;
+           this.marqueeEl.style.height = `${this.marqueeRect.h}px`;
+       }
+   }
+   
+   handleMouseUp(e) {
+       if (this.isDraggingTokens) {
+           this.isDraggingTokens = false;
+           this.clearDragHighlights();
+   
+           // Move entities directly to the current drag cell if valid
+           if (this.currentDragCell &&
+               this.currentDragCell.row >= 0 && this.currentDragCell.row < this.rows &&
+               this.currentDragCell.col >= 0 && this.currentDragCell.col < this.cols) {
+   
+               for (let ent of this.selectedEntities) {
+                   this.app.moveEntity(ent.type, ent.id, this.currentDragCell.row, this.currentDragCell.col);
+               }
+           }
+   
+           this.currentDragCell = null;
+       }
+   
+       if (this.isMarqueeSelecting) {
+           this.isMarqueeSelecting = false;
+           this.marqueeEl.style.display = 'none';
+           this.selectedEntities = this.getEntitiesInMarquee();
+           this.updateSelectionStyles();
+       }
+   }
+   
 
   openEntitySheet(entity) {
     if (entity.type === 'character') {
