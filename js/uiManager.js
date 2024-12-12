@@ -243,6 +243,7 @@ export class UIManager {
     this.app.clearAction();
     this.app.board.clearHighlights();
     this.hideCancelAttackButton();
+    this.app.board.clearOnceTileClick();
     if (this.lastEntityForAttack) {
       if (this.lastEntityForAttack.type === 'character') {
         this.openCharacterSheet(this.lastEntityForAttack.entityData);
@@ -526,7 +527,10 @@ export class UIManager {
             const attackerPos = this.app.board.getEntityPosition(type, entityData.id);
             if (attackerPos) {
               const possiblePositions = this.app.board.getPositionsInRange(attackerPos, attDef.range);
-              this.app.board.highlightTiles(possiblePositions, 'target-highlight');
+              this.app.board.highlightTiles(possiblePositions, 'target-highlight', true);
+               this.app.board.onceTileClick(targetPos => {
+                 this.app.completeAction(targetPos);
+               })
             }
           }
         });
