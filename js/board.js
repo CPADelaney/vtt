@@ -240,17 +240,17 @@ handleGridMouseDown(e) {
     const cell = e.target.closest('td');
     if (!cell) return;
 
-
     const rect = this.gridEl.getBoundingClientRect();
     const scrollLeft = this.boardScrollContainer.scrollLeft;
     const scrollTop = this.boardScrollContainer.scrollTop;
 
-    const gx = (e.clientX - rect.left + scrollLeft) / this.scaleFactor;
-    const gy = (e.clientY - rect.top + scrollTop) / this.scaleFactor;
+
+    const gx = ((e.clientX - rect.left) / this.scaleFactor) + scrollLeft/ this.scaleFactor;
+    const gy = ((e.clientY - rect.top) / this.scaleFactor) + scrollTop/ this.scaleFactor;
 
     const c = Math.floor(gx / this.cellWidth);
     const r = Math.floor(gy / this.cellHeight);
-    
+
     // AoE Attack Mode
     if (this.app.currentAction && this.app.currentAction.type === 'aoe') {
       this.app.saveStateForUndo();
@@ -289,8 +289,8 @@ handleGridMouseDown(e) {
               return;
           }
     }
-
-     // Normal selection/marquee mode
+    
+    // Normal selection/marquee mode
      const key = `${r},${c}`;
      const entity = this.app.entityTokens[key];
      const ctrlPressed = e.ctrlKey;
@@ -315,9 +315,9 @@ handleGridMouseDown(e) {
                 return { ...ent, row: pos.row, col: pos.col };
             });
             this.clearDragHighlights();
-            const gx = (e.clientX - this.gridEl.getBoundingClientRect().left + scrollLeft) / this.scaleFactor;
-            const gy = (e.clientY - this.gridEl.getBoundingClientRect().top + scrollTop) / this.scaleFactor;
-            const c = Math.floor(gx / this.cellWidth);
+            const gx = ((e.clientX - this.gridEl.getBoundingClientRect().left) / this.scaleFactor) + scrollLeft/ this.scaleFactor;
+            const gy = ((e.clientY - this.gridEl.getBoundingClientRect().top) / this.scaleFactor) + scrollTop/ this.scaleFactor;
+             const c = Math.floor(gx / this.cellWidth);
             const r = Math.floor(gy / this.cellHeight);
             if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
                 const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
