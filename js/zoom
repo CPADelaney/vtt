@@ -49,7 +49,7 @@ export class Board {
 
     initialize() {
         this.buildGrid();
-        this.setupEventListeners();
+        this.();
         this.redrawBoard();
         this.centerViewOnGrid(); // center view on initial load
     }
@@ -210,6 +210,39 @@ export class Board {
         if (this.boardScrollContainer) {
             this.boardScrollContainer.addEventListener('wheel', (e) => this.handleWheelZoom(e), { passive: false });
         }
+
+    if (this.boardScrollContainer) {
+        // Dragging for panning
+        let isPanning = false;
+        let startX, startY;
+
+        this.boardScrollContainer.addEventListener('mousedown', (e) => {
+            isPanning = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            this.boardScrollContainer.style.cursor = 'grabbing'; // Change cursor while dragging
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isPanning) {
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+
+                this.boardScrollContainer.scrollLeft -= dx;
+                this.boardScrollContainer.scrollTop -= dy;
+
+                startX = e.clientX;
+                startY = e.clientY;
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isPanning = false;
+            this.boardScrollContainer.style.cursor = 'default'; // Reset cursor
+        });
+    }
+}
+
 
         if (this.mapControls) {
             let isDragging = false;
