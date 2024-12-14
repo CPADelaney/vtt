@@ -49,13 +49,9 @@ export class Board {
 
     initialize() {
         this.buildGrid();
-        this.();
+        this.setupEventListeners();
+        this.centerViewOnGrid();
         this.redrawBoard();
-        this.centerViewOnGrid(); // center view on initial load
-    }
-
-    applyScale() {
-        this.gridEl.style.transform = `scale(${this.scaleFactor})`;
     }
 
     zoomIn() {
@@ -68,8 +64,12 @@ export class Board {
         this.applyScale();
     }
 
+    applyScale() {
+        this.gridEl.style.transform = `translate(-50%, -50%) scale(${this.scaleFactor})`;
+    }
+
     handleWheelZoom(e) {
-        if (!this.boardScrollContainer) return; // Safety check
+        if (!this.boardScrollContainer) return;
 
         e.preventDefault();
 
@@ -78,7 +78,6 @@ export class Board {
         const offsetY = (e.clientY - rect.top) / this.scaleFactor;
 
         const zoomAmount = -e.deltaY * 0.001;
-        const oldScale = this.scaleFactor;
         this.scaleFactor = Math.min(Math.max(this.scaleFactor + zoomAmount, this.minScale), this.maxScale);
 
         this.applyScale();
@@ -90,8 +89,14 @@ export class Board {
         const dx = (newOffsetX - (e.clientX - newRect.left));
         const dy = (newOffsetY - (e.clientY - newRect.top));
 
-        this.boardScrollContainer.scrollLeft += dx;
-        this.boardScrollContainer.scrollTop += dy;
+        this.boardScrollContainer.scrollLeft = Math.max(
+            0,
+            Math.min(this.boardScrollContainer.scrollLeft + dx, this.gridEl.scrollWidth)
+        );
+        this.boardScrollContainer.scrollTop = Math.max(
+            0,
+            Math.min(this.boardScrollContainer.scrollTop + dy, this.gridEl.scrollHeight)
+        );
     }
 
     resizeGrid(newRows, newCols) {
@@ -103,11 +108,12 @@ export class Board {
         this.rows = newRows;
         this.cols = newCols;
         this.buildGrid();
+        this.centerViewOnGrid();
         this.redrawBoard();
-        this.centerViewOnGrid(); // re-center view after resizing
     }
 
     buildGrid() {
+        this.gridEl.innerHTML = ''; // Clear existing grid
         for (let r = 0; r < this.rows; r++) {
             const rowEl = document.createElement('tr');
             for (let c = 0; c < this.cols; c++) {
@@ -119,6 +125,7 @@ export class Board {
                     ev.preventDefault();
                     ev.dataTransfer.dropEffect = 'move';
                 });
+
                 cell.addEventListener('drop', (ev) => this.handleDrop(ev, r, c));
 
                 rowEl.appendChild(cell);
@@ -128,38 +135,6 @@ export class Board {
 
         this.gridEl.style.width = (this.cols * this.cellWidth) + 'px';
         this.gridEl.style.height = (this.rows * this.cellHeight) + 'px';
-    }
-
-    redrawBoard() {
-        const cells = this.gridEl.querySelectorAll('td');
-        cells.forEach(cell => {
-            cell.innerHTML = '';
-            cell.classList.remove('terrain-acidic');
-        });
-
-        for (const key in this.app.entityTokens) {
-            const [r, c] = key.split(',').map(Number);
-            const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
-            if (cell) {
-                const entity = this.app.entityTokens[key];
-                const token = document.createElement('div');
-                token.classList.add('token', entity.type);
-                token.textContent = entity.type === 'character' ? 'C' : 'M';
-                cell.appendChild(token);
-            }
-        }
-
-        if (this.app.terrainEffects) {
-            for (const key in this.app.terrainEffects) {
-                const [r, c] = key.split(',').map(Number);
-                const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
-                if (cell && this.app.terrainEffects[key].type === 'acidic') {
-                    cell.classList.add('terrain-acidic');
-                }
-            }
-        }
-
-        this.updateSelectionStyles();
     }
 
     centerViewOnGrid() {
@@ -172,59 +147,23 @@ export class Board {
         this.boardScrollContainer.scrollTop = (gridH - scrollH) / 2;
     }
 
-    handleDrop(ev, r, c) {
-        ev.preventDefault();
-        if (this.draggedCharId !== null) {
-            this.app.placeCharacterOnBoard(this.draggedCharId, r, c);
-            this.draggedCharId = null;
-        }
-        if (this.draggedMonsterId !== null) {
-            this.app.placeMonsterOnBoard(this.draggedMonsterId, r, c);
-            this.draggedMonsterId = null;
-        }
-    }
-
     setupEventListeners() {
-        if (this.gridEl) {
-            this.gridEl.addEventListener('mousedown', (e) => this.handleGridMouseDown(e));
-            this.gridEl.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-            this.gridEl.addEventListener('mouseup', (e) => this.handleMouseUp(e));
-            this.gridEl.addEventListener('contextmenu', (e) => this.handleContextMenu(e));
-        }
-
-        if (this.contextDelete) {
-            this.contextDelete.addEventListener('click', () => {
-                this.app.deleteSelectedEntities();
-                this.hideContextMenu();
-            });
-        }
-
-        if (this.gridEl) {
-            this.gridEl.addEventListener('click', (e) => {
-                if (this.contextMenuVisible && !this.contextMenu.contains(e.target)) {
-                    this.hideContextMenu();
-                }
-            });
-        }
-
-        if (this.boardScrollContainer) {
-            this.boardScrollContainer.addEventListener('wheel', (e) => this.handleWheelZoom(e), { passive: false });
-        }
-
-    if (this.boardScrollContainer) {
-        // Dragging for panning
-        let isPanning = false;
+        let isRightClickPanning = false;
         let startX, startY;
 
-        this.boardScrollContainer.addEventListener('mousedown', (e) => {
-            isPanning = true;
-            startX = e.clientX;
-            startY = e.clientY;
-            this.boardScrollContainer.style.cursor = 'grabbing'; // Change cursor while dragging
+        this.gridEl.addEventListener('mousedown', (e) => {
+            if (e.button === 2) { // Right-click
+                isRightClickPanning = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                this.gridEl.style.outline = '2px dashed rgba(255, 255, 255, 0.5)';
+                this.boardScrollContainer.style.cursor = 'grabbing';
+                e.preventDefault(); // Prevent context menu
+            }
         });
 
         document.addEventListener('mousemove', (e) => {
-            if (isPanning) {
+            if (isRightClickPanning) {
                 const dx = e.clientX - startX;
                 const dy = e.clientY - startY;
 
@@ -236,149 +175,28 @@ export class Board {
             }
         });
 
-        document.addEventListener('mouseup', () => {
-            isPanning = false;
-            this.boardScrollContainer.style.cursor = 'default'; // Reset cursor
+        document.addEventListener('mouseup', (e) => {
+            if (e.button === 2) {
+                isRightClickPanning = false;
+                this.gridEl.style.outline = 'none';
+                this.boardScrollContainer.style.cursor = 'default';
+            }
         });
+
+        this.gridEl.addEventListener('contextmenu', (e) => {
+            e.preventDefault(); // Disable context menu on right-click
+        });
+
+        this.boardScrollContainer.addEventListener('wheel', (e) => this.handleWheelZoom(e), { passive: false });
     }
-}
-
-
-        if (this.mapControls) {
-            let isDragging = false;
-            let dragOffsetX, dragOffsetY;
-
-            this.mapControls.addEventListener('mousedown', (e) => {
-                isDragging = true;
-                dragOffsetX = e.clientX - this.mapControls.offsetLeft;
-                dragOffsetY = e.clientY - this.mapControls.offsetTop;
-            });
-
-            document.addEventListener('mousemove', (e) => {
-                if (isDragging) {
-                    this.mapControls.style.left = (e.clientX - dragOffsetX) + 'px';
-                    this.mapControls.style.top = (e.clientY - dragOffsetY) + 'px';
-                }
-            });
-
-            document.addEventListener('mouseup', () => {
-                isDragging = false;
-            });
-        }
-    }
-
-handleGridMouseDown(e) {
-    if (e.button !== 0) return; // Only handle left-click
-
-    const cell = e.target.closest('td');
-    if (!cell) return;
-
-    const rect = this.gridEl.getBoundingClientRect();
-    const scrollLeft = this.boardScrollContainer.scrollLeft;
-    const scrollTop = this.boardScrollContainer.scrollTop;
-
-
-    const gx = ((e.clientX - rect.left) / this.scaleFactor) + scrollLeft/ this.scaleFactor;
-    const gy = ((e.clientY - rect.top) / this.scaleFactor) + scrollTop/ this.scaleFactor;
-
-    const c = Math.floor(gx / this.cellWidth);
-    const r = Math.floor(gy / this.cellHeight);
-
-    // AoE Attack Mode
-    if (this.app.currentAction && this.app.currentAction.type === 'aoe') {
-      this.app.saveStateForUndo();
-      const aoePositions = this.getAoEAreaPositions(this.app.currentAction.aoeShape, { row: r, col: c }, this.app.currentAction.radius);
-      const affectedEntities = this.getEntitiesInPositions(aoePositions);
-      const finalTargets = this.filterAoETargets(affectedEntities, this.app.currentAction);
-
-      performAoeAttack(
-          this.app.currentAction.attacker,
-          this.app.currentAction.entityType,
-          this.app.currentAction.attackEntry,
-          this.app.currentAction.attackDef,
-          this.app,
-          finalTargets,
-          aoePositions
-      );
-
-      this.clearHighlights();
-      this.app.clearAction();
-      return;
-    }
-
-    // Single-target Attack Mode
-    if (this.app.currentAction && this.app.currentAction.type === 'attack') {
-        const key = `${r},${c}`;
-        const entity = this.app.entityTokens[key];
-
-        if (entity && this.isCellHighlighted(r, c)) {
-            this.app.saveStateForUndo();
-            const { attacker, entityType, attackEntry, weapon } = this.app.currentAction;
-            performAttack(attacker, entityType, attackEntry, weapon, this.app, { type: entity.type, id: entity.id });
-            this.clearHighlights();
-            this.app.clearAction();
-            return;
-          } else {
-              return;
-          }
-    }
-    
-    // Normal selection/marquee mode
-     const key = `${r},${c}`;
-     const entity = this.app.entityTokens[key];
-     const ctrlPressed = e.ctrlKey;
-
-    if (entity) {
-        if (ctrlPressed) {
-            if (this.isEntitySelected(entity)) {
-                this.selectedEntities = this.selectedEntities.filter(se => !(se.type === entity.type && se.id === entity.id));
-            } else {
-                this.selectedEntities.push({ type: entity.type, id: entity.id });
-            }
-        } else {
-            if (!this.isEntitySelected(entity)) {
-                this.selectedEntities = [{ type: entity.type, id: entity.id }];
-            }
-        }
-
-        if (this.selectedEntities.length > 0 && this.selectedEntities.every(ent => this.app.canControlEntity(ent))) {
-            this.isDraggingTokens = true;
-            this.originalPositions = this.selectedEntities.map(ent => {
-                let pos = this.getEntityPosition(ent.type, ent.id);
-                return { ...ent, row: pos.row, col: pos.col };
-            });
-            this.clearDragHighlights();
-            const gx = ((e.clientX - this.gridEl.getBoundingClientRect().left) / this.scaleFactor) + scrollLeft/ this.scaleFactor;
-            const gy = ((e.clientY - this.gridEl.getBoundingClientRect().top) / this.scaleFactor) + scrollTop/ this.scaleFactor;
-             const c = Math.floor(gx / this.cellWidth);
-            const r = Math.floor(gy / this.cellHeight);
-            if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
-                const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
-                if (cell) cell.style.outline = '2px dashed green';
-                this.currentDragCell = { row: r, col: c };
-            } else {
-                this.currentDragCell = null;
-            }
-        }
-      } else {
-        if (!ctrlPressed) {
-           this.selectedEntities = [];
-       }
-       const rect = this.gridEl.getBoundingClientRect();
-       const gx = (e.clientX - rect.left) / this.scaleFactor;
-       const gy = (e.clientY - rect.top) / this.scaleFactor;
-       this.isMarqueeSelecting = true;
-       this.marqueeStart = { x: gx, y: gy };
-       this.marqueeEl.style.display = 'block';
-       this.marqueeEl.style.left = `${this.marqueeStart.x}px`;
-       this.marqueeEl.style.top = `${this.marqueeStart.y}px`;
-       this.marqueeEl.style.width = '0px';
-       this.marqueeEl.style.height = '0px';
-   }
-   this.updateSelectionStyles();
-}
 
     handleMouseMove(e) {
+        // Add crosshair cursor feedback during marquee selection
+        if (this.isMarqueeSelecting) {
+            this.gridEl.style.cursor = 'crosshair';
+        } else {
+            this.gridEl.style.cursor = 'default';
+        }
         const rect = this.gridEl.getBoundingClientRect();
 
         // AoE logic
