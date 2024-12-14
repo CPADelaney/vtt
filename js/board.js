@@ -54,6 +54,10 @@ export class Board {
         this.redrawBoard();
     }
 
+    applyScale() {
+        this.gridEl.style.transform = `translate(-50%, -50%) scale(${this.scaleFactor})`;
+    }
+
     zoomIn() {
         this.scaleFactor = Math.min(this.scaleFactor + 0.1, this.maxScale);
         this.applyScale();
@@ -62,10 +66,6 @@ export class Board {
     zoomOut() {
         this.scaleFactor = Math.max(this.scaleFactor - 0.1, this.minScale);
         this.applyScale();
-    }
-
-    applyScale() {
-        this.gridEl.style.transform = `translate(-50%, -50%) scale(${this.scaleFactor})`;
     }
 
     handleWheelZoom(e) {
@@ -98,6 +98,162 @@ export class Board {
             Math.min(this.boardScrollContainer.scrollTop + dy, this.gridEl.scrollHeight)
         );
     }
+
+    // Fire Emblem-style movement preview system
+
+    startMovementPreview(entity) {
+        const origin = this.getEntityPosition('character', entity.id);
+        if (!origin) return;
+
+        this.addGhostToken(entity, origin);
+        this.highlightMovementRange(entity);
+    }
+    
+    highlightMovementRange(entity) {
+        const origin = this.getEntityPosition('character', entity.id);
+        if (!origin) return;
+
+        const terrainModifiers = this.getTerrainModifiers();
+        const regularRange = this.getPositionsInRange(origin, entity.movementSpeed, terrainModifiers);
+        const dashRange = this.getPositionsInRange(origin, entity.movementSpeed + entity.dashSpeed, terrainModifiers);
+
+        this.highlightTiles(regularRange, 'regular-move-highlight', false);
+        dashRange.forEach(pos => {
+            if (!regularRange.some(r => r.row === pos.row && r.col === pos.col)) {
+                this.highlightTiles([pos], 'dash-move-highlight', false);
+            }
+        });
+    }
+
+
+    clearHighlights(preserveGhost = true) {
+        const highlightClasses = [
+            'regular-move-highlight',
+            'dash-move-highlight',
+            'target-highlight'
+        ];
+
+        highlightClasses.forEach(className => {
+            const highlightedCells = this.gridEl.querySelectorAll(`.${className}`);
+            highlightedCells.forEach(cell => cell.classList.remove(className));
+        });
+
+        if (!preserveGhost && this.ghostToken) {
+            this.ghostToken.remove();
+            this.ghostToken = null;
+        }
+    }
+    
+    addGhostToken(entity, origin) {
+        const cell = this.gridEl.querySelector(`td[data-row='${origin.row}'][data-col='${origin.col}']`);
+        if (cell) {
+            const ghostToken = document.createElement('div');
+            ghostToken.className = 'token ghost-token';
+            ghostToken.textContent = entity.name || 'C'; // Or other identifier
+            cell.appendChild(ghostToken);
+            this.ghostToken = ghostToken;
+        }
+    }
+
+    handleMovement(entity) {
+        const highlightedCells = this.gridEl.querySelectorAll('.regular-move-highlight, .dash-move-highlight');
+
+        // Clean up existing listeners
+        highlightedCells.forEach(cell => {
+            const clone = cell.cloneNode(true);
+            cell.parentNode.replaceChild(clone, cell);
+        });
+
+        // Add new listeners
+        highlightedCells.forEach(cell => {
+            cell.addEventListener('click', () => {
+                const row = parseInt(cell.dataset.row, 10);
+                const col = parseInt(cell.dataset.col, 10);
+
+                this.moveEntity('character', entity.id, row, col);
+
+                // Clear highlights but keep the ghost token
+                this.clearHighlights(false);
+            });
+        });
+    }
+
+    endTurn(entity) {
+        this.clearHighlights(false); // Remove all highlights, including ghost token
+        console.log(`${entity.name}'s turn ended.`);
+    }
+
+    getPositionsInRange(startPos, maxDistance, terrainModifiers = {}) {
+        const visited = new Set();
+        const queue = [{ row: startPos.row, col: startPos.col, distance: 0 }];
+        const positions = [];
+
+        while (queue.length > 0) {
+            const { row, col, distance } = queue.shift();
+            const key = `${row},${col}`;
+
+            if (visited.has(key) || distance > maxDistance) continue;
+            visited.add(key);
+
+            const cell = this.gridEl.querySelector(`td[data-row='${row}'][data-col='${col}']`);
+            if (!cell || cell.classList.contains('obstacle') || cell.classList.contains('wall')) continue;
+
+            positions.push({ row, col });
+
+            const terrainModifier = terrainModifiers[key] || 1;
+
+            const neighbors = [
+                { row: row - 1, col: col },
+                { row: row + 1, col: col },
+                { row: row, col: col - 1 },
+                { row: row, col: col + 1 }
+            ];
+
+            for (const neighbor of neighbors) {
+                const neighborKey = `${neighbor.row},${neighbor.col}`;
+                if (!visited.has(neighborKey)) {
+                    queue.push({
+                        row: neighbor.row,
+                        col: neighbor.col,
+                        distance: distance + terrainModifier
+                    });
+                }
+            }
+        }
+
+        return positions;
+    }
+    
+    getTerrainModifiers() {
+        const modifiers = {};
+        const cells = this.gridEl.querySelectorAll('td');
+        cells.forEach(cell => {
+            const row = parseInt(cell.dataset.row, 10);
+            const col = parseInt(cell.dataset.col, 10);
+            const key = `${row},${col}`;
+
+            if (cell.classList.contains('difficult-terrain')) {
+                modifiers[key] = 2; // Difficult terrain costs 2
+            } else {
+                modifiers[key] = 1; // Default cost
+            }
+        });
+
+        return modifiers;
+    }
+
+    getEntityPosition(type, id) {
+        for (const key in this.app.entityTokens) {
+            const entity = this.app.entityTokens[key];
+            if (entity.type === type && entity.id === id) {
+                const [row, col] = key.split(',').map(Number);
+                return { row, col };
+            }
+        }
+        console.warn(`Entity of type "${type}" with ID "${id}" not found.`);
+        return null;
+    }
+
 
     resizeGrid(newRows, newCols) {
         if (!this.app.isDM()) {
@@ -133,12 +289,11 @@ export class Board {
             this.gridEl.appendChild(rowEl);
         }
 
-        this.gridEl.style.width = (this.cols * this.cellWidth) + 'px';
-        this.gridEl.style.height = (this.rows * this.cellHeight) + 'px';
+        this.gridEl.style.width = `${this.cols * this.cellWidth}px`;
+        this.gridEl.style.height = `${this.rows * this.cellHeight}px`;
     }
 
     centerViewOnGrid() {
-        if (!this.boardScrollContainer) return;
         const scrollW = this.boardScrollContainer.clientWidth;
         const scrollH = this.boardScrollContainer.clientHeight;
         const gridW = this.cols * this.cellWidth * this.scaleFactor;
@@ -365,17 +520,6 @@ export class Board {
         return this.selectedEntities.some(se => se.type === entity.type && se.id === entity.id);
     }
 
-    getEntityPosition(type, id) {
-        for (const key in this.app.entityTokens) {
-            const ent = this.app.entityTokens[key];
-            if (ent.type === type && ent.id === id) {
-                const [r, c] = key.split(',').map(Number);
-                return { row: r, col: c };
-            }
-        }
-        return null;
-    }
-
     getEntitiesInMarquee() {
         let selected = [];
         for (const key in this.app.entityTokens) {
@@ -459,14 +603,15 @@ export class Board {
         return entities;
     }
 
-    highlightTiles(positions, highlightClass) {
-        this.clearHighlights();
+    highlightTiles(positions, highlightClass, clearExisting = true) {
+        if (clearExisting) this.clearHighlights();
+
         positions.forEach(pos => {
             const cell = this.gridEl.querySelector(`td[data-row='${pos.row}'][data-col='${pos.col}']`);
             if (cell) cell.classList.add(highlightClass);
         });
     }
-
+}
     clearHighlights() {
         const highlightedCells = this.gridEl.querySelectorAll('td.target-highlight');
         highlightedCells.forEach(cell => cell.classList.remove('target-highlight'));
