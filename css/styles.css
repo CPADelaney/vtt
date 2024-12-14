@@ -14,12 +14,18 @@ body {
     flex: 3;
     position: relative; /* To allow absolute positioning within */
     overflow: hidden; /* Hide overflowing content */
+    background-color: #333; /* Dark background for outside the grid */
   }
   
-  #board-scroll-container {
-    overflow: auto;
-    height: 100%; /* Make sure scroll container covers full board container */
-  }
+#board-scroll-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden; /* Prevent default scrolling */
+    background-color: #333;
+}
   
   #map-controls {
     position: absolute;
@@ -69,15 +75,14 @@ body {
     margin: 0; /* Remove default table margin */
   }
   
-  #grid td {
-      width: 60px;
-      height: 60px;
-      border: 1px solid #ccc;
-      position: relative;
-      text-align: center;
-      vertical-align: middle;
-      padding: 0;
-  }
+#grid {
+    position: absolute; /* Allows free movement */
+    left: 50%; /* Start grid in the center */
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white; /* Keep grid visible */
+    z-index: 1; /* Ensure grid stays above the dark background */
+}
   
   .token {
     width: 80%;
