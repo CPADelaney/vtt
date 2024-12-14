@@ -452,94 +452,73 @@ export class UIManager {
     this.monsterSheetModal.style.display = "block";
   }
 
-  renderAttacksSection(entityData, type, containerEl) {
+renderAttacksSection(entityData, type, containerEl) {
     containerEl.innerHTML = `<h4>Attacks</h4>`;
-  
+
     let isPlaced = false;
     if (type === 'character') {
-      isPlaced = !!entityData.placed;
+        isPlaced = !!entityData.placed;
     } else if (type === 'monster') {
-      const placedInstance = this.app.getMonsterById(entityData.id);
-      isPlaced = !!placedInstance; 
-      if (!isPlaced) {
-        const templateId = entityData.templateId || entityData.id; 
-        const placed = this.app.placedMonsters.find(m => m.templateId === templateId);
-        if (placed) {
-          entityData = placed;
-          isPlaced = true;
+        const placedInstance = this.app.getMonsterById(entityData.id);
+        isPlaced = !!placedInstance;
+        if (!isPlaced) {
+            const templateId = entityData.templateId || entityData.id;
+            const placed = this.app.placedMonsters.find(m => m.templateId === templateId);
+            if (placed) {
+                entityData = placed;
+                isPlaced = true;
+            }
         }
-      }
     }
-  
+
     let attacksToShow = entityData.attacks && entityData.attacks.length > 0 ? entityData.attacks : [];
     if (attacksToShow.length === 0) {
-      if (isPlaced) {
-        attacksToShow = [{ attackId: 'unarmed' }];
-      } else {
         containerEl.innerHTML += `<p>No attacks (and not placed on board).</p>`;
         return;
-      }
     }
-  
-    for (let att of attacksToShow) {
-      const attDef = att.custom ? att.custom : attacksData[att.attackId];
-      if (!attDef) continue;
-  
-      const attackDiv = document.createElement('div');
-      attackDiv.textContent = `${attDef.name} `;
-  
-      const attackBtn = document.createElement('button');
-      attackBtn.textContent = "Attack!";
-  
-      if (!isPlaced) {
-        attackBtn.disabled = true;
-        attackDiv.appendChild(document.createTextNode(" (Not placed on board)"));
-      } else {
-        attackBtn.addEventListener('click', () => {
-          const actionData = {
-            type: attDef.type === 'aoe' ? 'aoe' : 'attack',
-            aoeShape: attDef.shape || null,
-            radius: attDef.radius || 0,
-            attacker: entityData,
-            entityType: type,
-            attackEntry: att,
-            attackDef: attDef
-          };
-        
-          if (att.weaponId) {
-            const foundWeapon = this.app.weapons.find(w => w.id === att.weaponId);
-            actionData.weapon = foundWeapon;
-          } else {
-            actionData.weapon = this.app.weapons.find(w => w.id === 0);
-          }
-        
-          this.app.startAction(actionData);
-          
-          if (type === 'character') {
-            this.sheetModal.style.display = "none";
-          } else if (type === 'monster') {
-            this.monsterSheetModal.style.display = "none";
-          }
-        
-          this.showCancelAttackButton(entityData, type);
 
-          if (attDef.type === 'single') {
-            const attackerPos = this.app.board.getEntityPosition(type, entityData.id);
-            if (attackerPos) {
-              const possiblePositions = this.app.board.getPositionsInRange(attackerPos, attDef.range);
-              this.app.board.highlightTiles(possiblePositions, 'target-highlight', true);
-               this.app.board.onceTileClick(targetPos => {
-                 this.app.completeAction(targetPos);
-               })
-            }
-          }
-        });
-      }
-  
-      attackDiv.appendChild(attackBtn);
-      containerEl.appendChild(attackDiv);
+    for (let att of attacksToShow) {
+        const attDef = att.custom ? att.custom : attacksData[att.attackId];
+        if (!attDef) continue;
+
+        const attackDiv = document.createElement('div');
+        attackDiv.textContent = `${attDef.name} `;
+
+        const attackBtn = document.createElement('button');
+        attackBtn.textContent = "Attack!";
+
+        if (!isPlaced) {
+            attackBtn.disabled = true;
+            attackDiv.appendChild(document.createTextNode(" (Not placed on board)"));
+        } else {
+            attackBtn.addEventListener('click', () => {
+                const actionData = {
+                    type: attDef.type === 'aoe' ? 'aoe' : 'attack',
+                    aoeShape: attDef.shape || null,
+                    radius: attDef.radius || 0,
+                    attacker: entityData,
+                    entityType: type,
+                    attackEntry: att,
+                    attackDef: attDef
+                };
+
+                if (att.weaponId) {
+                    const foundWeapon = this.app.weapons.find(w => w.id === att.weaponId);
+                    actionData.weapon = foundWeapon;
+                } else {
+                    actionData.weapon = this.app.weapons.find(w => w.id === 0);
+                }
+
+                this.app.startAction(actionData);
+                this.showCancelAttackButton(entityData, type);
+            });
+        }
+
+        attackDiv.appendChild(attackBtn);
+        containerEl.appendChild(attackDiv);
     }
-  }
+}
+
 
   openCreateCharacterModal() {
     if (this.app.isDM()) {
