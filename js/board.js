@@ -445,48 +445,56 @@ handleGridMouseDown(e) {
         this.boardScrollContainer.scrollTop = (gridH - scrollH) / 2;
     }
 
-    setupEventListeners() {
-        let isRightClickPanning = false;
-        let startX, startY;
+  setupEventListeners() {
+    let isRightClickPanning = false;
+    let startX, startY;
 
-        this.gridEl.addEventListener('mousedown', (e) => {
-            if (e.button === 2) { // Right-click
-                isRightClickPanning = true;
-                startX = e.clientX;
-                startY = e.clientY;
-                this.gridEl.style.outline = '2px dashed rgba(255, 255, 255, 0.5)';
-                this.boardScrollContainer.style.cursor = 'grabbing';
-                e.preventDefault(); // Prevent context menu
-            }
-        });
+    this.gridEl.addEventListener('mousedown', (e) => {
+        if (e.button === 2) { 
+            // Right-click panning
+            isRightClickPanning = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            this.gridEl.style.outline = '2px dashed rgba(255, 255, 255, 0.5)';
+            this.boardScrollContainer.style.cursor = 'grabbing';
+            e.preventDefault(); // Prevent context menu
+        } else if (e.button === 0) {
+            // Left-click: handle grid interactions (selection, marquee, attacks)
+            this.handleGridMouseDown(e);
+        }
+    });
 
-        document.addEventListener('mousemove', (e) => {
-            if (isRightClickPanning) {
-                const dx = e.clientX - startX;
-                const dy = e.clientY - startY;
+    document.addEventListener('mousemove', (e) => {
+        if (isRightClickPanning) {
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
 
-                this.boardScrollContainer.scrollLeft -= dx;
-                this.boardScrollContainer.scrollTop -= dy;
+            this.boardScrollContainer.scrollLeft -= dx;
+            this.boardScrollContainer.scrollTop -= dy;
 
-                startX = e.clientX;
-                startY = e.clientY;
-            }
-        });
+            startX = e.clientX;
+            startY = e.clientY;
+        }
+    });
 
-        document.addEventListener('mouseup', (e) => {
-            if (e.button === 2) {
-                isRightClickPanning = false;
-                this.gridEl.style.outline = 'none';
-                this.boardScrollContainer.style.cursor = 'default';
-            }
-        });
+    document.addEventListener('mouseup', (e) => {
+        if (e.button === 2) {
+            // End right-click panning
+            isRightClickPanning = false;
+            this.gridEl.style.outline = 'none';
+            this.boardScrollContainer.style.cursor = 'default';
+        }
+    });
 
-        this.gridEl.addEventListener('contextmenu', (e) => {
-            e.preventDefault(); // Disable context menu on right-click
-        });
+    // Disable default context menu on the grid
+    this.gridEl.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+    });
 
-        this.boardScrollContainer.addEventListener('wheel', (e) => this.handleWheelZoom(e), { passive: false });
-    }
+    // Handle wheel-based zooming
+    this.boardScrollContainer.addEventListener('wheel', (e) => this.handleWheelZoom(e), { passive: false });
+}
+
 
     handleMouseMove(e) {
         // Add crosshair cursor feedback during marquee selection
