@@ -18,19 +18,15 @@ body {
 }
 
 #board-scroll-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    /* Use Flexbox to center the grid both horizontally and vertically */
     display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: auto; /* Allows scrolling when the grid becomes larger than the container */
+    align-items: flex-start; /* Aligns the grid at the top */
+    justify-content: center; /* Still horizontally centered */
+    overflow: auto; 
     background-color: #333;
     position: relative;
+    padding-top: 100px; /* Add extra space at the top */
 }
+
 
 #map-controls {
     position: absolute;
