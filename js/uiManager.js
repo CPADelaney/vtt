@@ -62,7 +62,7 @@ export class UIManager {
         this.commandInput.dispatchEvent(enterKeyEvent);
       });
     }
-  
+
     // Close modals
     if (this.closeSheet && this.sheetModal) {
       this.closeSheet.addEventListener('click', () => {
@@ -75,7 +75,7 @@ export class UIManager {
         this.monsterSheetModal.style.display = "none";
       });
     }
-  
+
     // Create Character Modal
     if (this.createCharacterBtn) {
       this.createCharacterBtn.addEventListener('click', () => this.openCreateCharacterModal());
@@ -94,7 +94,7 @@ export class UIManager {
     if (this.createCharacterForm) {
       this.createCharacterForm.addEventListener('submit', (e) => this.handleCreateCharacterSubmit(e));
     }
-  
+
     // User selection (changes currentUser)
     if (this.userSelect) {
       this.userSelect.addEventListener('change', (e) => {
@@ -102,7 +102,7 @@ export class UIManager {
         this.renderCharacterList();
         this.renderMonsterList();
         this.renderLog();
-      
+
         // Hide the monsters tab button if not DM
         const monstersTabButton = document.querySelector('[data-tab="monsters-tab"]');
         if (monstersTabButton) {
@@ -114,24 +114,24 @@ export class UIManager {
         }
       });
     }
-  
+
     // Monster Filter
     if (this.monsterFilter) {
       this.monsterFilter.addEventListener('change', () => this.renderMonsterList());
     }
-  
+
     // Custom attack modal events
     if (this.closeMonsterCustomAttack && this.customAttackModal) {
       this.closeMonsterCustomAttack.addEventListener('click', () => {
         this.customAttackModal.style.display = "none";
       });
     }
-  
+
     if (this.customAttackForm) {
       this.customAttackForm.addEventListener('submit', (e) => {
         e.preventDefault();
         if (!this.currentMonsterForCustomAttack) return;
-    
+
         const formData = new FormData(this.customAttackForm);
         const customAttack = {
           name: formData.get('name'),
@@ -143,14 +143,14 @@ export class UIManager {
           shape: formData.get('shape') || null,
           radius: parseInt(formData.get('radius'), 10) || 0
         };
-    
+
         this.app.monsterManager.addCustomAttackToMonster(this.currentMonsterForCustomAttack.id, customAttack);
         this.customAttackModal.style.display = "none";
         alert("Custom attack added!");
         this.renderMonsterList();
       });
     }
-  
+
     // Zoom controls
     if (this.zoomInBtn && this.zoomOutBtn) {
       this.zoomInBtn.addEventListener('click', () => {
@@ -165,25 +165,25 @@ export class UIManager {
     if (this.mapControls) {
       let isDragging = false;
       let dragOffsetX, dragOffsetY;
-      
+
       this.mapControls.addEventListener('mousedown', (e) => {
         isDragging = true;
         dragOffsetX = e.clientX - this.mapControls.offsetLeft;
         dragOffsetY = e.clientY - this.mapControls.offsetTop;
       });
-      
+
       document.addEventListener('mousemove', (e) => {
         if (isDragging) {
           this.mapControls.style.left = (e.clientX - dragOffsetX) + 'px';
           this.mapControls.style.top = (e.clientY - dragOffsetY) + 'px';
         }
       });
-      
+
       document.addEventListener('mouseup', () => {
         isDragging = false;
       });
     }
-  
+
     // Resize Grid controls
     if (this.resizeGridBtn) {
       this.resizeGridBtn.addEventListener('click', () => {
@@ -200,14 +200,14 @@ export class UIManager {
         }
       });
     }
-  
+
     // Tab switching
     const tabButtons = document.querySelectorAll('.tab-btn');
     tabButtons.forEach(btn => {
       btn.addEventListener('click', () => {
         tabButtons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-  
+
         const tabId = btn.dataset.tab;
         document.querySelectorAll('#tab-content .tab-content').forEach(tc => {
           tc.classList.remove('active');
@@ -407,18 +407,18 @@ export class UIManager {
         <tr><th>Habitats</th><td>${m.habitats.join(', ')}</td></tr>
       </table>
     `;
-  
+
     this.renderAttacksSection(m, "monster", document.getElementById('monster-attacks'));
-  
+
     if (this.app.isDM()) {
       const attacksContainer = document.getElementById('monster-attacks');
-  
+
       const attackSelect = document.createElement('select');
       const defaultOption = document.createElement('option');
       defaultOption.value = '';
       defaultOption.textContent = '--Select Attack--';
       attackSelect.appendChild(defaultOption);
-  
+
       for (const [id, atkDef] of Object.entries(attacksData)) {
         const opt = document.createElement('option');
         opt.value = id;
@@ -426,7 +426,7 @@ export class UIManager {
         attackSelect.appendChild(opt);
       }
       attacksContainer.appendChild(attackSelect);
-  
+
       const addAttackBtn = document.createElement('button');
       addAttackBtn.textContent = 'Add Selected Attack';
       addAttackBtn.addEventListener('click', () => {
@@ -440,7 +440,7 @@ export class UIManager {
         }
       });
       attacksContainer.appendChild(addAttackBtn);
-  
+
       const addCustomAttackBtn = document.createElement('button');
       addCustomAttackBtn.textContent = 'Add Custom Attack';
       addCustomAttackBtn.addEventListener('click', () => {
@@ -448,77 +448,99 @@ export class UIManager {
       });
       attacksContainer.appendChild(addCustomAttackBtn);
     }
-  
+
     this.monsterSheetModal.style.display = "block";
   }
 
-renderAttacksSection(entityData, type, containerEl) {
+  renderAttacksSection(entityData, type, containerEl) {
     containerEl.innerHTML = `<h4>Attacks</h4>`;
 
     let isPlaced = false;
     if (type === 'character') {
-        isPlaced = !!entityData.placed;
+      isPlaced = !!entityData.placed;
     } else if (type === 'monster') {
-        const placedInstance = this.app.getMonsterById(entityData.id);
-        isPlaced = !!placedInstance;
-        if (!isPlaced) {
-            const templateId = entityData.templateId || entityData.id;
-            const placed = this.app.placedMonsters.find(m => m.templateId === templateId);
-            if (placed) {
-                entityData = placed;
-                isPlaced = true;
-            }
+      const placedInstance = this.app.getMonsterById(entityData.id);
+      isPlaced = !!placedInstance; 
+      if (!isPlaced) {
+        const templateId = entityData.templateId || entityData.id; 
+        const placed = this.app.placedMonsters.find(m => m.templateId === templateId);
+        if (placed) {
+          entityData = placed;
+          isPlaced = true;
         }
+      }
     }
 
     let attacksToShow = entityData.attacks && entityData.attacks.length > 0 ? entityData.attacks : [];
     if (attacksToShow.length === 0) {
+      if (isPlaced) {
+        attacksToShow = [{ attackId: 'unarmed' }];
+      } else {
         containerEl.innerHTML += `<p>No attacks (and not placed on board).</p>`;
         return;
+      }
     }
 
     for (let att of attacksToShow) {
-        const attDef = att.custom ? att.custom : attacksData[att.attackId];
-        if (!attDef) continue;
+      const attDef = att.custom ? att.custom : attacksData[att.attackId];
+      if (!attDef) continue;
 
-        const attackDiv = document.createElement('div');
-        attackDiv.textContent = `${attDef.name} `;
+      const attackDiv = document.createElement('div');
+      attackDiv.textContent = `${attDef.name} `;
 
-        const attackBtn = document.createElement('button');
-        attackBtn.textContent = "Attack!";
+      const attackBtn = document.createElement('button');
+      attackBtn.textContent = "Attack!";
 
-        if (!isPlaced) {
-            attackBtn.disabled = true;
-            attackDiv.appendChild(document.createTextNode(" (Not placed on board)"));
-        } else {
-            attackBtn.addEventListener('click', () => {
-                const actionData = {
-                    type: attDef.type === 'aoe' ? 'aoe' : 'attack',
-                    aoeShape: attDef.shape || null,
-                    radius: attDef.radius || 0,
-                    attacker: entityData,
-                    entityType: type,
-                    attackEntry: att,
-                    attackDef: attDef
-                };
+      if (!isPlaced) {
+        attackBtn.disabled = true;
+        attackDiv.appendChild(document.createTextNode(" (Not placed on board)"));
+      } else {
+        attackBtn.addEventListener('click', () => {
+          const actionData = {
+            type: attDef.type === 'aoe' ? 'aoe' : 'attack',
+            aoeShape: attDef.shape || null,
+            radius: attDef.radius || 0,
+            attacker: entityData,
+            entityType: type,
+            attackEntry: att,
+            attackDef: attDef
+          };
 
-                if (att.weaponId) {
-                    const foundWeapon = this.app.weapons.find(w => w.id === att.weaponId);
-                    actionData.weapon = foundWeapon;
-                } else {
-                    actionData.weapon = this.app.weapons.find(w => w.id === 0);
-                }
+          if (att.weaponId) {
+            const foundWeapon = this.app.weapons.find(w => w.id === att.weaponId);
+            actionData.weapon = foundWeapon;
+          } else {
+            actionData.weapon = this.app.weapons.find(w => w.id === 0);
+          }
 
-                this.app.startAction(actionData);
-                this.showCancelAttackButton(entityData, type);
-            });
-        }
+          this.app.startAction(actionData);
 
-        attackDiv.appendChild(attackBtn);
-        containerEl.appendChild(attackDiv);
+          if (type === 'character') {
+            this.sheetModal.style.display = "none";
+          } else if (type === 'monster') {
+            this.monsterSheetModal.style.display = "none";
+          }
+
+          this.showCancelAttackButton(entityData, type);
+
+          if (attDef.type === 'single') {
+            const attackerPos = this.app.board.getEntityPosition(type, entityData.id);
+            if (attackerPos) {
+              const possiblePositions = this.app.board.getPositionsInRange(attackerPos, attDef.range);
+              this.app.board.highlightTiles(possiblePositions, 'target-highlight');
+              this.app.board.highlightTiles(possiblePositions, 'target-highlight', true);
+               this.app.board.onceTileClick(targetPos => {
+                 this.app.completeAction(targetPos);
+               })
+            }
+          }
+        });
+      }
+
+      attackDiv.appendChild(attackBtn);
+      containerEl.appendChild(attackDiv);
     }
-}
-
+  }
 
   openCreateCharacterModal() {
     if (this.app.isDM()) {
