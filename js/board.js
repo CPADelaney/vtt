@@ -244,8 +244,6 @@ handleGridMouseDown(e) {
     const scrollLeft = this.boardScrollContainer.scrollLeft;
     const scrollTop = this.boardScrollContainer.scrollTop;
 
-    const gx = (e.clientX - rect.left + scrollLeft) / this.scaleFactor;
-    const gy = (e.clientY - rect.top + scrollTop) / this.scaleFactor;
     const gx = ((e.clientX - rect.left) / this.scaleFactor) + scrollLeft/ this.scaleFactor;
     const gy = ((e.clientY - rect.top) / this.scaleFactor) + scrollTop/ this.scaleFactor;
 
@@ -317,9 +315,6 @@ handleGridMouseDown(e) {
                 return { ...ent, row: pos.row, col: pos.col };
             });
             this.clearDragHighlights();
-            const gx = (e.clientX - this.gridEl.getBoundingClientRect().left + scrollLeft) / this.scaleFactor;
-            const gy = (e.clientY - this.gridEl.getBoundingClientRect().top + scrollTop) / this.scaleFactor;
-            const c = Math.floor(gx / this.cellWidth);
             const gx = ((e.clientX - this.gridEl.getBoundingClientRect().left) / this.scaleFactor) + scrollLeft/ this.scaleFactor;
             const gy = ((e.clientY - this.gridEl.getBoundingClientRect().top) / this.scaleFactor) + scrollTop/ this.scaleFactor;
              const c = Math.floor(gx / this.cellWidth);
