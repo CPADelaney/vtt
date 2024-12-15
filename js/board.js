@@ -254,6 +254,38 @@ export class Board {
         return null;
     }
 
+     redrawBoard() {
+        const cells = this.gridEl.querySelectorAll('td');
+        cells.forEach(cell => {
+            cell.innerHTML = '';
+            cell.classList.remove('terrain-acidic');
+        });
+
+        for (const key in this.app.entityTokens) {
+            const [r, c] = key.split(',').map(Number);
+            const cell = this.gridEl.querySelector(td[data-row='${r}'][data-col='${c}']);
+            if (cell) {
+                const entity = this.app.entityTokens[key];
+                const token = document.createElement('div');
+                token.classList.add('token', entity.type);
+                token.textContent = entity.type === 'character' ? 'C' : 'M';
+                cell.appendChild(token);
+            }
+        }
+
+        if (this.app.terrainEffects) {
+            for (const key in this.app.terrainEffects) {
+                const [r, c] = key.split(',').map(Number);
+                const cell = this.gridEl.querySelector(td[data-row='${r}'][data-col='${c}']);
+                if (cell && this.app.terrainEffects[key].type === 'acidic') {
+                    cell.classList.add('terrain-acidic');
+                }
+            }
+        }
+
+        this.updateSelectionStyles();
+    }
+
 
     resizeGrid(newRows, newCols) {
         if (!this.app.isDM()) {
