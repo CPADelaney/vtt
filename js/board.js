@@ -516,6 +516,11 @@ export class Board {
         cells.forEach(cell => cell.style.outline = '');
     }
 
+    isCellHighlighted(r, c) {
+        const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
+        return cell && cell.classList.contains('target-highlight');
+    }
+
     isEntitySelected(entity) {
         return this.selectedEntities.some(se => se.type === entity.type && se.id === entity.id);
     }
@@ -610,15 +615,5 @@ export class Board {
             const cell = this.gridEl.querySelector(`td[data-row='${pos.row}'][data-col='${pos.col}']`);
             if (cell) cell.classList.add(highlightClass);
         });
-    }
-}
-    clearHighlights() {
-        const highlightedCells = this.gridEl.querySelectorAll('td.target-highlight');
-        highlightedCells.forEach(cell => cell.classList.remove('target-highlight'));
-    }
-
-    isCellHighlighted(r, c) {
-        const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
-        return cell && cell.classList.contains('target-highlight');
     }
 }
