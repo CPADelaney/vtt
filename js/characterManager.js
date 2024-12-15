@@ -66,4 +66,5 @@ addAttackToCharacter(charId, attackId) {
         this.app.uiManager.renderAttacksSection(ch, 'character', document.getElementById('character-attacks'));
     }
 }
+}
 
