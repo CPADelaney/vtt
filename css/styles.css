@@ -72,11 +72,13 @@ body {
 }
   
 #grid {
-    border-collapse: collapse;
-    margin: 0; /* Remove default table margin */
-    background-color: white; /* Keep grid visible */
-    z-index: 1; /* Ensure grid stays above the dark background */
-    /* Removed absolute centering so grid appears at top-left */
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background-color: white;
+  border-collapse: collapse;
+  z-index: 1;
 }
 
 /* Make the grid cells visible and uniform */
