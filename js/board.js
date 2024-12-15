@@ -182,6 +182,117 @@ export class Board {
         this.clearHighlights(false); // Remove all highlights, including ghost token
         console.log(`${entity.name}'s turn ended.`);
     }
+handleGridMouseDown(e) {
+    if (e.button !== 0) return; // Only handle left-click
+    
+    const cell = e.target.closest('td');
+    if (!cell) return;
+
+    const rect = this.gridEl.getBoundingClientRect();
+    const gx = (e.clientX - rect.left) / this.scaleFactor;
+    const gy = (e.clientY - rect.top) / this.scaleFactor;
+    const c = Math.floor(gx / this.cellWidth);
+    const r = Math.floor(gy / this.cellHeight);
+
+    const key = `${r},${c}`;
+    const entity = this.app.entityTokens[key];
+    const ctrlPressed = e.ctrlKey;
+
+    // Check for AoE or single-target attacks
+    if (this.app.currentAction) {
+        if (this.app.currentAction.type === 'aoe') {
+            // AoE Attack Logic
+            this.app.saveStateForUndo();
+            const aoePositions = this.getAoEAreaPositions(
+                this.app.currentAction.aoeShape, 
+                { row: r, col: c }, 
+                this.app.currentAction.radius
+            );
+            const affectedEntities = this.getEntitiesInPositions(aoePositions);
+            const finalTargets = this.filterAoETargets(affectedEntities, this.app.currentAction);
+
+            performAoeAttack(
+                this.app.currentAction.attacker,
+                this.app.currentAction.entityType,
+                this.app.currentAction.attackEntry,
+                this.app.currentAction.attackDef,
+                this.app,
+                finalTargets,
+                aoePositions
+            );
+
+            this.clearHighlights();
+            this.app.clearAction();
+            return;
+        }
+
+        if (this.app.currentAction.type === 'attack') {
+            // Single-target Attack Logic
+            // Check if clicked cell contains a highlighted targetable entity
+            if (entity && this.isCellHighlighted(r, c)) {
+                this.app.saveStateForUndo();
+                const { attacker, entityType, attackEntry, weapon } = this.app.currentAction;
+                performAttack(attacker, entityType, attackEntry, weapon, this.app, { type: entity.type, id: entity.id });
+                this.clearHighlights();
+                this.app.clearAction();
+                return;
+            } else {
+                // Clicked a non-highlighted cell or no entity - do nothing here
+                // The user may need to select a highlighted cell to attack
+                return;
+            }
+        }
+    }
+
+    // Normal mode (not attacking):
+    if (entity) {
+        // Clicking on an entity
+        if (ctrlPressed) {
+            // Toggle selection
+            if (this.isEntitySelected(entity)) {
+                this.selectedEntities = this.selectedEntities.filter(se => !(se.type === entity.type && se.id === entity.id));
+            } else {
+                this.selectedEntities.push({ type: entity.type, id: entity.id });
+            }
+        } else {
+            // Replace selection with just this entity if not already selected
+            if (!this.isEntitySelected(entity)) {
+                this.selectedEntities = [{ type: entity.type, id: entity.id }];
+            }
+        }
+
+        // Check if we can drag the selected entities
+        if (this.selectedEntities.length > 0 && this.selectedEntities.every(ent => this.app.canControlEntity(ent))) {
+            this.isDraggingTokens = true;
+            this.originalPositions = this.selectedEntities.map(ent => {
+                const pos = this.getEntityPosition(ent.type, ent.id);
+                return { ...ent, row: pos.row, col: pos.col };
+            });
+            this.clearDragHighlights();
+
+            // Highlight the initial drag cell
+            const cellUnderMouse = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
+            if (cellUnderMouse) cellUnderMouse.style.outline = '2px dashed green';
+            this.currentDragCell = { row: r, col: c };
+        }
+
+    } else {
+        // Clicking on empty space
+        if (!ctrlPressed) {
+            // Clear selection and start marquee selection
+            this.selectedEntities = [];
+            this.isMarqueeSelecting = true;
+            this.marqueeStart = { x: gx, y: gy };
+            this.marqueeEl.style.display = 'block';
+            this.marqueeEl.style.left = `${this.marqueeStart.x}px`;
+            this.marqueeEl.style.top = `${this.marqueeStart.y}px`;
+            this.marqueeEl.style.width = '0px';
+            this.marqueeEl.style.height = '0px';
+        }
+    }
+
+    this.updateSelectionStyles();
+}
 
     getPositionsInRange(startPos, maxDistance, terrainModifiers = {}) {
         const visited = new Set();
