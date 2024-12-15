@@ -52,9 +52,6 @@ export class CharacterManager {
       console.log("After renderCharacterList in placeCharacterOnBoard");
     }
 
-    addAttackToCharacter(charId, attackId) {
-      const ch = this.getCharacterById(charId);
-      if (!ch) {
 addAttackToCharacter(charId, attackId) {
     const ch = this.getCharacterById(charId);
     if (!ch) {
