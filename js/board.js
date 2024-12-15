@@ -125,6 +125,19 @@ export class Board {
         });
     }
 
+handleDrop(ev, r, c) {
+  ev.preventDefault();
+  // Logic to handle dropped entity tokens
+  // For example:
+  if (this.draggedCharId !== null) {
+    this.app.placeCharacterOnBoard(this.draggedCharId, r, c);
+    this.draggedCharId = null;
+  }
+  if (this.draggedMonsterId !== null) {
+    this.app.placeMonsterOnBoard(this.draggedMonsterId, r, c);
+    this.draggedMonsterId = null;
+  }
+}
 
     clearHighlights(preserveGhost = true) {
         const highlightClasses = [
