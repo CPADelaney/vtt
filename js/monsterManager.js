@@ -85,3 +85,4 @@ addAttackToMonster(monId, attackId) {
     this.app.uiManager.renderMonsterList();
   }
 }
+}
