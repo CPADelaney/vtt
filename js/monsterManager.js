@@ -47,11 +47,6 @@ export class MonsterManager {
     console.log("After renderMonsterList in placeMonsterOnBoard");
   }
 
-  addAttackToMonster(monId, attackId) {
-    const template = this.getTemplateMonsterById(monId);
-    if (!template) {
-      console.warn("No monster template with id", monId);
-      return;
 addAttackToMonster(monId, attackId) {
     const monster = this.getTemplateMonsterById(monId);
     if (!monster) {
