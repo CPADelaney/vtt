@@ -15,12 +15,15 @@ export class Board {
         // Add references for scroll container and map controls
         this.boardScrollContainer = document.getElementById('board-scroll-container');
         this.mapControls = document.getElementById('map-controls');
-        this.boardContent = document.getElementById('board-content'); // NEW: a large container div
 
         this.selectedEntities = [];
         this.isDraggingTokens = false;
+        this.dragStartPos = { x: 0, y: 0 };
+        this.originalPositions = [];
 
         this.isMarqueeSelecting = false;
+        this.marqueeStart = { x: 0, y: 0 };
+        this.marqueeRect = { x: 0, y: 0, w: 0, h: 0 };
 
         this.draggedCharId = null;
         this.draggedMonsterId = null;
@@ -47,20 +50,12 @@ export class Board {
     initialize() {
         this.buildGrid();
         this.setupEventListeners();
-        this.centerViewOnGrid();
         this.redrawBoard();
+        this.centerViewOnGrid(); // center view on initial load
     }
 
     applyScale() {
-        this.cellWidth = Math.round(this.baseCellWidth * this.scaleFactor);
-        this.cellHeight = Math.round(this.baseCellHeight * this.scaleFactor);
-
-        // Update each cell's size
-        const cells = this.gridEl.querySelectorAll('td');
-        cells.forEach(cell => {
-            cell.style.width = this.cellWidth + 'px';
-            cell.style.height = this.cellHeight + 'px';
-        });
+        this.gridEl.style.transform = `scale(${this.scaleFactor})`;
     }
 
     zoomIn() {
@@ -72,312 +67,67 @@ export class Board {
         this.scaleFactor = Math.max(this.scaleFactor - 0.1, this.minScale);
         this.applyScale();
     }
-    
+
     handleWheelZoom(e) {
-        if (!this.boardScrollContainer) return;
+        if (!this.boardScrollContainer) return; // Safety check
+
         e.preventDefault();
+
+        const rect = this.gridEl.getBoundingClientRect();
+        const offsetX = (e.clientX - rect.left) / this.scaleFactor;
+        const offsetY = (e.clientY - rect.top) / this.scaleFactor;
 
         const zoomAmount = -e.deltaY * 0.001;
         const oldScale = this.scaleFactor;
-        const newScale = Math.min(Math.max(this.scaleFactor + zoomAmount, this.minScale), this.maxScale);
+        this.scaleFactor = Math.min(Math.max(this.scaleFactor + zoomAmount, this.minScale), this.maxScale);
 
-        if (newScale !== oldScale) {
-            // Before scaling, get mouse position relative to grid
-            const rect = this.gridEl.getBoundingClientRect();
-            const offsetX = (e.clientX - rect.left) / oldScale;
-            const offsetY = (e.clientY - rect.top) / oldScale;
+        this.applyScale();
 
-            this.scaleFactor = newScale;
-            this.applyScale();
+        const newRect = this.gridEl.getBoundingClientRect();
+        const newOffsetX = offsetX * this.scaleFactor;
+        const newOffsetY = offsetY * this.scaleFactor;
 
-            // After scaling, get the new rect and adjust scroll so the point under cursor stays stable
-            const newRect = this.gridEl.getBoundingClientRect();
-            const newOffsetX = offsetX * newScale;
-            const newOffsetY = offsetY * newScale;
+        const dx = (newOffsetX - (e.clientX - newRect.left));
+        const dy = (newOffsetY - (e.clientY - newRect.top));
 
-            this.boardScrollContainer.scrollLeft += (newOffsetX - (e.clientX - newRect.left));
-            this.boardScrollContainer.scrollTop += (newOffsetY - (e.clientY - newRect.top));
+        this.boardScrollContainer.scrollLeft += dx;
+        this.boardScrollContainer.scrollTop += dy;
+    }
+
+    resizeGrid(newRows, newCols) {
+        if (!this.app.isDM()) {
+            console.warn("Only DM can resize the grid.");
+            return;
         }
+        this.gridEl.innerHTML = '';
+        this.rows = newRows;
+        this.cols = newCols;
+        this.buildGrid();
+        this.redrawBoard();
+        this.centerViewOnGrid(); // re-center view after resizing
     }
 
+    buildGrid() {
+        for (let r = 0; r < this.rows; r++) {
+            const rowEl = document.createElement('tr');
+            for (let c = 0; c < this.cols; c++) {
+                const cell = document.createElement('td');
+                cell.dataset.row = r;
+                cell.dataset.col = c;
 
-    // Fire Emblem-style movement preview system
-
-    startMovementPreview(entity) {
-        const origin = this.getEntityPosition('character', entity.id);
-        if (!origin) return;
-
-        this.addGhostToken(entity, origin);
-        this.highlightMovementRange(entity);
-    }
-    
-    highlightMovementRange(entity) {
-        const origin = this.getEntityPosition('character', entity.id);
-        if (!origin) return;
-
-        const terrainModifiers = this.getTerrainModifiers();
-        const regularRange = this.getPositionsInRange(origin, entity.movementSpeed, terrainModifiers);
-        const dashRange = this.getPositionsInRange(origin, entity.movementSpeed + entity.dashSpeed, terrainModifiers);
-
-        this.highlightTiles(regularRange, 'regular-move-highlight', false);
-        dashRange.forEach(pos => {
-            if (!regularRange.some(r => r.row === pos.row && r.col === pos.col)) {
-                this.highlightTiles([pos], 'dash-move-highlight', false);
-            }
-        });
-    }
-
-handleDrop(ev, r, c) {
-  ev.preventDefault();
-  // Logic to handle dropped entity tokens
-  // For example:
-  if (this.draggedCharId !== null) {
-    this.app.placeCharacterOnBoard(this.draggedCharId, r, c);
-    this.draggedCharId = null;
-  }
-  if (this.draggedMonsterId !== null) {
-    this.app.placeMonsterOnBoard(this.draggedMonsterId, r, c);
-    this.draggedMonsterId = null;
-  }
-}
-
-    clearHighlights(preserveGhost = true) {
-        const highlightClasses = [
-            'regular-move-highlight',
-            'dash-move-highlight',
-            'target-highlight'
-        ];
-
-        highlightClasses.forEach(className => {
-            const highlightedCells = this.gridEl.querySelectorAll(`.${className}`);
-            highlightedCells.forEach(cell => cell.classList.remove(className));
-        });
-
-        if (!preserveGhost && this.ghostToken) {
-            this.ghostToken.remove();
-            this.ghostToken = null;
-        }
-    }
-    
-    addGhostToken(entity, origin) {
-        const cell = this.gridEl.querySelector(`td[data-row='${origin.row}'][data-col='${origin.col}']`);
-        if (cell) {
-            const ghostToken = document.createElement('div');
-            ghostToken.className = 'token ghost-token';
-            ghostToken.textContent = entity.name || 'C'; // Or other identifier
-            cell.appendChild(ghostToken);
-            this.ghostToken = ghostToken;
-        }
-    }
-
-    handleMovement(entity) {
-        const highlightedCells = this.gridEl.querySelectorAll('.regular-move-highlight, .dash-move-highlight');
-
-        // Clean up existing listeners
-        highlightedCells.forEach(cell => {
-            const clone = cell.cloneNode(true);
-            cell.parentNode.replaceChild(clone, cell);
-        });
-
-        // Add new listeners
-        highlightedCells.forEach(cell => {
-            cell.addEventListener('click', () => {
-                const row = parseInt(cell.dataset.row, 10);
-                const col = parseInt(cell.dataset.col, 10);
-
-                this.moveEntity('character', entity.id, row, col);
-
-                // Clear highlights but keep the ghost token
-                this.clearHighlights(false);
-            });
-        });
-    }
-
-    endTurn(entity) {
-        this.clearHighlights(false); // Remove all highlights, including ghost token
-        console.log(`${entity.name}'s turn ended.`);
-    }
-
-    handleGridMouseDown(e) {
-        if (e.button !== 0) return; // Only handle left-click
-        
-        const cell = e.target.closest('td');
-        if (!cell) return;
-
-        const rect = this.gridEl.getBoundingClientRect();
-        const gx = (e.clientX - rect.left) / this.scaleFactor;
-        const gy = (e.clientY - rect.top) / this.scaleFactor;
-        const c = Math.floor(gx / this.cellWidth);
-        const r = Math.floor(gy / this.cellHeight);
-
-        const key = `${r},${c}`;
-        const entity = this.app.entityTokens[key];
-        const ctrlPressed = e.ctrlKey;
-
-        // Check for AoE or single-target attacks
-        if (this.app.currentAction) {
-            if (this.app.currentAction.type === 'aoe') {
-                // AoE Attack Logic
-                this.app.saveStateForUndo();
-                const aoePositions = this.getAoEAreaPositions(
-                    this.app.currentAction.aoeShape, 
-                    { row: r, col: c }, 
-                    this.app.currentAction.radius
-                );
-                const affectedEntities = this.getEntitiesInPositions(aoePositions);
-                const finalTargets = this.filterAoETargets(affectedEntities, this.app.currentAction);
-
-                performAoeAttack(
-                    this.app.currentAction.attacker,
-                    this.app.currentAction.entityType,
-                    this.app.currentAction.attackEntry,
-                    this.app.currentAction.attackDef,
-                    this.app,
-                    finalTargets,
-                    aoePositions
-                );
-
-                this.clearHighlights();
-                this.app.clearAction();
-                return;
-            }
-
-            if (this.app.currentAction.type === 'attack') {
-                // Single-target Attack Logic
-                // Check if clicked cell contains a highlighted targetable entity
-                if (entity && this.isCellHighlighted(r, c)) {
-                    this.app.saveStateForUndo();
-                    const { attacker, entityType, attackEntry, weapon } = this.app.currentAction;
-                    performAttack(attacker, entityType, attackEntry, weapon, this.app, { type: entity.type, id: entity.id });
-                    this.clearHighlights();
-                    this.app.clearAction();
-                    return;
-                } else {
-                    // Clicked a non-highlighted cell or no entity - do nothing here
-                    return;
-                }
-            }
-        }
-
-        // Normal mode (not attacking):
-        if (entity) {
-            // Clicking on an entity
-            if (ctrlPressed) {
-                // Toggle selection
-                if (this.isEntitySelected(entity)) {
-                    this.selectedEntities = this.selectedEntities.filter(se => !(se.type === entity.type && se.id === entity.id));
-                } else {
-                    this.selectedEntities.push({ type: entity.type, id: entity.id });
-                }
-            } else {
-                // Replace selection with just this entity if not already selected
-                if (!this.isEntitySelected(entity)) {
-                    this.selectedEntities = [{ type: entity.type, id: entity.id }];
-                }
-            }
-
-            // Check if we can drag the selected entities
-            if (this.selectedEntities.length > 0 && this.selectedEntities.every(ent => this.app.canControlEntity(ent))) {
-                this.isDraggingTokens = true;
-                this.originalPositions = this.selectedEntities.map(ent => {
-                    const pos = this.getEntityPosition(ent.type, ent.id);
-                    return { ...ent, row: pos.row, col: pos.col };
+                cell.addEventListener('dragover', (ev) => {
+                    ev.preventDefault();
+                    ev.dataTransfer.dropEffect = 'move';
                 });
-                this.clearDragHighlights();
+                cell.addEventListener('drop', (ev) => this.handleDrop(ev, r, c));
 
-                // Highlight the initial drag cell
-                const cellUnderMouse = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
-                if (cellUnderMouse) cellUnderMouse.style.outline = '2px dashed green';
-                this.currentDragCell = { row: r, col: c };
+                rowEl.appendChild(cell);
             }
-
-        } else {
-            // Clicking on empty space
-            if (!ctrlPressed) {
-                // Clear selection and start marquee selection
-                this.selectedEntities = [];
-                this.isMarqueeSelecting = true;
-                this.marqueeStart = { x: gx, y: gy };
-                this.marqueeEl.style.display = 'block';
-                this.marqueeEl.style.left = `${this.marqueeStart.x}px`;
-                this.marqueeEl.style.top = `${this.marqueeStart.y}px`;
-                this.marqueeEl.style.width = '0px';
-                this.marqueeEl.style.height = '0px';
-            }
+            this.gridEl.appendChild(rowEl);
         }
 
-        this.updateSelectionStyles();
-    }
-
-    getPositionsInRange(startPos, maxDistance, terrainModifiers = {}) {
-        const visited = new Set();
-        const queue = [{ row: startPos.row, col: startPos.col, distance: 0 }];
-        const positions = [];
-
-        while (queue.length > 0) {
-            const { row, col, distance } = queue.shift();
-            const key = `${row},${col}`;
-
-            if (visited.has(key) || distance > maxDistance) continue;
-            visited.add(key);
-
-            const cell = this.gridEl.querySelector(`td[data-row='${row}'][data-col='${col}']`);
-            if (!cell || cell.classList.contains('obstacle') || cell.classList.contains('wall')) continue;
-
-            positions.push({ row, col });
-
-            const terrainModifier = terrainModifiers[key] || 1;
-
-            const neighbors = [
-                { row: row - 1, col: col },
-                { row: row + 1, col: col },
-                { row: row, col: col - 1 },
-                { row: row, col: col + 1 }
-            ];
-
-            for (const neighbor of neighbors) {
-                const neighborKey = `${neighbor.row},${neighbor.col}`;
-                if (!visited.has(neighborKey)) {
-                    queue.push({
-                        row: neighbor.row,
-                        col: neighbor.col,
-                        distance: distance + terrainModifier
-                    });
-                }
-            }
-        }
-
-        return positions;
-    }
-    
-    getTerrainModifiers() {
-        const modifiers = {};
-        const cells = this.gridEl.querySelectorAll('td');
-        cells.forEach(cell => {
-            const row = parseInt(cell.dataset.row, 10);
-            const col = parseInt(cell.dataset.col, 10);
-            const key = `${row},${col}`;
-
-            if (cell.classList.contains('difficult-terrain')) {
-                modifiers[key] = 2; // Difficult terrain costs 2
-            } else {
-                modifiers[key] = 1; // Default cost
-            }
-        });
-
-        return modifiers;
-    }
-
-    getEntityPosition(type, id) {
-        for (const key in this.app.entityTokens) {
-            const entity = this.app.entityTokens[key];
-            if (entity.type === type && entity.id === id) {
-                const [row, col] = key.split(',').map(Number);
-                return { row, col };
-            }
-        }
-        console.warn(`Entity of type "${type}" with ID "${id}" not found.`);
-        return null;
+        this.gridEl.style.width = (this.cols * this.cellWidth) + 'px';
+        this.gridEl.style.height = (this.rows * this.cellHeight) + 'px';
     }
 
     redrawBoard() {
@@ -412,100 +162,195 @@ handleDrop(ev, r, c) {
         this.updateSelectionStyles();
     }
 
-    resizeGrid(newRows, newCols) {
-        if (!this.app.isDM()) {
-            console.warn("Only DM can resize the grid.");
-            return;
-        }
-        this.gridEl.innerHTML = '';
-        this.rows = newRows;
-        this.cols = newCols;
-        this.buildGrid();
-        this.centerViewOnGrid();
-        this.redrawBoard();
-    }
-    
-    buildGrid() {
-        this.gridEl.innerHTML = '';
-        for (let r = 0; r < this.rows; r++) {
-            const rowEl = document.createElement('tr');
-            for (let c = 0; c < this.cols; c++) {
-                const cell = document.createElement('td');
-                cell.dataset.row = r;
-                cell.dataset.col = c;
-                // Set initial size
-                cell.style.width = this.cellWidth + 'px';
-                cell.style.height = this.cellHeight + 'px';
-                rowEl.appendChild(cell);
-            }
-            this.gridEl.appendChild(rowEl);
-        }
+    centerViewOnGrid() {
+        if (!this.boardScrollContainer) return;
+        const scrollW = this.boardScrollContainer.clientWidth;
+        const scrollH = this.boardScrollContainer.clientHeight;
+        const gridW = this.cols * this.cellWidth * this.scaleFactor;
+        const gridH = this.rows * this.cellHeight * this.scaleFactor;
+        this.boardScrollContainer.scrollLeft = (gridW - scrollW) / 2;
+        this.boardScrollContainer.scrollTop = (gridH - scrollH) / 2;
     }
 
-    centerViewOnGrid() {
-        // Grid is centered at 50%,50% of a large board-content area
-        // So to center view on the grid, just scroll to the middle of board-content
-        this.boardScrollContainer.scrollLeft = (this.contentWidth - this.boardScrollContainer.clientWidth) / 2;
-        this.boardScrollContainer.scrollTop = (this.contentHeight - this.boardScrollContainer.clientHeight) / 2;
+    handleDrop(ev, r, c) {
+        ev.preventDefault();
+        if (this.draggedCharId !== null) {
+            this.app.placeCharacterOnBoard(this.draggedCharId, r, c);
+            this.draggedCharId = null;
+        }
+        if (this.draggedMonsterId !== null) {
+            this.app.placeMonsterOnBoard(this.draggedMonsterId, r, c);
+            this.draggedMonsterId = null;
+        }
     }
 
     setupEventListeners() {
-        let isRightClickPanning = false;
-        let startX, startY;
+        if (this.gridEl) {
+            this.gridEl.addEventListener('mousedown', (e) => this.handleGridMouseDown(e));
+            this.gridEl.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+            this.gridEl.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+            this.gridEl.addEventListener('contextmenu', (e) => this.handleContextMenu(e));
+        }
 
-        this.gridEl.addEventListener('mousedown', (e) => {
-            if (e.button === 2) {
-                // Right-click panning
-                isRightClickPanning = true;
-                startX = e.clientX;
-                startY = e.clientY;
-                this.boardScrollContainer.style.cursor = 'grabbing';
-                e.preventDefault();
-            } else if (e.button === 0) {
-                this.handleGridMouseDown(e);
-            }
-        });
+        if (this.contextDelete) {
+            this.contextDelete.addEventListener('click', () => {
+                this.app.deleteSelectedEntities();
+                this.hideContextMenu();
+            });
+        }
 
-        document.addEventListener('mousemove', (e) => {
-            if (isRightClickPanning) {
-                const dx = e.clientX - startX;
-                const dy = e.clientY - startY;
+        if (this.gridEl) {
+            this.gridEl.addEventListener('click', (e) => {
+                if (this.contextMenuVisible && !this.contextMenu.contains(e.target)) {
+                    this.hideContextMenu();
+                }
+            });
+        }
 
-                this.boardScrollContainer.scrollLeft -= dx;
-                this.boardScrollContainer.scrollTop -= dy;
+        if (this.boardScrollContainer) {
+            this.boardScrollContainer.addEventListener('wheel', (e) => this.handleWheelZoom(e), { passive: false });
+        }
 
-                startX = e.clientX;
-                startY = e.clientY;
-            }
-        });
+        if (this.mapControls) {
+            let isDragging = false;
+            let dragOffsetX, dragOffsetY;
 
-        document.addEventListener('mouseup', (e) => {
-            if (e.button === 2) {
-                isRightClickPanning = false;
-                this.boardScrollContainer.style.cursor = 'default';
-            }
-        });
+            this.mapControls.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                dragOffsetX = e.clientX - this.mapControls.offsetLeft;
+                dragOffsetY = e.clientY - this.mapControls.offsetTop;
+            });
 
-        this.gridEl.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-        });
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    this.mapControls.style.left = (e.clientX - dragOffsetX) + 'px';
+                    this.mapControls.style.top = (e.clientY - dragOffsetY) + 'px';
+                }
+            });
 
-        // Wheel zoom
-        this.boardScrollContainer.addEventListener('wheel', (e) => this.handleWheelZoom(e), { passive: false });
-
-        // Mouse move/up for marquee and dragging
-        document.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-        document.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+        }
     }
 
+handleGridMouseDown(e) {
+    if (e.button !== 0) return; // Only handle left-click
+
+    const cell = e.target.closest('td');
+    if (!cell) return;
+
+    const rect = this.gridEl.getBoundingClientRect();
+    const scrollLeft = this.boardScrollContainer.scrollLeft;
+    const scrollTop = this.boardScrollContainer.scrollTop;
+
+    const gx = (e.clientX - rect.left + scrollLeft) / this.scaleFactor;
+    const gy = (e.clientY - rect.top + scrollTop) / this.scaleFactor;
+    const gx = ((e.clientX - rect.left) / this.scaleFactor) + scrollLeft/ this.scaleFactor;
+    const gy = ((e.clientY - rect.top) / this.scaleFactor) + scrollTop/ this.scaleFactor;
+
+    const c = Math.floor(gx / this.cellWidth);
+    const r = Math.floor(gy / this.cellHeight);
+    
+    // AoE Attack Mode
+    if (this.app.currentAction && this.app.currentAction.type === 'aoe') {
+      this.app.saveStateForUndo();
+      const aoePositions = this.getAoEAreaPositions(this.app.currentAction.aoeShape, { row: r, col: c }, this.app.currentAction.radius);
+      const affectedEntities = this.getEntitiesInPositions(aoePositions);
+      const finalTargets = this.filterAoETargets(affectedEntities, this.app.currentAction);
+
+      performAoeAttack(
+          this.app.currentAction.attacker,
+          this.app.currentAction.entityType,
+          this.app.currentAction.attackEntry,
+          this.app.currentAction.attackDef,
+          this.app,
+          finalTargets,
+          aoePositions
+      );
+
+      this.clearHighlights();
+      this.app.clearAction();
+      return;
+    }
+
+    // Single-target Attack Mode
+    if (this.app.currentAction && this.app.currentAction.type === 'attack') {
+        const key = `${r},${c}`;
+        const entity = this.app.entityTokens[key];
+
+        if (entity && this.isCellHighlighted(r, c)) {
+            this.app.saveStateForUndo();
+            const { attacker, entityType, attackEntry, weapon } = this.app.currentAction;
+            performAttack(attacker, entityType, attackEntry, weapon, this.app, { type: entity.type, id: entity.id });
+            this.clearHighlights();
+            this.app.clearAction();
+            return;
+          } else {
+              return;
+          }
+    }
+     // Normal selection/marquee mode
+    
+    // Normal selection/marquee mode
+     const key = `${r},${c}`;
+     const entity = this.app.entityTokens[key];
+     const ctrlPressed = e.ctrlKey;
+
+    if (entity) {
+        if (ctrlPressed) {
+            if (this.isEntitySelected(entity)) {
+                this.selectedEntities = this.selectedEntities.filter(se => !(se.type === entity.type && se.id === entity.id));
+            } else {
+                this.selectedEntities.push({ type: entity.type, id: entity.id });
+            }
+        } else {
+            if (!this.isEntitySelected(entity)) {
+                this.selectedEntities = [{ type: entity.type, id: entity.id }];
+            }
+        }
+
+        if (this.selectedEntities.length > 0 && this.selectedEntities.every(ent => this.app.canControlEntity(ent))) {
+            this.isDraggingTokens = true;
+            this.originalPositions = this.selectedEntities.map(ent => {
+                let pos = this.getEntityPosition(ent.type, ent.id);
+                return { ...ent, row: pos.row, col: pos.col };
+            });
+            this.clearDragHighlights();
+            const gx = (e.clientX - this.gridEl.getBoundingClientRect().left + scrollLeft) / this.scaleFactor;
+            const gy = (e.clientY - this.gridEl.getBoundingClientRect().top + scrollTop) / this.scaleFactor;
+            const c = Math.floor(gx / this.cellWidth);
+            const gx = ((e.clientX - this.gridEl.getBoundingClientRect().left) / this.scaleFactor) + scrollLeft/ this.scaleFactor;
+            const gy = ((e.clientY - this.gridEl.getBoundingClientRect().top) / this.scaleFactor) + scrollTop/ this.scaleFactor;
+             const c = Math.floor(gx / this.cellWidth);
+            const r = Math.floor(gy / this.cellHeight);
+            if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
+                const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
+                if (cell) cell.style.outline = '2px dashed green';
+                this.currentDragCell = { row: r, col: c };
+            } else {
+                this.currentDragCell = null;
+            }
+        }
+      } else {
+        if (!ctrlPressed) {
+           this.selectedEntities = [];
+       }
+       const rect = this.gridEl.getBoundingClientRect();
+       const gx = (e.clientX - rect.left) / this.scaleFactor;
+       const gy = (e.clientY - rect.top) / this.scaleFactor;
+       this.isMarqueeSelecting = true;
+       this.marqueeStart = { x: gx, y: gy };
+       this.marqueeEl.style.display = 'block';
+       this.marqueeEl.style.left = `${this.marqueeStart.x}px`;
+       this.marqueeEl.style.top = `${this.marqueeStart.y}px`;
+       this.marqueeEl.style.width = '0px';
+       this.marqueeEl.style.height = '0px';
+   }
+   this.updateSelectionStyles();
+}
 
     handleMouseMove(e) {
-        // Add crosshair cursor feedback during marquee selection
-        if (this.isMarqueeSelecting) {
-            this.gridEl.style.cursor = 'crosshair';
-        } else {
-            this.gridEl.style.cursor = 'default';
-        }
         const rect = this.gridEl.getBoundingClientRect();
 
         // AoE logic
@@ -670,13 +515,19 @@ handleDrop(ev, r, c) {
         cells.forEach(cell => cell.style.outline = '');
     }
 
-    isCellHighlighted(r, c) {
-        const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
-        return cell && cell.classList.contains('target-highlight');
-    }
-
     isEntitySelected(entity) {
         return this.selectedEntities.some(se => se.type === entity.type && se.id === entity.id);
+    }
+
+    getEntityPosition(type, id) {
+        for (const key in this.app.entityTokens) {
+            const ent = this.app.entityTokens[key];
+            if (ent.type === type && ent.id === id) {
+                const [r, c] = key.split(',').map(Number);
+                return { row: r, col: c };
+            }
+        }
+        return null;
     }
 
     getEntitiesInMarquee() {
@@ -762,12 +613,21 @@ handleDrop(ev, r, c) {
         return entities;
     }
 
-    highlightTiles(positions, highlightClass, clearExisting = true) {
-        if (clearExisting) this.clearHighlights();
-
+    highlightTiles(positions, highlightClass) {
+        this.clearHighlights();
         positions.forEach(pos => {
             const cell = this.gridEl.querySelector(`td[data-row='${pos.row}'][data-col='${pos.col}']`);
             if (cell) cell.classList.add(highlightClass);
         });
+    }
+
+    clearHighlights() {
+        const highlightedCells = this.gridEl.querySelectorAll('td.target-highlight');
+        highlightedCells.forEach(cell => cell.classList.remove('target-highlight'));
+    }
+
+    isCellHighlighted(r, c) {
+        const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
+        return cell && cell.classList.contains('target-highlight');
     }
 }
