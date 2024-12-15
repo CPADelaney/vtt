@@ -3,31 +3,32 @@ body {
     margin: 0;
     padding: 0;
     overflow: hidden; /* Prevent scrollbars on body level */
-  }
-  
-  #main-container {
-      display: flex;
-      height: 100vh;
-  }
-  
-  #board-container {
+}
+
+#main-container {
+    display: flex;
+    height: 100vh;
+}
+
+#board-container {
     flex: 3;
     position: relative; /* To allow absolute positioning within */
-    overflow: hidden; /* Hide overflowing content */
+    overflow: hidden; /* Hide overflowing content outside this container */
     background-color: #333; /* Dark background for outside the grid */
-  }
-  
+}
+
 #board-scroll-container {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    overflow: hidden; /* Prevent default scrolling */
+    overflow: auto; /* Allow scrolling when grid is larger than container */
     background-color: #333;
+    position: relative; /* Marquee selection and other absolute elements position relative to this */
 }
-  
-  #map-controls {
+
+#map-controls {
     position: absolute;
     top: 10px;
     left: 10px;
@@ -36,55 +37,60 @@ body {
     border: 1px solid #ddd;
     z-index: 100;
     cursor: move; /* Move cursor on controls */
-  }
-  
-  #sidebar {
+}
+
+#sidebar {
     flex: 1;
     background-color: #eee;
     padding: 10px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-  }
-  
-  #tab-bar {
+}
+
+#tab-bar {
     display: flex;
-  }
-  
-  .tab-btn {
+}
+
+.tab-btn {
     padding: 10px;
     border: none;
     background-color: #ddd;
     cursor: pointer;
-  }
-  
-  .tab-btn.active {
+}
+
+.tab-btn.active {
     background-color: #ccc;
-  }
-  
-  .tab-content {
+}
+
+.tab-content {
     display: none;
-  }
-  
-  .tab-content.active {
+}
+
+.tab-content.active {
     display: block;
-  }
-  
-  #grid {
+}
+
+#grid {
     border-collapse: collapse;
     margin: 0; /* Remove default table margin */
-  }
-  
-#grid {
     position: absolute; /* Allows free movement */
-    left: 50%; /* Start grid in the center */
+    left: 50%; /* Center the grid */
     top: 50%;
     transform: translate(-50%, -50%);
     background-color: white; /* Keep grid visible */
-    z-index: 1; /* Ensure grid stays above the dark background */
+    z-index: 1; /* Ensure grid stays above dark background */
 }
-  
-  .token {
+
+/* Make cells visible */
+#grid td {
+    width: 60px;
+    height: 60px;
+    border: 1px solid #999; /* Visible cell borders */
+    position: relative; /* For token positioning if needed */
+}
+
+.token {
     width: 80%;
     height: 80%;
     background-color: #555;
@@ -99,150 +105,151 @@ body {
     transform: translate(-50%, -50%);
     font-weight: bold;
     user-select: none;
-  }
-  
-  .token.character {
+}
+
+.token.character {
     background-color: blue;
-  }
-  
-  .token.monster {
+}
+
+.token.monster {
     background-color: red;
-  }
-  
-  .selected {
+}
+
+.selected {
     background-color: rgba(0, 0, 255, 0.2);
-  }
-  
-  #selection-marquee {
+}
+
+#selection-marquee {
     position: absolute;
     border: 2px dashed blue;
     background-color: rgba(0, 0, 255, 0.1);
     pointer-events: none;
     display: none;
-  }
-  
-  .context-menu {
+}
+
+.context-menu {
     position: absolute;
     background-color: white;
     border: 1px solid #ccc;
     display: none;
     z-index: 1000;
-  }
-  
-  .context-menu ul {
+}
+
+.context-menu ul {
     list-style: none;
     padding: 0;
     margin: 0;
-  }
-  
-  .context-menu li {
+}
+
+.context-menu li {
     padding: 8px 12px;
     cursor: pointer;
     border-bottom: 1px solid #eee;
-  }
-  
-  .context-menu li:hover {
+}
+
+.context-menu li:hover {
     background-color: #f0f0f0;
-  }
-  
-  .delete-option {
+}
+
+.delete-option {
     color: red;
-  }
-  
-  #command-area {
+}
+
+#command-area {
     display: flex;
     align-items: center;
     padding: 5px;
     margin-top: 10px;
-  }
-  
-  #command-input {
-      flex: 1;
-      padding: 8px;
-      margin-right: 5px;
-  }
-  
-  #log {
-      height: 200px;
-      overflow-y: auto;
-      border: 1px solid #ccc;
-      padding: 5px;
-  }
-  
-  /* Modal styles */
-  .modal {
-      display: none; /* Hidden by default */
-      position: fixed; /* Stay in place */
-      z-index: 1; /* Sit on top */
-      left: 0;
-      top: 0;
-      width: 100%; /* Full width */
-      height: 100%; /* Full height */
-      overflow: auto; /* Enable scroll if needed */
-      background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
-  }
-  
-  .modal-content {
-      background-color: #fefefe;
-      margin: 15% auto;
-      padding: 20px;
-      border: 1px solid #888;
-      width: 80%;
-  }
-  
-  .close-modal {
-      color: #aaa;
-      float: right;
-      font-size: 28px;
-      font-weight: bold;
-      cursor: pointer;
-  }
-  
-  .close-modal:hover,
-  .close-modal:focus {
-      color: black;
-      text-decoration: none;
-      cursor: pointer;
-  }
-  
-  /* List styles */
-  .character-list-item,
-  .monster-list-item {
+}
+
+#command-input {
+    flex: 1;
+    padding: 8px;
+    margin-right: 5px;
+}
+
+#log {
+    height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    padding: 5px;
+}
+
+/* Modal styles */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+}
+
+.close-modal {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close-modal:hover,
+.close-modal:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* List styles */
+.character-list-item,
+.monster-list-item {
     border: 1px solid #ddd;
     padding: 8px;
     margin-bottom: 5px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-  }
-  
-  .drag-icon {
-      cursor: grab;
-      margin-right: 8px;
-    }
-  
-    .character-list-item button, .monster-list-item button {
-      margin-left: 8px;
-    }
-  
-  .attack-input-row {
+}
+
+.drag-icon {
+    cursor: grab;
+    margin-right: 8px;
+}
+
+.character-list-item button, .monster-list-item button {
+    margin-left: 8px;
+}
+
+.attack-input-row {
     display: flex;
     margin-bottom: 5px;
     align-items: center;
-  }
-  .attack-input-row > * {
+}
+
+.attack-input-row > * {
     margin-right: 5px;
-  }
-  
-  .terrain-acidic {
+}
+
+.terrain-acidic {
     background-color: rgba(0, 255, 0, 0.3); /* light green for acidic */
-  }
-  
-  .target-highlight {
+}
+
+.target-highlight {
     background-color: rgba(0, 255, 0, 0.5);
     cursor: pointer;
-  }
-  
-  .target-select:hover {
+}
+
+.target-select:hover {
     background-color: rgba(0, 255, 0, 0.7);
-  }
+}
