@@ -58,15 +58,11 @@ addAttackToCharacter(charId, attackId) {
         console.warn("No character with id", charId);
         return;
       }
-      ch.attacks.push({ attackId });
-      console.log("Attack added to character", charId, "Attacks:", ch.attacks);
-      this.app.uiManager.renderCharacterList();
-    }
-  }
     ch.attacks.push({ attackId });
     console.log("Attack added to character", charId, "Attacks:", ch.attacks);
     // Dynamically update the modal content
     if (this.app.uiManager.sheetModal.style.display === 'block') {
         this.app.uiManager.renderAttacksSection(ch, 'character', document.getElementById('character-attacks'));
     }
+}
 }
