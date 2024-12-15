@@ -423,32 +423,24 @@ handleDrop(ev, r, c) {
         this.centerViewOnGrid();
         this.redrawBoard();
     }
-
-    buildGrid() {
-        this.gridEl.innerHTML = ''; // Clear existing grid
-        for (let r = 0; r < this.rows; r++) {
-            const rowEl = document.createElement('tr');
-            for (let c = 0; c < this.cols; c++) {
-                const cell = document.createElement('td');
-                cell.dataset.row = r;
-                cell.dataset.col = c;
-
-                cell.addEventListener('dragover', (ev) => {
-                    ev.preventDefault();
-                    ev.dataTransfer.dropEffect = 'move';
-                });
-
-                cell.addEventListener('drop', (ev) => this.handleDrop(ev, r, c));
-
-                rowEl.appendChild(cell);
-            }
-            this.gridEl.appendChild(rowEl);
+buildGrid() {
+    this.gridEl.innerHTML = ''; // Clear existing grid
+    for (let r = 0; r < this.rows; r++) {
+        const rowEl = document.createElement('tr');
+        for (let c = 0; c < this.cols; c++) {
+            const cell = document.createElement('td');
+            cell.dataset.row = r;
+            cell.dataset.col = c;
+            // ... event listeners ...
+            rowEl.appendChild(cell);
         }
-
-        this.gridEl.style.width = `${this.cols * this.cellWidth}px`;
-        this.gridEl.style.height = `${this.rows * this.cellHeight}px`;
+        this.gridEl.appendChild(rowEl);
     }
 
+    // Set the grid's width and height here!
+    this.gridEl.style.width = (this.cols * this.cellWidth) + 'px';
+    this.gridEl.style.height = (this.rows * this.cellHeight) + 'px';
+}
     centerViewOnGrid() {
         const scrollW = this.boardScrollContainer.clientWidth;
         const scrollH = this.boardScrollContainer.clientHeight;
