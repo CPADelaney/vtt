@@ -15,15 +15,12 @@ export class Board {
         // Add references for scroll container and map controls
         this.boardScrollContainer = document.getElementById('board-scroll-container');
         this.mapControls = document.getElementById('map-controls');
+        this.boardContent = document.getElementById('board-content'); // NEW: a large container div
 
         this.selectedEntities = [];
         this.isDraggingTokens = false;
-        this.dragStartPos = { x: 0, y: 0 };
-        this.originalPositions = [];
 
         this.isMarqueeSelecting = false;
-        this.marqueeStart = { x: 0, y: 0 };
-        this.marqueeRect = { x: 0, y: 0, w: 0, h: 0 };
 
         this.draggedCharId = null;
         this.draggedMonsterId = null;
@@ -55,7 +52,15 @@ export class Board {
     }
 
     applyScale() {
-        this.gridEl.style.transform = `translate(-50%, -50%) scale(${this.scaleFactor})`;
+        this.cellWidth = Math.round(this.baseCellWidth * this.scaleFactor);
+        this.cellHeight = Math.round(this.baseCellHeight * this.scaleFactor);
+
+        // Update each cell's size
+        const cells = this.gridEl.querySelectorAll('td');
+        cells.forEach(cell => {
+            cell.style.width = this.cellWidth + 'px';
+            cell.style.height = this.cellHeight + 'px';
+        });
     }
 
     zoomIn() {
@@ -67,37 +72,34 @@ export class Board {
         this.scaleFactor = Math.max(this.scaleFactor - 0.1, this.minScale);
         this.applyScale();
     }
-
+    
     handleWheelZoom(e) {
         if (!this.boardScrollContainer) return;
-
         e.preventDefault();
 
-        const rect = this.gridEl.getBoundingClientRect();
-        const offsetX = (e.clientX - rect.left) / this.scaleFactor;
-        const offsetY = (e.clientY - rect.top) / this.scaleFactor;
-
         const zoomAmount = -e.deltaY * 0.001;
-        this.scaleFactor = Math.min(Math.max(this.scaleFactor + zoomAmount, this.minScale), this.maxScale);
+        const oldScale = this.scaleFactor;
+        const newScale = Math.min(Math.max(this.scaleFactor + zoomAmount, this.minScale), this.maxScale);
 
-        this.applyScale();
+        if (newScale !== oldScale) {
+            // Before scaling, get mouse position relative to grid
+            const rect = this.gridEl.getBoundingClientRect();
+            const offsetX = (e.clientX - rect.left) / oldScale;
+            const offsetY = (e.clientY - rect.top) / oldScale;
 
-        const newRect = this.gridEl.getBoundingClientRect();
-        const newOffsetX = offsetX * this.scaleFactor;
-        const newOffsetY = offsetY * this.scaleFactor;
+            this.scaleFactor = newScale;
+            this.applyScale();
 
-        const dx = (newOffsetX - (e.clientX - newRect.left));
-        const dy = (newOffsetY - (e.clientY - newRect.top));
+            // After scaling, get the new rect and adjust scroll so the point under cursor stays stable
+            const newRect = this.gridEl.getBoundingClientRect();
+            const newOffsetX = offsetX * newScale;
+            const newOffsetY = offsetY * newScale;
 
-        this.boardScrollContainer.scrollLeft = Math.max(
-            0,
-            Math.min(this.boardScrollContainer.scrollLeft + dx, this.gridEl.scrollWidth)
-        );
-        this.boardScrollContainer.scrollTop = Math.max(
-            0,
-            Math.min(this.boardScrollContainer.scrollTop + dy, this.gridEl.scrollHeight)
-        );
+            this.boardScrollContainer.scrollLeft += (newOffsetX - (e.clientX - newRect.left));
+            this.boardScrollContainer.scrollTop += (newOffsetY - (e.clientY - newRect.top));
+        }
     }
+
 
     // Fire Emblem-style movement preview system
 
@@ -410,7 +412,6 @@ handleDrop(ev, r, c) {
         this.updateSelectionStyles();
     }
 
-
     resizeGrid(newRows, newCols) {
         if (!this.app.isDM()) {
             console.warn("Only DM can resize the grid.");
@@ -423,31 +424,29 @@ handleDrop(ev, r, c) {
         this.centerViewOnGrid();
         this.redrawBoard();
     }
-buildGrid() {
-    this.gridEl.innerHTML = ''; // Clear existing grid
-    for (let r = 0; r < this.rows; r++) {
-        const rowEl = document.createElement('tr');
-        for (let c = 0; c < this.cols; c++) {
-            const cell = document.createElement('td');
-            cell.dataset.row = r;
-            cell.dataset.col = c;
-            // ... event listeners ...
-            rowEl.appendChild(cell);
+    
+    buildGrid() {
+        this.gridEl.innerHTML = '';
+        for (let r = 0; r < this.rows; r++) {
+            const rowEl = document.createElement('tr');
+            for (let c = 0; c < this.cols; c++) {
+                const cell = document.createElement('td');
+                cell.dataset.row = r;
+                cell.dataset.col = c;
+                // Set initial size
+                cell.style.width = this.cellWidth + 'px';
+                cell.style.height = this.cellHeight + 'px';
+                rowEl.appendChild(cell);
+            }
+            this.gridEl.appendChild(rowEl);
         }
-        this.gridEl.appendChild(rowEl);
     }
 
-    // Set the grid's width and height here!
-    this.gridEl.style.width = (this.cols * this.cellWidth) + 'px';
-    this.gridEl.style.height = (this.rows * this.cellHeight) + 'px';
-}
     centerViewOnGrid() {
-        const scrollW = this.boardScrollContainer.clientWidth;
-        const scrollH = this.boardScrollContainer.clientHeight;
-        const gridW = this.cols * this.cellWidth * this.scaleFactor;
-        const gridH = this.rows * this.cellHeight * this.scaleFactor;
-        this.boardScrollContainer.scrollLeft = (gridW - scrollW) / 2;
-        this.boardScrollContainer.scrollTop = (gridH - scrollH) / 2;
+        // Grid is centered at 50%,50% of a large board-content area
+        // So to center view on the grid, just scroll to the middle of board-content
+        this.boardScrollContainer.scrollLeft = (this.contentWidth - this.boardScrollContainer.clientWidth) / 2;
+        this.boardScrollContainer.scrollTop = (this.contentHeight - this.boardScrollContainer.clientHeight) / 2;
     }
 
     setupEventListeners() {
@@ -455,16 +454,14 @@ buildGrid() {
         let startX, startY;
 
         this.gridEl.addEventListener('mousedown', (e) => {
-            if (e.button === 2) { 
+            if (e.button === 2) {
                 // Right-click panning
                 isRightClickPanning = true;
                 startX = e.clientX;
                 startY = e.clientY;
-                this.gridEl.style.outline = '2px dashed rgba(255, 255, 255, 0.5)';
                 this.boardScrollContainer.style.cursor = 'grabbing';
-                e.preventDefault(); // Prevent context menu
+                e.preventDefault();
             } else if (e.button === 0) {
-                // Left-click: handle grid interactions (selection, marquee, attacks)
                 this.handleGridMouseDown(e);
             }
         });
@@ -484,20 +481,21 @@ buildGrid() {
 
         document.addEventListener('mouseup', (e) => {
             if (e.button === 2) {
-                // End right-click panning
                 isRightClickPanning = false;
-                this.gridEl.style.outline = 'none';
                 this.boardScrollContainer.style.cursor = 'default';
             }
         });
 
-        // Disable default context menu on the grid
         this.gridEl.addEventListener('contextmenu', (e) => {
             e.preventDefault();
         });
 
-        // Handle wheel-based zooming
+        // Wheel zoom
         this.boardScrollContainer.addEventListener('wheel', (e) => this.handleWheelZoom(e), { passive: false });
+
+        // Mouse move/up for marquee and dragging
+        document.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+        document.addEventListener('mouseup', (e) => this.handleMouseUp(e));
     }
 
 
