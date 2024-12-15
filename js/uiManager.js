@@ -526,7 +526,6 @@ export class UIManager {
           if (attDef.type === 'single') {
             const attackerPos = this.app.board.getEntityPosition(type, entityData.id);
             if (attackerPos) {
-              const possiblePositions = this.app.board.getPositionsInRange(attackerPos, attDef.range);
               this.app.board.highlightTiles(possiblePositions, 'target-highlight');
               this.app.board.highlightTiles(possiblePositions, 'target-highlight', true);
                this.app.board.onceTileClick(targetPos => {
