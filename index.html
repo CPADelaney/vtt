@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Virtual Tabletop</title>
   <link rel="stylesheet" href="css/styles.css" />
-  <script defer type="module" src="js/main.js"></script>
 </head>
 <body>
   <div id="main-container">
@@ -15,6 +14,8 @@
         <button id="zoom-in-btn">+</button>
         <button id="zoom-out-btn">-</button>
       </div>
+      <table id="grid"></table>
+      <div id="selection-marquee"></div>
       <div id="board-scroll-container">
         <table id="grid"></table>
         <div id="selection-marquee"></div>
@@ -170,5 +171,7 @@
       <li id="context-delete" class="delete-option">Delete</li>
     </ul>
   </div>
+
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>
