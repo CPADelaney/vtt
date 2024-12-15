@@ -2,7 +2,7 @@ body {
     font-family: sans-serif;
     margin: 0;
     padding: 0;
-    overflow: hidden; /* Prevent scrollbars on body */
+    overflow: hidden; /* Prevent scrollbars on body level */
 }
 
 #main-container {
@@ -12,8 +12,8 @@ body {
 
 #board-container {
     flex: 3;
-    position: relative; /* Positions children absolutely within */
-    overflow: hidden; /* We rely on scroll-container for scrolling */
+    position: relative; /* For absolute positioning inside */
+    overflow: hidden; /* We'll rely on the scroll container for scrolling */
     background-color: #333;
 }
 
@@ -25,22 +25,24 @@ body {
     bottom: 0;
     overflow: auto; /* Allows scrolling if grid is large */
     background-color: #333;
-    position: relative;
+    position: relative; /* Marquee and other overlays are positioned relative to this */
 }
 
-/* Remove complex positioning from #grid and let it start from top-left */
+/* Center the grid in the scroll container and make it larger */
 #grid {
-    border-collapse: collapse;
-    margin: 0;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
     background-color: white;
+    border-collapse: collapse;
     z-index: 1;
-    /* No absolute positioning here. Let it be static so it appears in the top-left corner of scroll-container */
 }
 
-/* Give each cell a visible border and size */
+/* Increase cell size for better visibility */
 #grid td {
-    width: 60px;
-    height: 60px;
+    width: 80px;
+    height: 80px;
     border: 1px solid #999;
     position: relative;
 }
@@ -53,7 +55,7 @@ body {
     padding: 10px;
     border: 1px solid #ddd;
     z-index: 100;
-    cursor: move; /* Move cursor on controls */
+    cursor: move;
 }
 
 #sidebar {
