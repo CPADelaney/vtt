@@ -234,22 +234,28 @@ export class Board {
     }
   }
 
-  handleGridMouseDown(e) {
-    if (e.button !== 0) return; // Only handle left-click
+handleGridMouseDown(e) {
+  if (e.button !== 0) return; // Only handle left-click
     
-    const cell = e.target.closest('td');
-    if (!cell) return;
+  const cell = e.target.closest('td');
+  const ctrlPressed = e.ctrlKey;
 
+  // Check if user clicked on a cell
+  if (cell) {
     const r = parseInt(cell.dataset.row, 10);
     const c = parseInt(cell.dataset.col, 10);
 
     // AoE Attack Mode
     if (this.app.currentAction && this.app.currentAction.type === 'aoe') {
       this.app.saveStateForUndo();
-      const aoePositions = this.getAoEAreaPositions(this.app.currentAction.aoeShape, { row: r, col: c }, this.app.currentAction.radius);
+      const aoePositions = this.getAoEAreaPositions(
+        this.app.currentAction.aoeShape, 
+        { row: r, col: c }, 
+        this.app.currentAction.radius
+      );
       const affectedEntities = this.getEntitiesInPositions(aoePositions);
       const finalTargets = this.filterAoETargets(affectedEntities, this.app.currentAction);
-  
+    
       performAoeAttack(
         this.app.currentAction.attacker, 
         this.app.currentAction.entityType, 
@@ -259,7 +265,7 @@ export class Board {
         finalTargets, 
         aoePositions
       );
-  
+    
       this.clearHighlights();
       this.app.clearAction();
       return;
@@ -273,24 +279,28 @@ export class Board {
       if (entity && this.isCellHighlighted(r, c)) {
         this.app.saveStateForUndo();
         const { attacker, entityType, attackEntry, weapon } = this.app.currentAction;
-        performAttack(attacker, entityType, attackEntry, weapon, this.app, { type: entity.type, id: entity.id });
+        performAttack(
+          attacker, entityType, attackEntry, weapon, this.app, { type: entity.type, id: entity.id }
+        );
         this.clearHighlights();
         this.app.clearAction();
         return;
       } else {
-        return; 
+        return;
       }
     }
   
-    // Normal selection/marquee mode
+    // Normal selection
     const key = `${r},${c}`;
     const entity = this.app.entityTokens[key];
-    const ctrlPressed = e.ctrlKey;
-  
+
     if (entity) {
+      // Entity clicked
       if (ctrlPressed) {
         if (this.isEntitySelected(entity)) {
-          this.selectedEntities = this.selectedEntities.filter(se => !(se.type === entity.type && se.id === entity.id));
+          this.selectedEntities = this.selectedEntities.filter(
+            se => !(se.type === entity.type && se.id === entity.id)
+          );
         } else {
           this.selectedEntities.push({ type: entity.type, id: entity.id });
         }
@@ -300,7 +310,8 @@ export class Board {
         }
       }
   
-      if (this.selectedEntities.length > 0 && this.selectedEntities.every(ent => this.app.canControlEntity(ent))) {
+      if (this.selectedEntities.length > 0 && 
+          this.selectedEntities.every(ent => this.app.canControlEntity(ent))) {
         this.isDraggingTokens = true;
         this.dragStartPos = { x: e.clientX, y: e.clientY };
         this.originalPositions = this.selectedEntities.map(ent => {
@@ -309,12 +320,17 @@ export class Board {
         });
       }
     } else {
+      // Clicked on empty space: start marquee selection if no ctrl pressed
       if (!ctrlPressed) {
         this.selectedEntities = [];
       }
-      const rect = this.gridEl.getBoundingClientRect();
-      const gx = (e.clientX - rect.left) / this.scaleFactor;
-      const gy = (e.clientY - rect.top) / this.scaleFactor;
+
+      const boardCanvas = this.boardScrollContainer.querySelector('.board-canvas');
+      const canvasRect = boardCanvas.getBoundingClientRect();
+
+      const gx = (e.clientX - canvasRect.left + this.boardScrollContainer.scrollLeft) / this.scaleFactor;
+      const gy = (e.clientY - canvasRect.top + this.boardScrollContainer.scrollTop) / this.scaleFactor;
+
       this.isMarqueeSelecting = true;
       this.marqueeStart = { x: gx, y: gy };
       this.marqueeEl.style.display = 'block';
@@ -323,98 +339,103 @@ export class Board {
       this.marqueeEl.style.width = '0px';
       this.marqueeEl.style.height = '0px';
     }
+  }
+
+  this.updateSelectionStyles();
+}
+
+handleMouseMove(e) {
+  const rect = this.gridEl.getBoundingClientRect();
+  const boardCanvas = this.boardScrollContainer.querySelector('.board-canvas');
+  const canvasRect = boardCanvas.getBoundingClientRect();
+
+  // AoE logic
+  if (this.app.currentAction && this.app.currentAction.type === 'aoe') {
+    const gx = (e.clientX - rect.left) / this.scaleFactor;
+    const gy = (e.clientY - rect.top) / this.scaleFactor;
+    const c = Math.floor(gx / this.cellWidth);
+    const r = Math.floor(gy / this.cellHeight);
+    if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
+      this.clearHighlights();
+      const aoePositions = this.getAoEAreaPositions(
+        this.app.currentAction.aoeShape, 
+        { row: r, col: c }, 
+        this.app.currentAction.radius
+      );
+      this.highlightTiles(aoePositions, 'target-highlight');
+    }
+  }
+
+  // Token dragging logic
+  if (this.isDraggingTokens && this.selectedEntities.length > 0) {
+    this.clearDragHighlights();
+    const gx = (e.clientX - rect.left) / this.scaleFactor;
+    const gy = (e.clientY - rect.top) / this.scaleFactor;
+    const c = Math.floor(gx / this.cellWidth);
+    const r = Math.floor(gy / this.cellHeight);
+
+    if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
+      const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
+      if (cell) cell.style.outline = '2px dashed green';
+      this.currentDragCell = { row: r, col: c };
+    } else {
+      this.currentDragCell = null;
+    }
+  }
+
+  // Marquee selection logic
+  if (this.isMarqueeSelecting) {
+    let currentX = (e.clientX - canvasRect.left + this.boardScrollContainer.scrollLeft) / this.scaleFactor;
+    let currentY = (e.clientY - canvasRect.top + this.boardScrollContainer.scrollTop) / this.scaleFactor;
+
+    // Clamp coordinates within grid
+    currentX = Math.max(0, Math.min(currentX, this.cols * this.cellWidth));
+    currentY = Math.max(0, Math.min(currentY, this.rows * this.cellHeight));
+
+    const x1 = Math.min(currentX, this.marqueeStart.x);
+    const y1 = Math.min(currentY, this.marqueeStart.y);
+    const x2 = Math.max(currentX, this.marqueeStart.x);
+    const y2 = Math.max(currentY, this.marqueeStart.y);
+
+    this.marqueeRect = {
+      x: x1,
+      y: y1,
+      w: x2 - x1,
+      h: y2 - y1
+    };
+
+    this.marqueeEl.style.left = `${x1}px`;
+    this.marqueeEl.style.top = `${y1}px`;
+    this.marqueeEl.style.width = `${this.marqueeRect.w}px`;
+    this.marqueeEl.style.height = `${this.marqueeRect.h}px`;
+  }
+}
+
+handleMouseUp(e) {
+  if (this.isDraggingTokens) {
+    this.isDraggingTokens = false;
+    this.clearDragHighlights();
+
+    // Move entities if we have a valid cell
+    if (this.currentDragCell &&
+        this.currentDragCell.row >= 0 && this.currentDragCell.row < this.rows &&
+        this.currentDragCell.col >= 0 && this.currentDragCell.col < this.cols) {
+      
+      for (let ent of this.selectedEntities) {
+        this.app.moveEntity(ent.type, ent.id, this.currentDragCell.row, this.currentDragCell.col);
+      }
+    }
+
+    this.currentDragCell = null; 
+  }
+
+  if (this.isMarqueeSelecting) {
+    this.isMarqueeSelecting = false;
+    this.marqueeEl.style.display = 'none';
+    this.selectedEntities = this.getEntitiesInMarquee();
     this.updateSelectionStyles();
   }
-
-  handleMouseMove(e) {
-    const rect = this.gridEl.getBoundingClientRect();
-
-    // AoE logic
-    if (this.app.currentAction && this.app.currentAction.type === 'aoe') {
-      const gx = (e.clientX - rect.left) / this.scaleFactor;
-      const gy = (e.clientY - rect.top) / this.scaleFactor;
-      const c = Math.floor(gx / this.cellWidth);
-      const r = Math.floor(gy / this.cellHeight);
-      if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
-        this.clearHighlights();
-        const aoePositions = this.getAoEAreaPositions(
-          this.app.currentAction.aoeShape, 
-          { row: r, col: c }, 
-          this.app.currentAction.radius
-        );
-        this.highlightTiles(aoePositions, 'target-highlight');
-      }
-    }
-
-    // Token dragging logic
-    if (this.isDraggingTokens && this.selectedEntities.length > 0) {
-      this.clearDragHighlights();
-      const gx = (e.clientX - rect.left) / this.scaleFactor;
-      const gy = (e.clientY - rect.top) / this.scaleFactor;
-      const c = Math.floor(gx / this.cellWidth);
-      const r = Math.floor(gy / this.cellHeight);
-
-      if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
-        const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
-        if (cell) cell.style.outline = '2px dashed green';
-        this.currentDragCell = { row: r, col: c };
-      } else {
-        this.currentDragCell = null;
-      }
-    }
-
-    // Marquee selection logic
-    if (this.isMarqueeSelecting) {
-      let currentX = (e.clientX - rect.left) / this.scaleFactor;
-      let currentY = (e.clientY - rect.top) / this.scaleFactor;
-
-      currentX = Math.max(0, Math.min(currentX, this.cols * this.cellWidth));
-      currentY = Math.max(0, Math.min(currentY, this.rows * this.cellHeight));
-
-      const x1 = Math.min(currentX, this.marqueeStart.x);
-      const y1 = Math.min(currentY, this.marqueeStart.y);
-      const x2 = Math.max(currentX, this.marqueeStart.x);
-      const y2 = Math.max(currentY, this.marqueeStart.y);
-
-      this.marqueeRect = {
-        x: x1,
-        y: y1,
-        w: x2 - x1,
-        h: y2 - y1
-      };
-
-      this.marqueeEl.style.left = `${x1}px`;
-      this.marqueeEl.style.top = `${y1}px`;
-      this.marqueeEl.style.width = `${this.marqueeRect.w}px`;
-      this.marqueeEl.style.height = `${this.marqueeRect.h}px`;
-    }
-  }
-
-  handleMouseUp(e) {
-    if (this.isDraggingTokens) {
-      this.isDraggingTokens = false;
-      this.clearDragHighlights();
-
-      // Move entities directly to the current drag cell if valid
-      if (this.currentDragCell &&
-          this.currentDragCell.row >= 0 && this.currentDragCell.row < this.rows &&
-          this.currentDragCell.col >= 0 && this.currentDragCell.col < this.cols) {
-        
-        for (let ent of this.selectedEntities) {
-          this.app.moveEntity(ent.type, ent.id, this.currentDragCell.row, this.currentDragCell.col);
-        }
-      }
-
-      this.currentDragCell = null; 
-    }
-
-    if (this.isMarqueeSelecting) {
-      this.isMarqueeSelecting = false;
-      this.marqueeEl.style.display = 'none';
-      this.selectedEntities = this.getEntitiesInMarquee();
-      this.updateSelectionStyles();
-    }
-  }
+}
 
   openEntitySheet(entity) {
     if (entity.type === 'character') {
