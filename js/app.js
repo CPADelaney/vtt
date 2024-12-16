@@ -1,6 +1,10 @@
 const canvas = document.getElementById('gridCanvas');
 const ctx = canvas.getContext('2d');
 const viewport = document.getElementById('viewport');
+const version = "1.0.1"; // Update this manually or automatically
+const versionElement = document.getElementById('version');
+
+versionElement.textContent = "Version: " + version;
 
 let gridSize = 50;
 let gridWidth = 20;
