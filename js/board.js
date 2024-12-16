@@ -352,8 +352,8 @@ handleMouseMove(e) {
 
   // AoE logic (unchanged)
   if (this.app.currentAction && this.app.currentAction.type === 'aoe') {
-    const gx = (e.clientX - rect.left) / this.scaleFactor;
-    const gy = (e.clientY - rect.top) / this.scaleFactor;
+    const gx = (e.clientX - rect.left);
+    const gy = (e.clientY - rect.top);
     const c = Math.floor(gx / this.cellWidth);
     const r = Math.floor(gy / this.cellHeight);
     if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
@@ -370,8 +370,8 @@ handleMouseMove(e) {
   // Token dragging logic (unchanged)
   if (this.isDraggingTokens && this.selectedEntities.length > 0) {
     this.clearDragHighlights();
-    const gx = (e.clientX - rect.left) / this.scaleFactor;
-    const gy = (e.clientY - rect.top) / this.scaleFactor;
+    const gx = (e.clientX - rect.left);
+    const gy = (e.clientY - rect.top);
     const c = Math.floor(gx / this.cellWidth);
     const r = Math.floor(gy / this.cellHeight);
 
