@@ -7,20 +7,18 @@
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
-    <div id="main-container">
-      <div id="board-container">
-        <div id="map-controls">
-          <h4>Zoom</h4>
-          <button id="zoom-in-btn">+</button>
-          <button id="zoom-out-btn">-</button>
-        </div>
-        <div id="board-scroll-container">
-          <div class="board-canvas">
-            <div class="zoom-container"> <!-- Add this wrapper -->
-              <table id="grid"></table>
-              <div id="selection-marquee"></div>
-            </div>
-          </div>
+  <div id="main-container">
+    <div id="board-container">
+      <div id="map-controls">
+        <h4>Zoom</h4>
+        <button id="zoom-in-btn">+</button>
+        <button id="zoom-out-btn">-</button>
+      </div>
+      <div id="board-scroll-container">
+        <div class="board-canvas">
+          <!-- Instead of a table, we have a map-layer -->
+          <div id="map-layer"></div>
+          <div id="selection-marquee"></div>
         </div>
       </div>
     </div>
