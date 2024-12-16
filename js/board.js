@@ -40,8 +40,7 @@ export class Board {
     this.scaleFactor = 1; 
     this.minScale = 0.2;
     this.maxScale = 3;
-
-    this.applyScale();
+        this.applyScale();
 
     // For snapping tokens directly to the hovered cell
     this.currentDragCell = null;
@@ -53,8 +52,7 @@ export class Board {
     this.redrawBoard();
     this.centerViewOnGrid(); // center view on initial load
   }
-
-  zoomIn() {
+    zoomIn() {
     this.scaleFactor = Math.min(this.scaleFactor + 0.1, this.maxScale);
     this.applyScale();
   }
@@ -255,7 +253,7 @@ handleGridMouseDown(e) {
       );
       const affectedEntities = this.getEntitiesInPositions(aoePositions);
       const finalTargets = this.filterAoETargets(affectedEntities, this.app.currentAction);
-    
+
       performAoeAttack(
         this.app.currentAction.attacker, 
         this.app.currentAction.entityType, 
@@ -265,17 +263,17 @@ handleGridMouseDown(e) {
         finalTargets, 
         aoePositions
       );
-    
+
       this.clearHighlights();
       this.app.clearAction();
       return;
     }
-  
+
     // Single-target Attack Mode
     if (this.app.currentAction && this.app.currentAction.type === 'attack') {
       const key = `${r},${c}`;
       const entity = this.app.entityTokens[key];
-  
+
       if (entity && this.isCellHighlighted(r, c)) {
         this.app.saveStateForUndo();
         const { attacker, entityType, attackEntry, weapon } = this.app.currentAction;
@@ -289,7 +287,7 @@ handleGridMouseDown(e) {
         return;
       }
     }
-  
+
     // Normal selection
     const key = `${r},${c}`;
     const entity = this.app.entityTokens[key];
@@ -309,7 +307,7 @@ handleGridMouseDown(e) {
           this.selectedEntities = [{ type: entity.type, id: entity.id }];
         }
       }
-  
+
       if (this.selectedEntities.length > 0 && 
           this.selectedEntities.every(ent => this.app.canControlEntity(ent))) {
         this.isDraggingTokens = true;
@@ -352,8 +350,8 @@ handleMouseMove(e) {
 
   // AoE logic (unchanged)
   if (this.app.currentAction && this.app.currentAction.type === 'aoe') {
-    const gx = (e.clientX - rect.left);
-    const gy = (e.clientY - rect.top);
+    const gx = (e.clientX - rect.left) / this.scaleFactor;
+    const gy = (e.clientY - rect.top) / this.scaleFactor;
     const c = Math.floor(gx / this.cellWidth);
     const r = Math.floor(gy / this.cellHeight);
     if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
@@ -370,8 +368,8 @@ handleMouseMove(e) {
   // Token dragging logic (unchanged)
   if (this.isDraggingTokens && this.selectedEntities.length > 0) {
     this.clearDragHighlights();
-    const gx = (e.clientX - rect.left);
-    const gy = (e.clientY - rect.top);
+    const gx = (e.clientX - rect.left) / this.scaleFactor;
+    const gy = (e.clientY - rect.top) / this.scaleFactor;
     const c = Math.floor(gx / this.cellWidth);
     const r = Math.floor(gy / this.cellHeight);
 
@@ -421,7 +419,7 @@ handleMouseUp(e) {
     if (this.currentDragCell &&
         this.currentDragCell.row >= 0 && this.currentDragCell.row < this.rows &&
         this.currentDragCell.col >= 0 && this.currentDragCell.col < this.cols) {
-      
+
       for (let ent of this.selectedEntities) {
         this.app.moveEntity(ent.type, ent.id, this.currentDragCell.row, this.currentDragCell.col);
       }
