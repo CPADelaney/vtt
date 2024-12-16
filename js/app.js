@@ -2,7 +2,7 @@ const canvas = document.getElementById('gridCanvas');
 const ctx = canvas.getContext('2d');
 const viewport = document.getElementById('viewport');
 const versionElement = document.getElementById('version');
-const version = "1.0.11";
+const version = "1.0.12";
 
 versionElement.textContent = "Version: " + version;
 
@@ -179,15 +179,15 @@ viewport.addEventListener('wheel', (e) => {
     const preZoomY = (mouseY - offsetY) / gridSize;
 
     let zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-    gridSize *= zoomFactor;
+    let newGridSize = gridSize * zoomFactor; // Calculate new grid size *before* clamping
 
-    gridSize = Math.max(minZoom, Math.min(maxZoom, gridSize)); // Clamp zoom
+    newGridSize = Math.max(minZoom, Math.min(maxZoom, newGridSize));
 
-    const postZoomX = preZoomX * gridSize;
-    const postZoomY = preZoomY * gridSize;
+    // Recalculate offsets based on the *difference* in grid size
+    offsetX += (preZoomX * (gridSize - newGridSize));
+    offsetY += (preZoomY * (gridSize - newGridSize));
 
-    offsetX += mouseX - postZoomX;
-    offsetY += mouseY - postZoomY;
+    gridSize = newGridSize; // *Then* update the actual grid size
 
     canvas.style.left = offsetX + 'px';
     canvas.style.top = offsetY + 'px';
