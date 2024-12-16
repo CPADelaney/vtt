@@ -1,8 +1,8 @@
 const canvas = document.getElementById('gridCanvas');
 const ctx = canvas.getContext('2d');
 const viewport = document.getElementById('viewport');
-const version = "1.0.1"; // Update this manually or automatically
 const versionElement = document.getElementById('version');
+const version = "1.0.2";
 
 versionElement.textContent = "Version: " + version;
 
@@ -14,6 +14,10 @@ let startX;
 let startY;
 let offsetX = 0;
 let offsetY = 0;
+let isDragging = false;
+let dragStartX;
+let dragStartY;
+let draggedElement = null;
 
 function drawGrid() {
     canvas.width = gridWidth * gridSize;
@@ -44,28 +48,92 @@ function centerGrid() {
     canvas.style.top = offsetY + 'px';
 }
 
+function snapToGrid(x, y) {
+    const snappedX = Math.round(x / gridSize) * gridSize;
+    const snappedY = Math.round(y / gridSize) * gridSize;
+    return { x: snappedX, y: snappedY };
+}
+
+const token = {
+    x: 100,
+    y: 100,
+    width: 40,
+    height: 40,
+    draw: function() {
+        ctx.fillStyle = 'red';
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+    }
+};
+
+function drawTokens() {
+    token.draw();
+}
+
+function redraw() {
+    drawGrid();
+    drawTokens();
+}
+
 canvas.addEventListener('mousedown', (e) => {
     if (e.button === 2) {
         isPanning = true;
-        startX = e.clientX - offsetX; // Corrected startX calculation
-        startY = e.clientY - offsetY; // Corrected startY calculation
+        startX = e.clientX - offsetX;
+        startY = e.clientY - offsetY;
         canvas.classList.add('panning');
+        window.addEventListener('mousemove', doPan, { capture: true });
+        window.addEventListener('mouseup', endPan, { once: true });
+    } else {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left - offsetX;
+        const y = e.clientY - rect.top - offsetY;
+
+        if (x >= token.x && x <= token.x + token.width && y >= token.y && y <= token.y + token.height) {
+            isDragging = true;
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+            draggedElement = token;
+        }
     }
 });
 
-canvas.addEventListener('mouseup', () => {
-    isPanning = false;
-    canvas.classList.remove('panning');
-});
-
-canvas.addEventListener('mousemove', (e) => {
-    if (!isPanning) return;
-
+function doPan(e) {
     offsetX = e.clientX - startX;
     offsetY = e.clientY - startY;
 
     canvas.style.left = offsetX + 'px';
     canvas.style.top = offsetY + 'px';
+}
+
+function endPan() {
+    isPanning = false;
+    canvas.classList.remove('panning');
+    window.removeEventListener('mousemove', doPan, { capture: true });
+}
+
+canvas.addEventListener('mousemove', (e) => {
+    if (isDragging) {
+        const dx = e.clientX - dragStartX;
+        const dy = e.clientY - dragStartY;
+
+        draggedElement.x += dx;
+        draggedElement.y += dy;
+
+        const snappedPos = snapToGrid(draggedElement.x, draggedElement.y);
+        draggedElement.x = snappedPos.x;
+        draggedElement.y = snappedPos.y;
+
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
+
+        redraw();
+    }
+});
+
+canvas.addEventListener('mouseup', () => {
+    if (isDragging) {
+        isDragging = false;
+        draggedElement = null;
+    }
 });
 
 canvas.addEventListener('contextmenu', (e) => {
@@ -81,8 +149,10 @@ viewport.addEventListener('wheel', (e) => {
     if (gridSize > 100) gridSize = 100;
 
     drawGrid();
-    centerGrid();// Recenter after zoom
+    centerGrid();
+    redraw();
 });
 
 drawGrid();
-centerGrid();// Initial centering
+centerGrid();
+redraw();
