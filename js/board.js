@@ -36,11 +36,11 @@ export class Board {
     this.cellHeight = 60;
 
     // Zoom factor and bounds
+    this.zoomContainer = this.boardScrollContainer.querySelector('.zoom-container');
     this.scaleFactor = 1; 
     this.minScale = 0.2;
     this.maxScale = 3;
 
-    this.gridEl.style.transformOrigin = 'top left';
     this.applyScale();
 
     // For snapping tokens directly to the hovered cell
@@ -52,10 +52,6 @@ export class Board {
     this.setupEventListeners();
     this.redrawBoard();
     this.centerViewOnGrid(); // center view on initial load
-  }
-
-  applyScale() {
-    this.gridEl.style.transform = `scale(${this.scaleFactor})`;
   }
 
   zoomIn() {
@@ -129,7 +125,11 @@ export class Board {
     this.gridEl.style.width = (this.cols * this.cellWidth) + 'px';
     this.gridEl.style.height = (this.rows * this.cellHeight) + 'px';  
   }
-
+    
+  applyScale() {
+    this.zoomContainer.style.transform = `scale(${this.scaleFactor})`;
+  }
+    
   redrawBoard() {
     const cells = this.gridEl.querySelectorAll('td');
     cells.forEach(cell => {
