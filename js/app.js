@@ -2,7 +2,7 @@ const canvas = document.getElementById('gridCanvas');
 const ctx = canvas.getContext('2d');
 const viewport = document.getElementById('viewport');
 const versionElement = document.getElementById('version');
-const version = "1.0.2";
+const version = "1.0.3";
 
 versionElement.textContent = "Version: " + version;
 
@@ -18,6 +18,26 @@ let isDragging = false;
 let dragStartX;
 let dragStartY;
 let draggedElement = null;
+
+// Array to hold multiple tokens
+const tokens = [];
+
+// Token constructor function
+function Token(x, y, width, height, color) {
+    this.x = x;
+    this.y = y;
+    this.width = width;
+    this.height = height;
+    this.color = color;
+    this.draw = function() {
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+    };
+}
+
+// Create a few tokens
+tokens.push(new Token(100, 100, 40, 40, 'red'));
+tokens.push(new Token(250, 150, 30, 60, 'blue'));
 
 function drawGrid() {
     canvas.width = gridWidth * gridSize;
@@ -54,19 +74,10 @@ function snapToGrid(x, y) {
     return { x: snappedX, y: snappedY };
 }
 
-const token = {
-    x: 100,
-    y: 100,
-    width: 40,
-    height: 40,
-    draw: function() {
-        ctx.fillStyle = 'red';
-        ctx.fillRect(this.x, this.y, this.width, this.height);
-    }
-};
-
 function drawTokens() {
-    token.draw();
+    for (const token of tokens) {
+        token.draw();
+    }
 }
 
 function redraw() {
@@ -75,23 +86,26 @@ function redraw() {
 }
 
 canvas.addEventListener('mousedown', (e) => {
-    if (e.button === 2) {
+    if (e.button === 2) { // Right-click for panning
         isPanning = true;
         startX = e.clientX - offsetX;
         startY = e.clientY - offsetY;
         canvas.classList.add('panning');
         window.addEventListener('mousemove', doPan, { capture: true });
         window.addEventListener('mouseup', endPan, { once: true });
-    } else {
+    } else { // Left-click for token selection/dragging
         const rect = canvas.getBoundingClientRect();
         const x = e.clientX - rect.left - offsetX;
         const y = e.clientY - rect.top - offsetY;
 
-        if (x >= token.x && x <= token.x + token.width && y >= token.y && y <= token.y + token.height) {
-            isDragging = true;
-            dragStartX = e.clientX;
-            dragStartY = e.clientY;
-            draggedElement = token;
+        for (const token of tokens) {
+          if (x >= token.x && x <= token.x + token.width && y >= token.y && y <= token.y + token.height) {
+                isDragging = true;
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+                draggedElement = token;
+                break; // Stop searching once a token is found
+            }
         }
     }
 });
@@ -130,10 +144,8 @@ canvas.addEventListener('mousemove', (e) => {
 });
 
 canvas.addEventListener('mouseup', () => {
-    if (isDragging) {
-        isDragging = false;
-        draggedElement = null;
-    }
+    isDragging = false;
+    draggedElement = null;
 });
 
 canvas.addEventListener('contextmenu', (e) => {
@@ -153,6 +165,4 @@ viewport.addEventListener('wheel', (e) => {
     redraw();
 });
 
-drawGrid();
-centerGrid();
 redraw();
