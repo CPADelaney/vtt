@@ -1,20 +1,15 @@
 import { performAttack, performAoeAttack } from './combat.js';
 
 export class Board {
-  constructor(rows, cols, entityTokens, appInstance) {
-    this.rows = rows;
-    this.cols = cols;
+  constructor(appInstance) {
     this.app = appInstance;
-    this.app.entityTokens = entityTokens;
 
-    this.gridEl = document.getElementById('grid');
+    this.boardScrollContainer = document.getElementById('board-scroll-container');
+    this.mapControls = document.getElementById('map-controls');
+    this.mapLayer = document.getElementById('map-layer'); // Large scalable layer with grid background
     this.marqueeEl = document.getElementById('selection-marquee');
     this.contextMenu = document.getElementById('context-menu');
     this.contextDelete = document.getElementById('context-delete');
-
-    // Add references for scroll container and map controls
-    this.boardScrollContainer = document.getElementById('board-scroll-container');
-    this.mapControls = document.getElementById('map-controls');
 
     this.selectedEntities = [];
     this.isDraggingTokens = false;
@@ -29,30 +24,66 @@ export class Board {
     this.draggedMonsterId = null;
 
     this.contextMenuVisible = false;
-    this.terrainEffects = {};
 
-    // Cell dimensions
+    // Conceptual cell size (for calculating positions)
     this.cellWidth = 60;
     this.cellHeight = 60;
 
     // Zoom factor and bounds
-    this.zoomContainer = this.boardScrollContainer.querySelector('.zoom-container');
     this.scaleFactor = 1; 
     this.minScale = 0.2;
     this.maxScale = 3;
-        this.applyScale();
 
-    // For snapping tokens directly to the hovered cell
-    this.currentDragCell = null;
+    // Panning and zooming will be handled here
   }
 
   initialize() {
-    this.buildGrid();
     this.setupEventListeners();
-    this.redrawBoard();
-    this.centerViewOnGrid(); // center view on initial load
+    this.redrawTokens();
+    // Optionally center view if you know where to center
+    this.centerView();
   }
-    zoomIn() {
+
+  redrawTokens() {
+    // Remove old tokens
+    this.mapLayer.querySelectorAll('.token').forEach(t => t.remove());
+
+    // For each entity token, place it on the mapLayer
+    for (const key in this.app.entityTokens) {
+      const entity = this.app.entityTokens[key];
+      const [r, c] = key.split(',').map(Number);
+
+      const x = c * this.cellWidth; // Pixel x position
+      const y = r * this.cellHeight; // Pixel y position
+
+      const token = document.createElement('div');
+      token.classList.add('token', entity.type);
+      token.textContent = (entity.type === 'character') ? 'C' : 'M';
+      token.style.left = `${x}px`;
+      token.style.top = `${y}px`;
+      this.mapLayer.appendChild(token);
+    }
+
+    // If you have any terrain effects, handle them similarly
+    // For AoE highlights, you might consider drawing highlights as overlays
+  }
+
+  centerView() {
+    // Optionally center view on a particular point if desired
+    // For now, you can scroll to middle of map-layer
+    const scrollW = this.boardScrollContainer.clientWidth;
+    const scrollH = this.boardScrollContainer.clientHeight;
+    const layerRect = this.mapLayer.getBoundingClientRect();
+
+    // Map layer width/height in current scale:
+    const layerWidth = 5000 * this.scaleFactor;  // If map-layer is 5000x5000
+    const layerHeight = 5000 * this.scaleFactor;
+
+    this.boardScrollContainer.scrollLeft = (layerWidth - scrollW) / 2;
+    this.boardScrollContainer.scrollTop = (layerHeight - scrollH) / 2;
+  }
+
+  zoomIn() {
     this.scaleFactor = Math.min(this.scaleFactor + 0.1, this.maxScale);
     this.applyScale();
   }
@@ -62,22 +93,23 @@ export class Board {
     this.applyScale();
   }
 
+  applyScale() {
+    this.mapLayer.style.transform = `scale(${this.scaleFactor})`;
+  }
+
   handleWheelZoom(e) {
-    if (!this.boardScrollContainer) return; // Safety check
-
     e.preventDefault();
-
-    const rect = this.gridEl.getBoundingClientRect();
+    const rect = this.mapLayer.getBoundingClientRect();
     const offsetX = (e.clientX - rect.left) / this.scaleFactor;
     const offsetY = (e.clientY - rect.top) / this.scaleFactor;
 
-    const zoomAmount = -e.deltaY * 0.001; 
+    const zoomAmount = -e.deltaY * 0.001;
     const oldScale = this.scaleFactor;
     this.scaleFactor = Math.min(Math.max(this.scaleFactor + zoomAmount, this.minScale), this.maxScale);
 
     this.applyScale();
 
-    const newRect = this.gridEl.getBoundingClientRect();
+    const newRect = this.mapLayer.getBoundingClientRect();
     const newOffsetX = offsetX * this.scaleFactor;
     const newOffsetY = offsetY * this.scaleFactor;
 
@@ -88,107 +120,42 @@ export class Board {
     this.boardScrollContainer.scrollTop += dy;
   }
 
-  resizeGrid(newRows, newCols) {
-    if (!this.app.isDM()) {
-      console.warn("Only DM can resize the grid.");
-      return;
-    }
-    this.gridEl.innerHTML = '';
-    this.rows = newRows;
-    this.cols = newCols;
-    this.buildGrid();
-    this.redrawBoard();
-    this.centerViewOnGrid(); // re-center view after resizing
-  }
+  setupEventListeners() {
+    document.getElementById('zoom-in-btn').addEventListener('click', () => this.zoomIn());
+    document.getElementById('zoom-out-btn').addEventListener('click', () => this.zoomOut());
+    this.boardScrollContainer.addEventListener('wheel', (e) => this.handleWheelZoom(e), { passive: false });
 
-  buildGrid() {
-    for (let r = 0; r < this.rows; r++) {
-      const rowEl = document.createElement('tr');
-      for (let c = 0; c < this.cols; c++) {
-        const cell = document.createElement('td');
-        cell.dataset.row = r;
-        cell.dataset.col = c;
-
-        cell.addEventListener('dragover', (ev) => {
-          ev.preventDefault();
-          ev.dataTransfer.dropEffect = 'move';
-        });
-        cell.addEventListener('drop', (ev) => this.handleDrop(ev, r, c));
-
-        rowEl.appendChild(cell);
+    // Right-click pan:
+    let isPanning = false;
+    let startX, startY, scrollLeft, scrollTop;
+    this.boardScrollContainer.addEventListener('contextmenu', (e) => e.preventDefault());
+    this.boardScrollContainer.addEventListener('mousedown', (e) => {
+      if (e.button === 2) { // Right-click
+        isPanning = true;
+        startX = e.pageX - this.boardScrollContainer.offsetLeft;
+        startY = e.pageY - this.boardScrollContainer.offsetTop;
+        scrollLeft = this.boardScrollContainer.scrollLeft;
+        scrollTop = this.boardScrollContainer.scrollTop;
+        this.boardScrollContainer.style.cursor = 'grabbing';
       }
-      this.gridEl.appendChild(rowEl);
-    }
-
-    this.gridEl.style.width = (this.cols * this.cellWidth) + 'px';
-    this.gridEl.style.height = (this.rows * this.cellHeight) + 'px';  
-  }
-    
-  applyScale() {
-    this.zoomContainer.style.transform = `scale(${this.scaleFactor})`;
-  }
-    
-  redrawBoard() {
-    const cells = this.gridEl.querySelectorAll('td');
-    cells.forEach(cell => {
-      cell.innerHTML = '';
-      cell.classList.remove('terrain-acidic');
+    });
+    this.boardScrollContainer.addEventListener('mousemove', (e) => {
+      if (!isPanning) return;
+      e.preventDefault();
+      const x = e.pageX - this.boardScrollContainer.offsetLeft;
+      const y = e.pageY - this.boardScrollContainer.offsetTop;
+      this.boardScrollContainer.scrollLeft = scrollLeft - (x - startX);
+      this.boardScrollContainer.scrollTop = scrollTop - (y - startY);
+    });
+    this.boardScrollContainer.addEventListener('mouseup', () => {
+      isPanning = false;
+      this.boardScrollContainer.style.cursor = 'grab';
     });
 
-    for (const key in this.app.entityTokens) {
-      const [r, c] = key.split(',').map(Number);
-      const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
-      if (cell) {
-        const entity = this.app.entityTokens[key];
-        const token = document.createElement('div');
-        token.classList.add('token', entity.type);
-        token.textContent = entity.type === 'character' ? 'C' : 'M';
-        cell.appendChild(token);
-      }
-    }
-
-    if (this.app.terrainEffects) {
-      for (const key in this.app.terrainEffects) {
-        const [r, c] = key.split(',').map(Number);
-        const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
-        if (cell && this.app.terrainEffects[key].type === 'acidic') {
-          cell.classList.add('terrain-acidic');
-        }
-      }
-    }
-
-    this.updateSelectionStyles();
-  }
-
-  centerViewOnGrid() {
-    if (!this.boardScrollContainer) return;
-    const scrollW = this.boardScrollContainer.clientWidth;
-    const scrollH = this.boardScrollContainer.clientHeight;
-    const gridW = this.cols * this.cellWidth * this.scaleFactor;
-    const gridH = this.rows * this.cellHeight * this.scaleFactor;
-    this.boardScrollContainer.scrollLeft = (gridW - scrollW) / 2;
-    this.boardScrollContainer.scrollTop = (gridH - scrollH) / 2;
-  }
-
-  handleDrop(ev, r, c) {
-    ev.preventDefault();
-    if (this.draggedCharId !== null) {
-      this.app.placeCharacterOnBoard(this.draggedCharId, r, c);
-      this.draggedCharId = null;
-    }
-    if (this.draggedMonsterId !== null) {
-      this.app.placeMonsterOnBoard(this.draggedMonsterId, r, c);
-      this.draggedMonsterId = null;
-    }
-  }
-
-  setupEventListeners() {
-    if (this.gridEl) {
-      this.gridEl.addEventListener('mousedown', (e) => this.handleGridMouseDown(e));
-      this.gridEl.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-      this.gridEl.addEventListener('mouseup', (e) => this.handleMouseUp(e));
-      this.gridEl.addEventListener('contextmenu', (e) => this.handleContextMenu(e));
-    }
+    // If you have marquee selection or attacks, you'll need to convert mouse coords to map coordinates:
+    this.mapLayer.addEventListener('mousedown', (e) => this.handleMapMouseDown(e));
+    this.mapLayer.addEventListener('mousemove', (e) => this.handleMapMouseMove(e));
+    this.mapLayer.addEventListener('mouseup', (e) => this.handleMapMouseUp(e));
 
     if (this.contextDelete) {
       this.contextDelete.addEventListener('click', () => {
@@ -197,108 +164,64 @@ export class Board {
       });
     }
 
-    if (this.gridEl) {
-      this.gridEl.addEventListener('click', (e) => {
-        if (this.contextMenuVisible && !this.contextMenu.contains(e.target)) {
-          this.hideContextMenu();
-        }
-      });
-    }
-
-    if (this.boardScrollContainer) {
-      this.boardScrollContainer.addEventListener('wheel', (e) => this.handleWheelZoom(e), { passive: false });
-    }
-
     if (this.mapControls) {
-      let isDragging = false;
+      let isDraggingControls = false;
       let dragOffsetX, dragOffsetY;
 
       this.mapControls.addEventListener('mousedown', (e) => {
-        isDragging = true;
+        isDraggingControls = true;
         dragOffsetX = e.clientX - this.mapControls.offsetLeft;
         dragOffsetY = e.clientY - this.mapControls.offsetTop;
       });
 
       document.addEventListener('mousemove', (e) => {
-        if (isDragging) {
+        if (isDraggingControls) {
           this.mapControls.style.left = (e.clientX - dragOffsetX) + 'px';
           this.mapControls.style.top = (e.clientY - dragOffsetY) + 'px';
         }
       });
 
       document.addEventListener('mouseup', () => {
-        isDragging = false;
+        isDraggingControls = false;
       });
     }
   }
 
-handleGridMouseDown(e) {
-  if (e.button !== 0) return; // Only handle left-click
+  // Convert screen coords to map coords
+  screenToMap(e) {
+    const rect = this.mapLayer.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / this.scaleFactor;
+    const y = (e.clientY - rect.top) / this.scaleFactor;
+    return { x, y };
+  }
 
-  const cell = e.target.closest('td');
-  const ctrlPressed = e.ctrlKey;
+  // Handle mouse down on map for selection/marquee/attacks
+  handleMapMouseDown(e) {
+    if (e.button !== 0) return; // Left click only
 
-  // Check if user clicked on a cell
-  if (cell) {
-    const r = parseInt(cell.dataset.row, 10);
-    const c = parseInt(cell.dataset.col, 10);
+    const { x, y } = this.screenToMap(e);
+    const r = Math.floor(y / this.cellHeight);
+    const c = Math.floor(x / this.cellWidth);
 
-    // AoE Attack Mode
     if (this.app.currentAction && this.app.currentAction.type === 'aoe') {
-      this.app.saveStateForUndo();
-      const aoePositions = this.getAoEAreaPositions(
-        this.app.currentAction.aoeShape, 
-        { row: r, col: c }, 
-        this.app.currentAction.radius
-      );
-      const affectedEntities = this.getEntitiesInPositions(aoePositions);
-      const finalTargets = this.filterAoETargets(affectedEntities, this.app.currentAction);
-
-      performAoeAttack(
-        this.app.currentAction.attacker, 
-        this.app.currentAction.entityType, 
-        this.app.currentAction.attackEntry, 
-        this.app.currentAction.attackDef, 
-        this.app, 
-        finalTargets, 
-        aoePositions
-      );
-
-      this.clearHighlights();
-      this.app.clearAction();
+      this.handleAoEClick(r, c);
       return;
     }
 
-    // Single-target Attack Mode
     if (this.app.currentAction && this.app.currentAction.type === 'attack') {
-      const key = `${r},${c}`;
-      const entity = this.app.entityTokens[key];
-
-      if (entity && this.isCellHighlighted(r, c)) {
-        this.app.saveStateForUndo();
-        const { attacker, entityType, attackEntry, weapon } = this.app.currentAction;
-        performAttack(
-          attacker, entityType, attackEntry, weapon, this.app, { type: entity.type, id: entity.id }
-        );
-        this.clearHighlights();
-        this.app.clearAction();
-        return;
-      } else {
-        return;
-      }
+      this.handleAttackClick(r, c);
+      return;
     }
 
-    // Normal selection
-    const key = `${r},${c}`;
-    const entity = this.app.entityTokens[key];
+    // Normal selection/marquee
+    const entity = this.getEntityAt(r, c);
+    const ctrlPressed = e.ctrlKey;
 
     if (entity) {
       // Entity clicked
       if (ctrlPressed) {
         if (this.isEntitySelected(entity)) {
-          this.selectedEntities = this.selectedEntities.filter(
-            se => !(se.type === entity.type && se.id === entity.id)
-          );
+          this.selectedEntities = this.selectedEntities.filter(se => !(se.type === entity.type && se.id === entity.id));
         } else {
           this.selectedEntities.push({ type: entity.type, id: entity.id });
         }
@@ -308,8 +231,7 @@ handleGridMouseDown(e) {
         }
       }
 
-      if (this.selectedEntities.length > 0 && 
-          this.selectedEntities.every(ent => this.app.canControlEntity(ent))) {
+      if (this.selectedEntities.every(ent => this.app.canControlEntity(ent))) {
         this.isDraggingTokens = true;
         this.dragStartPos = { x: e.clientX, y: e.clientY };
         this.originalPositions = this.selectedEntities.map(ent => {
@@ -318,197 +240,145 @@ handleGridMouseDown(e) {
         });
       }
     } else {
-      // Clicked on empty space: start marquee selection if no ctrl pressed
+      // Empty space, start marquee
       if (!ctrlPressed) {
         this.selectedEntities = [];
       }
 
-      const zoomContainer = this.boardScrollContainer.querySelector('.zoom-container');
-      const zoomRect = zoomContainer.getBoundingClientRect();
-
-      // Compute coordinates relative to .zoom-container without dividing by scaleFactor
-      const gx = e.clientX - zoomRect.left + this.boardScrollContainer.scrollLeft;
-      const gy = e.clientY - zoomRect.top + this.boardScrollContainer.scrollTop;
-
       this.isMarqueeSelecting = true;
-      this.marqueeStart = { x: gx, y: gy };
+      this.marqueeStart = { x, y };
       this.marqueeEl.style.display = 'block';
-      this.marqueeEl.style.left = `${gx}px`;
-      this.marqueeEl.style.top = `${gy}px`;
+      this.marqueeEl.style.left = `${x}px`;
+      this.marqueeEl.style.top = `${y}px`;
       this.marqueeEl.style.width = '0px';
       this.marqueeEl.style.height = '0px';
     }
-  }
 
-  this.updateSelectionStyles();
-}
-
-handleMouseMove(e) {
-  const rect = this.gridEl.getBoundingClientRect();
-  const zoomContainer = this.boardScrollContainer.querySelector('.zoom-container');
-  const zoomRect = zoomContainer.getBoundingClientRect();
-
-  // AoE logic (unchanged)
-  if (this.app.currentAction && this.app.currentAction.type === 'aoe') {
-    const gx = (e.clientX - rect.left) / this.scaleFactor;
-    const gy = (e.clientY - rect.top) / this.scaleFactor;
-    const c = Math.floor(gx / this.cellWidth);
-    const r = Math.floor(gy / this.cellHeight);
-    if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
-      this.clearHighlights();
-      const aoePositions = this.getAoEAreaPositions(
-        this.app.currentAction.aoeShape, 
-        { row: r, col: c }, 
-        this.app.currentAction.radius
-      );
-      this.highlightTiles(aoePositions, 'target-highlight');
-    }
-  }
-
-  // Token dragging logic (unchanged)
-  if (this.isDraggingTokens && this.selectedEntities.length > 0) {
-    this.clearDragHighlights();
-    const gx = (e.clientX - rect.left) / this.scaleFactor;
-    const gy = (e.clientY - rect.top) / this.scaleFactor;
-    const c = Math.floor(gx / this.cellWidth);
-    const r = Math.floor(gy / this.cellHeight);
-
-    if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
-      const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
-      if (cell) cell.style.outline = '2px dashed green';
-      this.currentDragCell = { row: r, col: c };
-    } else {
-      this.currentDragCell = null;
-    }
-  }
-
-  // Marquee selection logic (no scaleFactor for marquee)
-  if (this.isMarqueeSelecting) {
-    let currentX = e.clientX - zoomRect.left + this.boardScrollContainer.scrollLeft;
-    let currentY = e.clientY - zoomRect.top + this.boardScrollContainer.scrollTop;
-
-    // Clamp coordinates within grid dimensions
-    currentX = Math.max(0, Math.min(currentX, this.cols * this.cellWidth));
-    currentY = Math.max(0, Math.min(currentY, this.rows * this.cellHeight));
-
-    const x1 = Math.min(currentX, this.marqueeStart.x);
-    const y1 = Math.min(currentY, this.marqueeStart.y);
-    const x2 = Math.max(currentX, this.marqueeStart.x);
-    const y2 = Math.max(currentY, this.marqueeStart.y);
-
-    this.marqueeRect = {
-      x: x1,
-      y: y1,
-      w: x2 - x1,
-      h: y2 - y1
-    };
-
-    this.marqueeEl.style.left = `${x1}px`;
-    this.marqueeEl.style.top = `${y1}px`;
-    this.marqueeEl.style.width = `${this.marqueeRect.w}px`;
-    this.marqueeEl.style.height = `${this.marqueeRect.h}px`;
-  }
-}
-
-handleMouseUp(e) {
-  if (this.isDraggingTokens) {
-    this.isDraggingTokens = false;
-    this.clearDragHighlights();
-
-    // Move entities if we have a valid cell
-    if (this.currentDragCell &&
-        this.currentDragCell.row >= 0 && this.currentDragCell.row < this.rows &&
-        this.currentDragCell.col >= 0 && this.currentDragCell.col < this.cols) {
-
-      for (let ent of this.selectedEntities) {
-        this.app.moveEntity(ent.type, ent.id, this.currentDragCell.row, this.currentDragCell.col);
-      }
-    }
-
-    this.currentDragCell = null; 
-  }
-
-  if (this.isMarqueeSelecting) {
-    this.isMarqueeSelecting = false;
-    this.marqueeEl.style.display = 'none';
-    this.selectedEntities = this.getEntitiesInMarquee();
     this.updateSelectionStyles();
   }
-}
 
-openEntitySheet(entity) {
-  if (entity.type === 'character') {
-    const ch = this.app.getCharacterById(entity.id);
-    if (ch) {
-      this.app.uiManager.openCharacterSheet(ch);
-    }
-  } else if (entity.type === 'monster') {
-    const mon = this.app.getMonsterById(entity.id);
-    if (mon) {
-      this.app.uiManager.openMonsterSheet(mon);
-    }
-  }
-}
+  handleMapMouseMove(e) {
+    const { x, y } = this.screenToMap(e);
 
-
-  handleContextMenu(e) {
-    e.preventDefault();
-    const cell = e.target.closest('td');
-    if (!cell) {
-      this.hideContextMenu();
-      return;
+    // AoE hover highlight
+    if (this.app.currentAction && this.app.currentAction.type === 'aoe') {
+      const r = Math.floor(y / this.cellHeight);
+      const c = Math.floor(x / this.cellWidth);
+      this.highlightAoE(r, c);
     }
 
-    const r = parseInt(cell.dataset.row, 10);
-    const c = parseInt(cell.dataset.col, 10);
-    const entity = this.app.entityTokens[`${r},${c}`];
-
-    if (!entity) {
-      this.hideContextMenu();
-      return;
-    }
-
-    if (this.isEntitySelected(entity) && this.app.canControlEntity(entity)) {
-      this.showContextMenu(e.pageX, e.pageY);
-      const openSheetItem = document.getElementById('context-open-sheet');
-      openSheetItem.style.display = 'block';
-      openSheetItem.onclick = () => {
-        this.hideContextMenu();
-        this.openEntitySheet(entity);
-      };
-    } else {
-      this.hideContextMenu();
-    }
-  }
-
-  showContextMenu(x, y) {
-    this.contextMenu.style.display = 'block';
-    this.contextMenu.style.left = `${x}px`;
-    this.contextMenu.style.top = `${y}px`;
-    this.contextMenuVisible = true;
-  }
-
-  hideContextMenu() {
-    this.contextMenu.style.display = 'none';
-    this.contextMenuVisible = false;
-  }
-
-  updateSelectionStyles() {
-    const cells = this.gridEl.querySelectorAll('td');
-    cells.forEach(cell => cell.classList.remove('selected'));
-
-    for (let ent of this.selectedEntities) {
-      const pos = this.getEntityPosition(ent.type, ent.id);
-      if (pos) {
-        const cell = this.gridEl.querySelector(`td[data-row='${pos.row}'][data-col='${pos.col}']`);
-        if (cell) cell.classList.add('selected');
+    // Token dragging
+    if (this.isDraggingTokens && this.selectedEntities.length > 0) {
+      this.clearDragHighlights();
+      const r = Math.floor(y / this.cellHeight);
+      const c = Math.floor(x / this.cellWidth);
+      if (r >= 0 && c >= 0) {
+        // Just highlight cell or remember current drag cell if needed
+        // Since we have no actual cells, you might visually draw a highlight or just store current drag cell
+        this.currentDragCell = { row: r, col: c };
+        // No <td> to outline, so you might draw a fake highlight if you want
       }
     }
+
+    // Marquee selection
+    if (this.isMarqueeSelecting) {
+      let currentX = x;
+      let currentY = y;
+
+      // Clamp if needed based on map size
+      currentX = Math.max(0, Math.min(currentX, 5000)); // Adjust if map-layer is 5000x5000
+      currentY = Math.max(0, Math.min(currentY, 5000));
+
+      const x1 = Math.min(currentX, this.marqueeStart.x);
+      const y1 = Math.min(currentY, this.marqueeStart.y);
+      const x2 = Math.max(currentX, this.marqueeStart.x);
+      const y2 = Math.max(currentY, this.marqueeStart.y);
+
+      this.marqueeRect = { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
+
+      this.marqueeEl.style.left = `${x1}px`;
+      this.marqueeEl.style.top = `${y1}px`;
+      this.marqueeEl.style.width = `${this.marqueeRect.w}px`;
+      this.marqueeEl.style.height = `${this.marqueeRect.h}px`;
+    }
   }
 
-  clearDragHighlights() {
-    const cells = this.gridEl.querySelectorAll('td');
-    cells.forEach(cell => cell.style.outline = '');
+  handleMapMouseUp(e) {
+    if (this.isDraggingTokens) {
+      this.isDraggingTokens = false;
+      this.clearDragHighlights();
+
+      if (this.currentDragCell) {
+        // Move entities if needed
+        for (let ent of this.selectedEntities) {
+          this.app.moveEntity(ent.type, ent.id, this.currentDragCell.row, this.currentDragCell.col);
+        }
+      }
+
+      this.currentDragCell = null;
+      this.redrawTokens();
+    }
+
+    if (this.isMarqueeSelecting) {
+      this.isMarqueeSelecting = false;
+      this.marqueeEl.style.display = 'none';
+      this.selectedEntities = this.getEntitiesInMarquee();
+      this.updateSelectionStyles();
+    }
+  }
+
+  // Example AoE handling
+  handleAoEClick(r, c) {
+    this.app.saveStateForUndo();
+    const aoePositions = this.getAoEAreaPositions(
+      this.app.currentAction.aoeShape, 
+      { row: r, col: c }, 
+      this.app.currentAction.radius
+    );
+    const affectedEntities = this.getEntitiesInPositions(aoePositions);
+    const finalTargets = this.filterAoETargets(affectedEntities, this.app.currentAction);
+
+    performAoeAttack(
+      this.app.currentAction.attacker,
+      this.app.currentAction.entityType,
+      this.app.currentAction.attackEntry,
+      this.app.currentAction.attackDef,
+      this.app,
+      finalTargets,
+      aoePositions
+    );
+
+    this.clearHighlights();
+    this.app.clearAction();
+  }
+
+  handleAttackClick(r, c) {
+    const entity = this.getEntityAt(r, c);
+    if (entity && this.isCellHighlighted(r, c)) {
+      this.app.saveStateForUndo();
+      const { attacker, entityType, attackEntry, weapon } = this.app.currentAction;
+      performAttack(
+        attacker, entityType, attackEntry, weapon, this.app, { type: entity.type, id: entity.id }
+      );
+      this.clearHighlights();
+      this.app.clearAction();
+    }
+  }
+
+  highlightAoE(r, c) {
+    this.clearHighlights();
+    const aoePositions = this.getAoEAreaPositions(
+      this.app.currentAction.aoeShape, 
+      { row: r, col: c }, 
+      this.app.currentAction.radius
+    );
+    // Instead of highlighting <td>, you might create a semi-transparent div or some visual overlay at aoePositions
+    // For now, this is conceptual.
+  }
+
+  getEntityAt(r, c) {
+    const key = `${r},${c}`;
+    return this.app.entityTokens[key] || null;
   }
 
   isEntitySelected(entity) {
@@ -532,7 +402,6 @@ openEntitySheet(entity) {
       const [r, c] = key.split(',').map(Number);
       const cellX = c * this.cellWidth;
       const cellY = r * this.cellHeight;
-
       const isSelected =
         cellX < this.marqueeRect.x + this.marqueeRect.w &&
         cellX + this.cellWidth > this.marqueeRect.x &&
@@ -546,42 +415,115 @@ openEntitySheet(entity) {
     return selected;
   }
 
-  getPositionsInRange(startPos, range) {
-    let positions = [];
-    for (let rr = startPos.row - range; rr <= startPos.row + range; rr++) {
-      for (let cc = startPos.col - range; cc <= startPos.col + range; cc++) {
-        if (rr >= 0 && rr < this.rows && cc >= 0 && cc < this.cols) {
-          positions.push({ row: rr, col: cc });
-        }
+  updateSelectionStyles() {
+    // Without <td>, you might highlight selected tokens or show some visual cue.
+    // For now, this is a no-op or you can visually change the token background.
+    this.mapLayer.querySelectorAll('.token').forEach(token => {
+      token.classList.remove('selected');
+    });
+
+    for (let ent of this.selectedEntities) {
+      const pos = this.getEntityPosition(ent.type, ent.id);
+      if (pos) {
+        const x = pos.col * this.cellWidth;
+        const y = pos.row * this.cellHeight;
+        // Find the token at these coords and add a 'selected' class
+        const token = [...this.mapLayer.querySelectorAll('.token')].find(t => {
+          const tx = parseInt(t.style.left, 10);
+          const ty = parseInt(t.style.top, 10);
+          return tx === x && ty === y;
+        });
+        if (token) token.classList.add('selected');
       }
     }
-    return positions;
   }
 
+  clearDragHighlights() {
+    // If you had any highlights, remove them
+  }
+
+  clearHighlights() {
+    // Remove AoE or targeting highlights if any
+  }
+
+  isCellHighlighted(r, c) {
+    // Since we no longer have <td>, you'd store highlight info differently.
+    // If you do highlight by storing positions in an array, check it here.
+    return false;
+  }
+
+  showContextMenu(x, y) {
+    this.contextMenu.style.display = 'block';
+    this.contextMenu.style.left = `${x}px`;
+    this.contextMenu.style.top = `${y}px`;
+    this.contextMenuVisible = true;
+  }
+
+  hideContextMenu() {
+    this.contextMenu.style.display = 'none';
+    this.contextMenuVisible = false;
+  }
+
+  handleContextMenu(e) {
+    e.preventDefault();
+    // Convert to map coords if needed and find entity
+    const { x, y } = this.screenToMap(e);
+    const r = Math.floor(y / this.cellHeight);
+    const c = Math.floor(x / this.cellWidth);
+    const entity = this.getEntityAt(r, c);
+    if (!entity) {
+      this.hideContextMenu();
+      return;
+    }
+
+    if (this.isEntitySelected(entity) && this.app.canControlEntity(entity)) {
+      this.showContextMenu(e.pageX, e.pageY);
+      const openSheetItem = document.getElementById('context-open-sheet');
+      openSheetItem.style.display = 'block';
+      openSheetItem.onclick = () => {
+        this.hideContextMenu();
+        this.openEntitySheet(entity);
+      };
+    } else {
+      this.hideContextMenu();
+    }
+  }
+
+  openEntitySheet(entity) {
+    if (entity.type === 'character') {
+      const ch = this.app.getCharacterById(entity.id);
+      if (ch) {
+        this.app.uiManager.openCharacterSheet(ch);
+      }
+    } else if (entity.type === 'monster') {
+      const mon = this.app.getMonsterById(entity.id);
+      if (mon) {
+        this.app.uiManager.openMonsterSheet(mon);
+      }
+    }
+  }
+
+  // AoE-related utility methods:
   getAoEAreaPositions(shape, centerPos, radius) {
     let positions = [];
     if (shape === 'circle') {
       for (let rr = centerPos.row - radius; rr <= centerPos.row + radius; rr++) {
         for (let cc = centerPos.col - radius; cc <= centerPos.col + radius; cc++) {
-          if (rr >= 0 && rr < this.rows && cc >= 0 && cc < this.cols) {
-            const dx = rr - centerPos.row;
-            const dy = cc - centerPos.col;
-            if (dx*dx + dy*dy <= radius*radius) {
-              positions.push({ row: rr, col: cc });
-            }
+          const dx = rr - centerPos.row;
+          const dy = cc - centerPos.col;
+          if (dx*dx + dy*dy <= radius*radius) {
+            positions.push({ row: rr, col: cc });
           }
         }
       }
     } else if (shape === 'cone') {
       for (let rr = centerPos.row - radius; rr <= centerPos.row; rr++) {
         for (let cc = centerPos.col - (radius - (centerPos.row - rr)); cc <= centerPos.col + (radius - (centerPos.row - rr)); cc++) {
-          if (rr >= 0 && rr < this.rows && cc >= 0 && cc < this.cols) {
-            positions.push({ row: rr, col: cc });
-          }
+          positions.push({ row: rr, col: cc });
         }
       }
     }
-    return positions;
+    return positions.filter(pos => pos.row >= 0 && pos.col >= 0);
   }
 
   getEntitiesInPositions(positions) {
@@ -607,23 +549,5 @@ openEntitySheet(entity) {
       });
     }
     return entities;
-  }
-
-  highlightTiles(positions, highlightClass) {
-    this.clearHighlights();
-    positions.forEach(pos => {
-      const cell = this.gridEl.querySelector(`td[data-row='${pos.row}'][data-col='${pos.col}']`);
-      if (cell) cell.classList.add(highlightClass);
-    });
-  }
-
-  clearHighlights() {
-    const highlightedCells = this.gridEl.querySelectorAll('td.target-highlight');
-    highlightedCells.forEach(cell => cell.classList.remove('target-highlight'));
-  }
-
-  isCellHighlighted(r, c) {
-    const cell = this.gridEl.querySelector(`td[data-row='${r}'][data-col='${c}']`);
-    return cell && cell.classList.contains('target-highlight');
   }
 }
