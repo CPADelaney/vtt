@@ -26,14 +26,21 @@ function resizeCanvasAndCenter() {
   boardScroll.scrollLeft = (boardCanvas.offsetWidth - boardScroll.clientWidth) / 2;
   boardScroll.scrollTop = (boardCanvas.offsetHeight - boardScroll.clientHeight) / 2;
 }
-
 function enablePanning() {
   const boardScroll = document.getElementById('board-scroll-container');
   
   let isPanning = false;
   let startX, startY, scrollLeft, scrollTop;
 
+  // Prevent default context menu so right-click pans without popping a menu
+  boardScroll.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+  });
+
   boardScroll.addEventListener('mousedown', (e) => {
+    // Only start panning if it's the right mouse button
+    if (e.button !== 2) return;
+
     isPanning = true;
     boardScroll.style.cursor = 'grabbing';
     startX = e.pageX - boardScroll.offsetLeft;
@@ -61,3 +68,4 @@ function enablePanning() {
     boardScroll.scrollTop = scrollTop - (y - startY);
   });
 }
+
