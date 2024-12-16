@@ -2,7 +2,7 @@ const canvas = document.getElementById('gridCanvas');
 const ctx = canvas.getContext('2d');
 const viewport = document.getElementById('viewport');
 
-let gridSize = 50; // Size of each grid cell
+let gridSize = 51; // Size of each grid cell
 let gridWidth = 20; // Number of grid cells horizontally
 let gridHeight = 20; // Number of grid cells vertically
 let isPanning = false;
