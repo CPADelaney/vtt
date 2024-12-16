@@ -1,0 +1,24 @@
+name: Create gh-pages branch
+
+on:
+  push:
+    branches: [V2]
+
+jobs:
+  create-gh-pages:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Create gh-pages branch
+        run: |
+          git checkout --orphan gh-pages
+          git rm -rf .
+          echo "Created by Github Actions" > index.html
+          git add .
+          git commit -m "Initial gh-pages commit"
+          git push origin gh-pages -f
