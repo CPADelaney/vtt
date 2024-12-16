@@ -10,7 +10,7 @@ import { weapons } from './items.js';
 
 export class App {
   constructor() {
-    this.rows = 8;
+    this.rows = 9;
     this.cols = 8;
     this.users = ["DM", "Player1", "Player2"];
     this.currentUser = "DM";
