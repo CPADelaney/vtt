@@ -33,4 +33,4 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
         with:
-          target-folder: v2 # Deploy to the /v2 subfolder
+          target-folder: V2 # Deploy to the /v2 subfolder
