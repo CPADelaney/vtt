@@ -6,7 +6,7 @@ body {
 #viewport {
     width: 100vw;
     height: 100vh;
-    overflow: auto; /* Enable scrollbars on the viewport */
+    overflow: hidden; /* Enable scrollbars on the viewport */
     position: relative; /* Needed for canvas positioning */
 }
 
@@ -22,4 +22,16 @@ body {
 
 #gridCanvas.panning{
     cursor: grabbing; /* Cursor during panning */
+}
+
+#version {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    padding: 5px;
+    border-radius: 5px;
+    font-size: small;
+    z-index: 1000;
 }
