@@ -2,7 +2,7 @@ body {
   font-family: sans-serif;
   margin: 0;
   padding: 0;
-  overflow: hidden; /* Prevent scrollbars on body level */
+  overflow: hidden; /* Prevent scrollbars on body */
 }
 
 #main-container {
@@ -12,32 +12,65 @@ body {
 
 #board-container {
   flex: 3;
-  position: relative; /* To allow absolute positioning within */
-  overflow: hidden; /* Hide overflowing content */
+  position: relative;
+  overflow: hidden;
+}
+
+#board-scroll-container {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  cursor: grab;
+  position: relative;
 }
 
 .board-canvas {
   position: relative;
-  /* Width and height will be set dynamically by JS */
 }
 
-.zoom-container {
-  position: relative;
-  transform-origin: center center;
-  transform: scale(1);
+/* A large map-layer that acts as your play area */
+#map-layer {
+  width: 5000px;  /* A large width/height simulating a big map */
+  height: 5000px;
+  background-image:
+    linear-gradient(#ccc 1px, transparent 1px),
+    linear-gradient(90deg, #ccc 1px, transparent 1px);
+  background-size: 60px 60px; /* Each cell is 60px */
+  background-color: #fff;
   
+  transform-origin: center center;
+  transform: scale(1); /* Default scale */
+  position: relative;
+}
+
+/* Tokens and other entities will be absolutely positioned within #map-layer */
+.token {
+  width: 40px;
+  height: 40px;
+  background-color: #555;
+  border-radius: 50%;
+  color: white;
+  font-weight: bold;
+  user-select: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(-50%, -50%);
   display: flex;
-  justify-content: center; /* Centers horizontally */
-  align-items: center;     /* Centers vertically */
+  justify-content: center;
+  align-items: center;
 }
 
-#board-scroll-container {
-  overflow: auto;
-  width: 100%;
-  height: 100%;
-  cursor: grab; /* Shows a grab cursor for panning */
+/* Selection marquee */
+#selection-marquee {
+  position: absolute;
+  border: 2px dashed blue;
+  background-color: rgba(0, 0, 255, 0.1);
+  pointer-events: none;
+  display: none;
 }
 
+/* Other UI elements are unchanged */
 #map-controls {
   position: absolute;
   top: 10px;
@@ -46,8 +79,9 @@ body {
   padding: 10px;
   border: 1px solid #ddd;
   z-index: 100;
-  cursor: move; /* Move cursor on controls */
+  cursor: move;
 }
+
 
 #sidebar {
   flex: 1;
