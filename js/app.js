@@ -2,7 +2,7 @@ const canvas = document.getElementById('gridCanvas');
 const ctx = canvas.getContext('2d');
 const viewport = document.getElementById('viewport');
 const versionElement = document.getElementById('version');
-const version = "1.0.3";
+const version = "1.0.4";
 
 versionElement.textContent = "Version: " + version;
 
@@ -15,14 +15,12 @@ let startY;
 let offsetX = 0;
 let offsetY = 0;
 let isDragging = false;
-let dragStartX;
-let dragStartY;
+let dragOffsetX; // Offset within the token where the drag started
+let dragOffsetY;
 let draggedElement = null;
 
-// Array to hold multiple tokens
 const tokens = [];
 
-// Token constructor function
 function Token(x, y, width, height, color) {
     this.x = x;
     this.y = y;
@@ -30,12 +28,13 @@ function Token(x, y, width, height, color) {
     this.height = height;
     this.color = color;
     this.draw = function() {
+        const scaledWidth = this.width * (gridSize / 50);
+        const scaledHeight = this.height * (gridSize / 50);
         ctx.fillStyle = this.color;
-        ctx.fillRect(this.x, this.y, this.width, this.height);
+        ctx.fillRect(this.x, this.y, scaledWidth, scaledHeight);
     };
 }
 
-// Create a few tokens
 tokens.push(new Token(100, 100, 40, 40, 'red'));
 tokens.push(new Token(250, 150, 30, 60, 'blue'));
 
@@ -86,25 +85,25 @@ function redraw() {
 }
 
 canvas.addEventListener('mousedown', (e) => {
-    if (e.button === 2) { // Right-click for panning
+    if (e.button === 2) {
         isPanning = true;
         startX = e.clientX - offsetX;
         startY = e.clientY - offsetY;
         canvas.classList.add('panning');
         window.addEventListener('mousemove', doPan, { capture: true });
         window.addEventListener('mouseup', endPan, { once: true });
-    } else { // Left-click for token selection/dragging
+    } else {
         const rect = canvas.getBoundingClientRect();
         const x = e.clientX - rect.left - offsetX;
         const y = e.clientY - rect.top - offsetY;
 
         for (const token of tokens) {
-          if (x >= token.x && x <= token.x + token.width && y >= token.y && y <= token.y + token.height) {
+            if (x >= token.x && x <= token.x + token.width * (gridSize / 50) && y >= token.y && y <= token.y + token.height * (gridSize / 50)) {
                 isDragging = true;
-                dragStartX = e.clientX;
-                dragStartY = e.clientY;
+                dragOffsetX = x - token.x; // Calculate offset within the token
+                dragOffsetY = y - token.y;
                 draggedElement = token;
-                break; // Stop searching once a token is found
+                break;
             }
         }
     }
@@ -126,18 +125,13 @@ function endPan() {
 
 canvas.addEventListener('mousemove', (e) => {
     if (isDragging) {
-        const dx = e.clientX - dragStartX;
-        const dy = e.clientY - dragStartY;
+        const rect = canvas.getBoundingClientRect();
+        let x = e.clientX - rect.left - offsetX - dragOffsetX;
+        let y = e.clientY - rect.top - offsetY - dragOffsetY;
 
-        draggedElement.x += dx;
-        draggedElement.y += dy;
-
-        const snappedPos = snapToGrid(draggedElement.x, draggedElement.y);
+        const snappedPos = snapToGrid(x, y);
         draggedElement.x = snappedPos.x;
         draggedElement.y = snappedPos.y;
-
-        dragStartX = e.clientX;
-        dragStartY = e.clientY;
 
         redraw();
     }
