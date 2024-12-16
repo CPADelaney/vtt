@@ -15,7 +15,7 @@ const Board = (function(){
 
   // If we eventually add a conceptual “zoom” that doesn't change cell size:
   // zoomLevel would be a number that affects calculations of object placement.
-  let zoomLevel = 1.0;
+  let zoomLevel = 2.0;
   function setZoom(newZoom) {
     // newZoom might change how tokens are placed, but does NOT affect #board’s background-size
     // For now, do nothing visually. Just store it.
