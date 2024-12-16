@@ -8,13 +8,15 @@ let gridHeight = 20; // Number of grid cells vertically
 let isPanning = false;
 let startX;
 let startY;
+let offsetX = 0;
+let offsetY = 0;
 
 function drawGrid() {
     canvas.width = gridWidth * gridSize;
     canvas.height = gridHeight * gridSize;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    ctx.strokeStyle = '#ccc'; // Grid line color
+    ctx.strokeStyle = '#ccc';
 
     for (let x = 0; x <= canvas.width; x += gridSize) {
         ctx.beginPath();
@@ -29,7 +31,14 @@ function drawGrid() {
         ctx.lineTo(canvas.width, y);
         ctx.stroke();
     }
+    //Recenter the canvas after redraw
+    offsetX = (viewport.clientWidth - canvas.width) / 2;
+    offsetY = (viewport.clientHeight - canvas.height) / 2;
+    canvas.style.left = offsetX + "px";
+    canvas.style.top = offsetY + "px";
+
 }
+
 
 drawGrid(); // Initial grid draw
 
@@ -49,9 +58,10 @@ canvas.addEventListener('mouseup', () => {
 
 canvas.addEventListener('mousemove', (e) => {
     if (!isPanning) return;
-    viewport.scrollLeft = startX - (e.clientX - viewport.offsetLeft);
-    viewport.scrollTop = startY - (e.clientY - viewport.offsetTop);
+    viewport.scrollLeft = startX - (e.clientX - viewport.offsetLeft) - offsetX;
+    viewport.scrollTop = startY - (e.clientY - viewport.offsetTop) - offsetY;
 });
+
 
 canvas.addEventListener('contextmenu', (e) => {
     e.preventDefault(); // Prevents default context menu behavior
