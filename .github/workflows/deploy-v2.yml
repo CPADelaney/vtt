@@ -11,8 +11,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
         with:
-          folder: . # Deploy the root directory
-          target-folder: v2 # Deploy to the /v2 subfolder
+          path: . # Upload everything in the repository
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
