@@ -2,7 +2,7 @@ const canvas = document.getElementById('gridCanvas');
 const ctx = canvas.getContext('2d');
 const viewport = document.getElementById('viewport');
 const versionElement = document.getElementById('version');
-const version = "1.0.5";
+const version = "1.0.6"; // Current Version
 
 versionElement.textContent = "Version: " + version;
 
@@ -85,25 +85,25 @@ function redraw() {
 }
 
 canvas.addEventListener('mousedown', (e) => {
-    if (e.button === 2) {
+    if (e.button === 2) { // Right-click: Panning
         isPanning = true;
         startX = e.clientX - offsetX;
         startY = e.clientY - offsetY;
         canvas.classList.add('panning');
         window.addEventListener('mousemove', doPan, { capture: true });
         window.addEventListener('mouseup', endPan, { once: true });
-    } else {
+    } else { // Left-click: Token Selection/Dragging
         const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left - offsetX;
-        const y = e.clientY - rect.top - offsetY;
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
 
         for (const token of tokens) {
-            const scaledWidth = token.width * (gridSize / 50); 
-            const scaledHeight = token.height * (gridSize / 50); 
-            if (x >= token.x && x <= token.x + scaledWidth && y >= token.y && y <= token.y + scaledHeight) { 
+            const scaledWidth = token.width * (gridSize / 50);
+            const scaledHeight = token.height * (gridSize / 50);
+            if (x >= token.x + offsetX && x <= token.x + offsetX + scaledWidth && y >= token.y + offsetY && y <= token.y + offsetY + scaledHeight) {
                 isDragging = true;
-                dragOffsetX = x - token.x;
-                dragOffsetY = y - token.y;
+                dragOffsetX = x - (token.x + offsetX);
+                dragOffsetY = y - (token.y + offsetY);
                 draggedElement = token;
                 break;
             }
@@ -117,6 +117,7 @@ function doPan(e) {
 
     canvas.style.left = offsetX + 'px';
     canvas.style.top = offsetY + 'px';
+    redraw();
 }
 
 function endPan() {
@@ -128,10 +129,10 @@ function endPan() {
 canvas.addEventListener('mousemove', (e) => {
     if (isDragging) {
         const rect = canvas.getBoundingClientRect();
-        let x = e.clientX - rect.left - offsetX - dragOffsetX;
-        let y = e.clientY - rect.top - offsetY - dragOffsetY;
+        let x = e.clientX - rect.left - dragOffsetX;
+        let y = e.clientY - rect.top - dragOffsetY;
 
-        const snappedPos = snapToGrid(x, y);
+        const snappedPos = snapToGrid(x - offsetX, y - offsetY);
         draggedElement.x = snappedPos.x;
         draggedElement.y = snappedPos.y;
 
