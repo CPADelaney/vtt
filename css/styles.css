@@ -11,12 +11,15 @@ body {
 }
 
 #gridCanvas {
-    position: absolute; /* Allows us to position the canvas within the viewport */
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%); /* Centers the canvas */
-    cursor: grab; /* Default cursor */
+    position: absolute;
+    top: 0;
+    left: 0;
+    /* The following is the crucial change */
+    margin: auto; /* Center horizontally and vertically */
+    transform: translate(0, 0); /* Reset transform */
+    cursor: grab;
 }
+
 #gridCanvas.panning{
     cursor: grabbing; /* Cursor during panning */
 }
