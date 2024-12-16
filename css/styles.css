@@ -26,8 +26,6 @@ body {
   transform-origin: center center;
   transform: scale(1); /* Default scale set in JS when zooming */
   position: relative; /* Ensure correct positioning context */
-  width: 100%; /* Adjust as needed if you have dynamic sizing */
-  height: 100%; 
 }
 
 #board-scroll-container {
