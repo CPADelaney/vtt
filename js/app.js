@@ -8,7 +8,7 @@ let gridHeight = 20;
 let isPanning = false;
 let startX;
 let startY;
-let offsetX = 0; // Keep track of the grid's offset
+let offsetX = 0;
 let offsetY = 0;
 
 function drawGrid() {
@@ -33,11 +33,18 @@ function drawGrid() {
     }
 }
 
+function centerGrid() {
+    offsetX = (viewport.clientWidth - canvas.width) / 2;
+    offsetY = (viewport.clientHeight - canvas.height) / 2;
+    canvas.style.left = offsetX + 'px';
+    canvas.style.top = offsetY + 'px';
+}
+
 canvas.addEventListener('mousedown', (e) => {
-    if (e.button === 2) { // Right mouse button
+    if (e.button === 2) {
         isPanning = true;
-        startX = e.clientX;
-        startY = e.clientY;
+        startX = e.clientX - offsetX; // Corrected startX calculation
+        startY = e.clientY - offsetY; // Corrected startY calculation
         canvas.classList.add('panning');
     }
 });
@@ -50,17 +57,11 @@ canvas.addEventListener('mouseup', () => {
 canvas.addEventListener('mousemove', (e) => {
     if (!isPanning) return;
 
-    let dx = e.clientX - startX;
-    let dy = e.clientY - startY;
-
-    offsetX += dx;
-    offsetY += dy;
+    offsetX = e.clientX - startX;
+    offsetY = e.clientY - startY;
 
     canvas.style.left = offsetX + 'px';
     canvas.style.top = offsetY + 'px';
-
-    startX = e.clientX;
-    startY = e.clientY;
 });
 
 canvas.addEventListener('contextmenu', (e) => {
@@ -76,12 +77,8 @@ viewport.addEventListener('wheel', (e) => {
     if (gridSize > 100) gridSize = 100;
 
     drawGrid();
-
-    //Adjust offset after zoom
-    offsetX = (viewport.clientWidth - canvas.width) / 2;
-    offsetY = (viewport.clientHeight - canvas.height) / 2;
-    canvas.style.left = offsetX + "px";
-    canvas.style.top = offsetY + "px";
+    centerGrid();// Recenter after zoom
 });
 
-drawGrid(); // Initial draw
+drawGrid();
+centerGrid();// Initial centering
