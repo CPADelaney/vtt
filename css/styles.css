@@ -1,30 +1,22 @@
-html, body {
-  margin: 0;
-  padding: 0;
-  overflow: hidden; /* We’ll handle scroll in #viewport if desired */
-  width: 100%;
-  height: 100%;
-  background: #222; /* Just a dark background */
-  user-select: none;
+body {
+    margin: 0;
+    overflow: hidden; /* Prevent body scrollbars */
 }
 
 #viewport {
-  position: relative;
-  width: 100vw;
-  height: 100vh;
-  overflow: scroll;
+    width: 100vw;
+    height: 100vh;
+    overflow: auto; /* Enable scrollbars on the viewport */
+    position: relative; /* Needed for canvas positioning */
 }
 
-/* The board is large to allow scrolling. For example, a 5000x5000px area */
-#board {
-  position: relative;
-  width: 5000px;
-  height: 5000px;
-  background-color: #333;
-  background-image: 
-    linear-gradient(#444 1px, transparent 1px), 
-    linear-gradient(90deg, #444 1px, transparent 1px);
-  background-size: 50px 50px; /* Each cell is 50px x 50px */
+#gridCanvas {
+    position: absolute; /* Allows us to position the canvas within the viewport */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* Centers the canvas */
+    cursor: grab; /* Default cursor */
 }
-
-/* Optional: Center the board when loaded: set initial scroll in JS. */
+#gridCanvas.panning{
+    cursor: grabbing; /* Cursor during panning */
+}
