@@ -15,11 +15,18 @@ body {
     position: relative; /* To allow absolute positioning within */
     overflow: hidden; /* Hide overflowing content */
   }
+
+.board-canvas {
+  position: relative;
+  /* Width and height will be set dynamically by JS */
+}
   
-  #board-scroll-container {
-    overflow: auto;
-    height: 100%; /* Make sure scroll container covers full board container */
-  }
+#board-scroll-container {
+  overflow: auto;
+  width: 100%;
+  height: 100%;
+  cursor: grab; /* Shows a grab cursor for panning */
+}
   
   #map-controls {
     position: absolute;
@@ -64,10 +71,13 @@ body {
     display: block;
   }
   
-  #grid {
-    border-collapse: collapse;
-    margin: 0; /* Remove default table margin */
-  }
+#grid {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-collapse: collapse;
+}
   
   #grid td {
       width: 60px;
