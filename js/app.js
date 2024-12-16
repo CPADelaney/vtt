@@ -2,7 +2,7 @@ const canvas = document.getElementById('gridCanvas');
 const ctx = canvas.getContext('2d');
 const viewport = document.getElementById('viewport');
 const versionElement = document.getElementById('version');
-const version = "1.0.4";
+const version = "1.0.5";
 
 versionElement.textContent = "Version: " + version;
 
@@ -15,7 +15,7 @@ let startY;
 let offsetX = 0;
 let offsetY = 0;
 let isDragging = false;
-let dragOffsetX; // Offset within the token where the drag started
+let dragOffsetX;
 let dragOffsetY;
 let draggedElement = null;
 
@@ -98,9 +98,11 @@ canvas.addEventListener('mousedown', (e) => {
         const y = e.clientY - rect.top - offsetY;
 
         for (const token of tokens) {
-            if (x >= token.x && x <= token.x + token.width * (gridSize / 50) && y >= token.y && y <= token.y + token.height * (gridSize / 50)) {
+            const scaledWidth = token.width * (gridSize / 50); 
+            const scaledHeight = token.height * (gridSize / 50); 
+            if (x >= token.x && x <= token.x + scaledWidth && y >= token.y && y <= token.y + scaledHeight) { 
                 isDragging = true;
-                dragOffsetX = x - token.x; // Calculate offset within the token
+                dragOffsetX = x - token.x;
                 dragOffsetY = y - token.y;
                 draggedElement = token;
                 break;
