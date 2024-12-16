@@ -21,11 +21,14 @@ body {
   /* Width and height will be set dynamically by JS */
 }
 
-/* A container for zooming: wrap #grid inside this */
 .zoom-container {
+  position: relative;
   transform-origin: center center;
-  transform: scale(1); /* Default scale set in JS when zooming */
-  position: relative; /* Ensure correct positioning context */
+  transform: scale(1);
+  
+  display: flex;
+  justify-content: center; /* Centers horizontally */
+  align-items: center;     /* Centers vertically */
 }
 
 #board-scroll-container {
