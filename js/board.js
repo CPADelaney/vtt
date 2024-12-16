@@ -236,7 +236,7 @@ export class Board {
 
 handleGridMouseDown(e) {
   if (e.button !== 0) return; // Only handle left-click
-    
+
   const cell = e.target.closest('td');
   const ctrlPressed = e.ctrlKey;
 
@@ -325,17 +325,18 @@ handleGridMouseDown(e) {
         this.selectedEntities = [];
       }
 
-      const boardCanvas = this.boardScrollContainer.querySelector('.board-canvas');
-      const canvasRect = boardCanvas.getBoundingClientRect();
+      const zoomContainer = this.boardScrollContainer.querySelector('.zoom-container');
+      const zoomRect = zoomContainer.getBoundingClientRect();
 
-      const gx = (e.clientX - canvasRect.left + this.boardScrollContainer.scrollLeft) / this.scaleFactor;
-      const gy = (e.clientY - canvasRect.top + this.boardScrollContainer.scrollTop) / this.scaleFactor;
+      // Compute coordinates relative to .zoom-container without dividing by scaleFactor
+      const gx = e.clientX - zoomRect.left + this.boardScrollContainer.scrollLeft;
+      const gy = e.clientY - zoomRect.top + this.boardScrollContainer.scrollTop;
 
       this.isMarqueeSelecting = true;
       this.marqueeStart = { x: gx, y: gy };
       this.marqueeEl.style.display = 'block';
-      this.marqueeEl.style.left = `${this.marqueeStart.x}px`;
-      this.marqueeEl.style.top = `${this.marqueeStart.y}px`;
+      this.marqueeEl.style.left = `${gx}px`;
+      this.marqueeEl.style.top = `${gy}px`;
       this.marqueeEl.style.width = '0px';
       this.marqueeEl.style.height = '0px';
     }
@@ -346,10 +347,10 @@ handleGridMouseDown(e) {
 
 handleMouseMove(e) {
   const rect = this.gridEl.getBoundingClientRect();
-  const boardCanvas = this.boardScrollContainer.querySelector('.board-canvas');
-  const canvasRect = boardCanvas.getBoundingClientRect();
+  const zoomContainer = this.boardScrollContainer.querySelector('.zoom-container');
+  const zoomRect = zoomContainer.getBoundingClientRect();
 
-  // AoE logic
+  // AoE logic (unchanged)
   if (this.app.currentAction && this.app.currentAction.type === 'aoe') {
     const gx = (e.clientX - rect.left) / this.scaleFactor;
     const gy = (e.clientY - rect.top) / this.scaleFactor;
@@ -366,7 +367,7 @@ handleMouseMove(e) {
     }
   }
 
-  // Token dragging logic
+  // Token dragging logic (unchanged)
   if (this.isDraggingTokens && this.selectedEntities.length > 0) {
     this.clearDragHighlights();
     const gx = (e.clientX - rect.left) / this.scaleFactor;
@@ -383,12 +384,12 @@ handleMouseMove(e) {
     }
   }
 
-  // Marquee selection logic
+  // Marquee selection logic (no scaleFactor for marquee)
   if (this.isMarqueeSelecting) {
-    let currentX = (e.clientX - canvasRect.left + this.boardScrollContainer.scrollLeft) / this.scaleFactor;
-    let currentY = (e.clientY - canvasRect.top + this.boardScrollContainer.scrollTop) / this.scaleFactor;
+    let currentX = e.clientX - zoomRect.left + this.boardScrollContainer.scrollLeft;
+    let currentY = e.clientY - zoomRect.top + this.boardScrollContainer.scrollTop;
 
-    // Clamp coordinates within grid
+    // Clamp coordinates within grid dimensions
     currentX = Math.max(0, Math.min(currentX, this.cols * this.cellWidth));
     currentY = Math.max(0, Math.min(currentY, this.rows * this.cellHeight));
 
@@ -437,19 +438,20 @@ handleMouseUp(e) {
   }
 }
 
-  openEntitySheet(entity) {
-    if (entity.type === 'character') {
-      const ch = this.app.getCharacterById(entity.id);
-      if (ch) {
-        this.app.uiManager.openCharacterSheet(ch);
-      }
-    } else if (entity.type === 'monster') {
-      const mon = this.app.getMonsterById(entity.id);
-      if (mon) {
-        this.app.uiManager.openMonsterSheet(mon);
-      }
+openEntitySheet(entity) {
+  if (entity.type === 'character') {
+    const ch = this.app.getCharacterById(entity.id);
+    if (ch) {
+      this.app.uiManager.openCharacterSheet(ch);
+    }
+  } else if (entity.type === 'monster') {
+    const mon = this.app.getMonsterById(entity.id);
+    if (mon) {
+      this.app.uiManager.openMonsterSheet(mon);
     }
   }
+}
+
 
   handleContextMenu(e) {
     e.preventDefault();
