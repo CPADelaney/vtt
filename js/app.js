@@ -2,7 +2,7 @@ const canvas = document.getElementById('gridCanvas');
 const ctx = canvas.getContext('2d');
 const viewport = document.getElementById('viewport');
 const versionElement = document.getElementById('version');
-const version = "1.0.12";
+const version = "1.0.13";
 
 versionElement.textContent = "Version: " + version;
 
@@ -169,28 +169,38 @@ canvas.addEventListener('contextmenu', (e) => {
 });
 
 viewport.addEventListener('wheel', (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+  const rect = canvas.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
 
-    const preZoomX = (mouseX - offsetX) / gridSize;
-    const preZoomY = (mouseY - offsetY) / gridSize;
+  // Calculate zoom factor and clamped new grid size (same as before)
+  let zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+  let newGridSize = gridSize * zoomFactor;
+  newGridSize = Math.max(minZoom, Math.min(maxZoom, newGridSize));
 
-    let zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-    let newGridSize = gridSize * zoomFactor; // Calculate new grid size *before* clamping
+  // Calculate the *absolute* position of the mouse relative to the grid
+  const preGridX = (mouseX - offsetX) / gridSize; // Pre-zoom X in grid units
+  const preGridY = (mouseY - offsetY) / gridSize; // Pre-zoom Y in grid units
 
-    newGridSize = Math.max(minZoom, Math.min(maxZoom, newGridSize));
+  // Calculate the *new* absolute position of the mouse after zoom
+  const postGridX = preGridX * newGridSize; // Post-zoom X in grid units
+  const postGridY = preGridY * newGridSize; // Post-zoom Y in grid units
 
-    // Recalculate offsets based on the *difference* in grid size
-    offsetX += (preZoomX * (gridSize - newGridSize));
-    offsetY += (preZoomY * (gridSize - newGridSize));
+  // Calculate the *offset adjustment* to keep the mouse at the same grid position
+  const offsetXAdjustment = mouseX - (postGridX * newGridSize);
+  const offsetYAdjustment = mouseY - (postGridY * newGridSize);
 
-    gridSize = newGridSize; // *Then* update the actual grid size
+  // Update offsets with the adjustments
+  offsetX += offsetXAdjustment;
+  offsetY += offsetYAdjustment;
 
-    canvas.style.left = offsetX + 'px';
-    canvas.style.top = offsetY + 'px';
+  // Update grid size
+  gridSize = newGridSize;
 
-    redraw();
+  canvas.style.left = offsetX + 'px';
+  canvas.style.top = offsetY + 'px';
+
+  redraw();
 });
