@@ -1,19 +1,14 @@
 name: Deploy V2 to GitHub Pages
-
 on:
   push:
-    branches: ["V2"] # Triggered by pushes to the V2 branch
-
-# Sets permissions of the GITHUB_TOKEN
+    branches: ["V2"]
 permissions:
   contents: read
   pages: write
   id-token: write
-
 concurrency:
   group: "pages"
   cancel-in-progress: false
-
 jobs:
   deploy:
     environment:
@@ -28,9 +23,9 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.' # Upload entire repository
+          path: '.'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
         with:
-          target-folder: V2 # Deploy to the /v2 subfolder
+          target-folder: V2
