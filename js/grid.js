@@ -40,52 +40,61 @@ export class Grid {
         this.transformGroup.setAttribute('id', 'transform-group');
         this.svg.appendChild(this.transformGroup);
     }
-
-    render() {
-        // Clear existing grid
-        if (this.gridGroup) {
-            this.transformGroup.removeChild(this.gridGroup);
-        }
-
-        // Create new grid group
-        this.gridGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        this.gridGroup.setAttribute('id', 'grid-lines');
-        
-        // Apply grid styles
-        this.gridGroup.style.stroke = this.config.color;
-        this.gridGroup.style.strokeWidth = '0.5';
-        this.gridGroup.style.strokeOpacity = this.config.opacity;
-
-        // Render appropriate grid type
-        if (this.config.type === 'hex') {
-            this.renderHexGrid();
-        } else {
-            this.renderSquareGrid();
-        }
-
-        // Add grid to transform group
-        this.transformGroup.appendChild(this.gridGroup);
+// In grid.js, modify the renderSquareGrid method:
+renderSquareGrid() {
+    const gridSize = this.config.size;
+    
+    // For testing, let's draw the grid lines directly instead of using a path
+    for (let x = 0; x <= this.width; x += gridSize) {
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', x);
+        line.setAttribute('y1', 0);
+        line.setAttribute('x2', x);
+        line.setAttribute('y2', this.height);
+        line.setAttribute('stroke', 'black');  // Force visible color
+        line.setAttribute('stroke-width', '1');  // Force visible width
+        this.gridGroup.appendChild(line);
     }
 
-    renderSquareGrid() {
-        const gridSize = this.config.size;
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        let pathData = '';
-
-        // Vertical lines
-        for (let x = 0; x <= this.width; x += gridSize) {
-            pathData += `M ${x} 0 L ${x} ${this.height} `;
-        }
-
-        // Horizontal lines
-        for (let y = 0; y <= this.height; y += gridSize) {
-            pathData += `M 0 ${y} L ${this.width} ${y} `;
-        }
-
-        path.setAttribute('d', pathData);
-        path.setAttribute('vector-effect', 'non-scaling-stroke');
-        this.gridGroup.appendChild(path);
+    for (let y = 0; y <= this.height; y += gridSize) {
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', 0);
+        line.setAttribute('y1', y);
+        line.setAttribute('x2', this.width);
+        line.setAttribute('y2', y);
+        line.setAttribute('stroke', 'black');  // Force visible color
+        line.setAttribute('stroke-width', '1');  // Force visible width
+        this.gridGroup.appendChild(line);
     }
+}
+
+// Also add this to the render method right before rendering the grid:
+render() {
+    // Add these console logs
+    console.log('Rendering grid');
+    console.log('Transform group:', this.transformGroup);
+    console.log('Grid group:', this.gridGroup);
+
+    // Clear existing grid
+    if (this.gridGroup) {
+        this.transformGroup.removeChild(this.gridGroup);
+    }
+
+    // Create new grid group with explicit styles
+    this.gridGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    this.gridGroup.setAttribute('id', 'grid-lines');
+    this.gridGroup.style.stroke = 'black'; // Force visible color
+    this.gridGroup.style.strokeWidth = '1';
+    
+    // Render grid
+    if (this.config.type === 'hex') {
+        this.renderHexGrid();
+    } else {
+        this.renderSquareGrid();
+    }
+
+    this.transformGroup.appendChild(this.gridGroup);
+}
 
     renderHexGrid() {
         const size = this.config.size;
