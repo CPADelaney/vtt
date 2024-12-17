@@ -16,12 +16,22 @@ export class Grid {
     }
 
     initialize() {
+        console.log('Initializing grid');
+        // Set SVG attributes
         this.svg.setAttribute('width', '100%');
         this.svg.setAttribute('height', '100%');
         this.svg.setAttribute('viewBox', `0 0 ${this.width} ${this.height}`);
         
-        // Set up viewport tracking
-        this.setupViewportTracking();
+        // Draw a test rectangle to verify SVG is working
+        const testRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        testRect.setAttribute('x', '0');
+        testRect.setAttribute('y', '0');
+        testRect.setAttribute('width', '100');
+        testRect.setAttribute('height', '100');
+        testRect.setAttribute('fill', 'red');
+        this.svg.appendChild(testRect);
+        
+        console.log('Test rectangle added');
         
         // Initial render
         this.render();
