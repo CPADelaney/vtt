@@ -169,38 +169,28 @@ canvas.addEventListener('contextmenu', (e) => {
 });
 
 viewport.addEventListener('wheel', (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  const rect = canvas.getBoundingClientRect();
-  const mouseX = e.clientX - rect.left;
-  const mouseY = e.clientY - rect.top;
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
 
-  // Calculate zoom factor and clamped new grid size (same as before)
-  let zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-  let newGridSize = gridSize * zoomFactor;
-  newGridSize = Math.max(minZoom, Math.min(maxZoom, newGridSize));
+    let zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+    let newGridSize = gridSize * zoomFactor;
+    newGridSize = Math.max(minZoom, Math.min(maxZoom, newGridSize));
 
-  // Calculate the *absolute* position of the mouse relative to the grid
-  const preGridX = (mouseX - offsetX) / gridSize; // Pre-zoom X in grid units
-  const preGridY = (mouseY - offsetY) / gridSize; // Pre-zoom Y in grid units
+    // Calculate mouse position *relative to the canvas* before zoom
+    const preZoomCanvasX = mouseX - offsetX;
+    const preZoomCanvasY = mouseY - offsetY;
 
-  // Calculate the *new* absolute position of the mouse after zoom
-  const postGridX = preGridX * newGridSize; // Post-zoom X in grid units
-  const postGridY = preGridY * newGridSize; // Post-zoom Y in grid units
+    // Calculate the new offset to keep the mouse at the same canvas position
+    offsetX = mouseX - (preZoomCanvasX * (newGridSize / gridSize));
+    offsetY = mouseY - (preZoomCanvasY * (newGridSize / gridSize));
 
-  // Calculate the *offset adjustment* to keep the mouse at the same grid position
-  const offsetXAdjustment = mouseX - (postGridX * newGridSize);
-  const offsetYAdjustment = mouseY - (postGridY * newGridSize);
+    gridSize = newGridSize;
 
-  // Update offsets with the adjustments
-  offsetX += offsetXAdjustment;
-  offsetY += offsetYAdjustment;
+    canvas.style.left = offsetX + 'px';
+    canvas.style.top = offsetY + 'px';
 
-  // Update grid size
-  gridSize = newGridSize;
-
-  canvas.style.left = offsetX + 'px';
-  canvas.style.top = offsetY + 'px';
-
-  redraw();
+    redraw();
 });
