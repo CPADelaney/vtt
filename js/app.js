@@ -28,35 +28,32 @@ class VirtualTabletopApp {
         this.initialize();
         this.currentRuleset = DnD5eRuleset;
     }
+initialize() {
+    this.canvas = document.getElementById('grid-canvas');
+    console.log('Canvas found:', this.canvas);
 
-    initialize() {
-        this.canvas = document.getElementById('grid-canvas');
-        if (!this.canvas) {
-            throw new Error('Grid canvas element not found');
-        }
+    this.gridConfig = GridConfig.getInstance();
+    console.log('Grid config:', this.gridConfig);
 
-        // Initialize the grid
-        this.gridConfig = GridConfig.getInstance();
-        this.grid = new Grid(this.canvas);  // This is where we initialize the grid
+    this.grid = new Grid(this.canvas);
+    console.log('Grid created:', this.grid);
 
-        // Initialize other components with access to the grid
-        this.tokenManager = new TokenManager(this.currentRuleset);
-        this.interactionManager = new InteractionManager(this.canvas);
+    // Test drawing something directly on the canvas
+    const testRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    testRect.setAttribute('x', '100');
+    testRect.setAttribute('y', '100');
+    testRect.setAttribute('width', '100');
+    testRect.setAttribute('height', '100');
+    testRect.setAttribute('fill', 'red');
+    this.canvas.appendChild(testRect);
 
-        // Set up transform change listener for chunk updates
-        this.interactionManager.onTransformChange = () => {
-            this.grid.updateVisibleChunks();  // Update chunks when panning/zooming
-        };
+    this.tokenManager = new TokenManager(this.currentRuleset);
+    this.interactionManager = new InteractionManager(this.canvas);
 
-        // Example of getting cell at position (you'd use this in your interaction handling)
-        this.interactionManager.onMouseMove = (x, y) => {
-            const cell = this.grid.getCellAtPosition(x, y);
-            // Do something with the cell info if needed
-        };
-
-        this.setupEventListeners();
-        this.render();
-    }
+    this.setupEventListeners();
+    this.render();
+}
+    
     setupEventListeners() {
         // Listen for ruleset changes
         document.addEventListener('ruleset-changed', (event) => {
