@@ -1,62 +1,96 @@
 export class TokenManager {
-    constructor(svgElement) {
-        this.svg = svgElement;
-        this.tokens = [];
+    constructor(ruleset) {
+        this.tokens = new Map();
+        this.ruleset = ruleset;
     }
 
-    createToken(x, y, color = 'blue', label = '') {
+    createToken(tokenData) {
         const token = {
             id: `token-${Date.now()}`,
-            x,
-            y,
-            color,
-            label
+            ...this.ruleset.getDefaultToken(),
+            ...tokenData
         };
 
-        this.tokens.push(token);
-        this.renderToken(token);
+        if (!this.ruleset.validateToken(token)) {
+            throw new Error('Invalid token data');
+        }
+
+        this.tokens.set(token.id, token);
         return token;
+    }
+
+    removeToken(tokenId) {
+        this.tokens.delete(tokenId);
+    }
+
+    updateToken(tokenId, updates) {
+        const token = this.tokens.get(tokenId);
+        if (!token) {
+            throw new Error('Token not found');
+        }
+
+        const updatedToken = { ...token, ...updates };
+        this.tokens.set(tokenId, updatedToken);
+        return updatedToken;
+    }
+
+    getToken(tokenId) {
+        return this.tokens.get(tokenId);
+    }
+
+    getAllTokens() {
+        return Array.from(this.tokens.values());
+    }
+
+    clearTokens() {
+        this.tokens.clear();
     }
 
     renderToken(token) {
         const tokenGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         tokenGroup.setAttribute('id', token.id);
-        tokenGroup.classList.add('token');
+        tokenGroup.setAttribute('class', 'token');
 
-        // Token circle
+        // Create token circle
         const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         circle.setAttribute('cx', token.x);
         circle.setAttribute('cy', token.y);
-        circle.setAttribute('r', 25);  // Default radius
-        circle.setAttribute('fill', token.color);
+        circle.setAttribute('r', token.size || 25);
+        circle.setAttribute('fill', token.color || 'blue');
 
-        // Token label
-        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        text.setAttribute('x', token.x);
-        text.setAttribute('y', token.y);
-        text.setAttribute('text-anchor', 'middle');
-        text.setAttribute('dy', '.3em');
-        text.setAttribute('fill', 'white');
-        text.textContent = token.label;
+        // Create token label
+        if (token.label) {
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', token.x);
+            text.setAttribute('y', token.y + 5);
+            text.setAttribute('text-anchor', 'middle');
+            text.setAttribute('fill', 'white');
+            text.textContent = token.label;
+            tokenGroup.appendChild(text);
+        }
 
         tokenGroup.appendChild(circle);
-        tokenGroup.appendChild(text);
-
-        this.svg.appendChild(tokenGroup);
+        return tokenGroup;
     }
 
-    setupEventListeners() {
-        const addTokenBtn = document.getElementById('add-token');
-        addTokenBtn.addEventListener('click', () => {
-            // Add token at center of grid
-            this.createToken(500, 400, 'blue', 'New Token');
+    updateTokenPosition(tokenId, x, y) {
+        const token = this.getToken(tokenId);
+        if (token) {
+            token.x = x;
+            token.y = y;
+            this.updateToken(tokenId, token);
+        }
+    }
+
+    getTokenAt(x, y) {
+        // Simple hit detection
+        return Array.from(this.tokens.values()).find(token => {
+            const dx = token.x - x;
+            const dy = token.y - y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            return distance < (token.size || 25);
         });
     }
 }
 
-// Initialize Token Manager
-const svg = document.getElementById('grid-canvas');
-const tokenManager = new TokenManager(svg);
-tokenManager.setupEventListeners();
-
-export default tokenManager;
+export default TokenManager;
