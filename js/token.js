@@ -73,14 +73,19 @@ export class TokenManager {
         return tokenGroup;
     }
 
-    updateTokenPosition(tokenId, x, y) {
-        const token = this.getToken(tokenId);
+// Example token placement
+updateTokenPosition(tokenId, x, y) {
+    const cell = this.grid.getCellAtPosition(x, y);
+    if (cell) {
+        const token = this.tokens.get(tokenId);
         if (token) {
-            token.x = x;
-            token.y = y;
+            // Snap to cell center
+            token.x = cell.x + (this.config.size / 2);
+            token.y = cell.y + (this.config.size / 2);
             this.updateToken(tokenId, token);
         }
     }
+}
 
     getTokenAt(x, y) {
         // Simple hit detection
