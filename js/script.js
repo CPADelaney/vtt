@@ -17,7 +17,10 @@ class VirtualTabletop {
         this.gridSize = 50; // Base size for grid cells
         this.tokens = new Set(); // Store token positions
         
-        // Calculate grid dimensions
+        // For hex grid
+        this.hexWidth = this.gridSize * 1.1547; // 2/√3
+        this.hexHeight = this.gridSize * 2;
+        
         this.updateGridDimensions();
 
         // Initialize mouse handler
@@ -108,18 +111,19 @@ class VirtualTabletop {
     }
 
     createHexGrid() {
-        const hexHeight = this.gridSize * 2;
-        const hexWidth = this.gridSize * Math.sqrt(3);
-        const verticalSpacing = hexHeight * 0.75;
-        const horizontalSpacing = hexWidth;
+        // Horizontal spacing is 100% of hex width
+        const horizontalSpacing = this.hexWidth;
+        // Vertical spacing is 75% of hex height
+        const verticalSpacing = this.hexHeight * 0.75;
         
         for (let row = 0; row < this.rows; row++) {
             for (let col = 0; col < this.cols; col++) {
                 const cell = document.createElement('div');
                 cell.className = 'grid-cell';
                 
-                // Offset every other row horizontally
+                // Offset every other row by half the width
                 const offset = row % 2 === 0 ? 0 : horizontalSpacing / 2;
+                
                 cell.style.left = `${col * horizontalSpacing + offset}px`;
                 cell.style.top = `${row * verticalSpacing}px`;
                 
