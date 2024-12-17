@@ -28,32 +28,38 @@ class VirtualTabletopApp {
         this.currentRuleset = DnD5eRuleset;  // Use the placeholder
     }
 
-    initialize() {
-        this.canvas = document.getElementById('grid-canvas');
-        if (!this.canvas) {
-            throw new Error('Grid canvas element not found');
-        }
-    
-        // Add this console.log to check if we're finding the canvas
-        console.log('Canvas found:', this.canvas);
-    
-        this.gridConfig = GridConfig.getInstance();
-        
-        // Add these console.logs
-        console.log('Grid config:', this.gridConfig);
-        
-        this.grid = new Grid(this.canvas);
-        console.log('Grid created:', this.grid);
-        this.tokenManager = new TokenManager(this.currentRuleset);
-        this.interactionManager = new InteractionManager(this.canvas);
-
-        // Set up event listeners
-        this.setupEventListeners();
-
-        // Initial render
-        this.render();
+// In app.js initialize method
+initialize() {
+    this.canvas = document.getElementById('grid-canvas');
+    if (!this.canvas) {
+        throw new Error('Grid canvas element not found');
     }
+    
+    // Log the canvas element
+    console.log('Canvas dimensions:', {
+        width: this.canvas.clientWidth,
+        height: this.canvas.clientHeight,
+        offsetWidth: this.canvas.offsetWidth,
+        offsetHeight: this.canvas.offsetHeight
+    });
 
+    this.gridConfig = GridConfig.getInstance();
+    this.grid = new Grid(this.canvas);
+    
+    // Test SVG rendering
+    const testCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    testCircle.setAttribute('cx', '50');
+    testCircle.setAttribute('cy', '50');
+    testCircle.setAttribute('r', '25');
+    testCircle.setAttribute('fill', 'blue');
+    this.canvas.appendChild(testCircle);
+    
+    this.tokenManager = new TokenManager(this.currentRuleset);
+    this.interactionManager = new InteractionManager(this.canvas);
+    
+    this.setupEventListeners();
+    this.render();
+}
     setupEventListeners() {
         // Listen for ruleset changes
         document.addEventListener('ruleset-changed', (event) => {
