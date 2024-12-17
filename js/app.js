@@ -8,7 +8,7 @@ export class App {
         this.versionElement = document.getElementById('version');
 
         // Version number updated here
-        this.version = "1.0.20"; 
+        this.version = "1.0.01"; 
         this.versionElement.textContent = "Version: " + this.version;
 
         // Grid parameters
