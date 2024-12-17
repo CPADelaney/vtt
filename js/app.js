@@ -29,8 +29,8 @@ let dragOffsetY = 0;
 // Tokens
 const tokens = [];
 function Token(x, y, width, height, color) {
-    // x, y are originally given in pixels at a 50px cell scale
-    this.gridX = x / 50; // Convert to "grid units"
+    // x, y given in pixels at 50px/cell scale originally
+    this.gridX = x / 50;
     this.gridY = y / 50;
     this.width = width;
     this.height = height;
@@ -55,7 +55,7 @@ tokens.push(new Token(250, 150, 30, 60, 'blue'));
 // Create the grid pattern
 let gridPattern = createSquarePattern(ctx, 50, '#ccc', 1);
 
-// Initialize the canvas size
+// Set initial canvas size based on grid size
 canvas.width = gridWidth * gridSize;
 canvas.height = gridHeight * gridSize;
 
@@ -74,9 +74,7 @@ function drawTokens() {
 function redraw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Fill the background with the pattern.
-    // The pattern is drawn starting at (offsetX, offsetY), 
-    // but since we're not using translate/scale here, we can just fill starting at offsetX/offsetY.
+    // Fill the background with the pattern using offsets
     ctx.fillStyle = gridPattern;
     ctx.fillRect(offsetX, offsetY, gridWidth * gridSize, gridHeight * gridSize);
 
@@ -84,11 +82,10 @@ function redraw() {
 }
 
 function centerGrid() {
-    // Center the grid in the viewport if desired
+    // Just center logically by adjusting offsetX/offsetY
+    // Do not modify canvas.style here.
     offsetX = (viewport.clientWidth - (gridWidth * gridSize)) / 2;
     offsetY = (viewport.clientHeight - (gridHeight * gridSize)) / 2;
-    canvas.style.left = offsetX + 'px';
-    canvas.style.top = offsetY + 'px';
 }
 
 // Initial draw
@@ -98,8 +95,7 @@ redraw();
 // Event Listeners
 canvas.addEventListener('mousedown', (e) => {
     if (e.button === 2) {
-        // Right-click panning: Not used directly here since main.js handles panning via scroll container
-        // If you want to pan by moving the canvas itself, you'd implement it here.
+        // Right-click panning would be handled by scroll container (main.js)
         return;
     } else {
         // Left-click: Attempt to pick up a token
@@ -175,10 +171,7 @@ viewport.addEventListener('wheel', (e) => {
     offsetX = mouseX - (worldX * gridSize);
     offsetY = mouseY - (worldY * gridSize);
 
-    canvas.style.left = offsetX + 'px';
-    canvas.style.top = offsetY + 'px';
-    
-    // Adjust canvas size to reflect new grid size (if needed)
+    // Adjust canvas size to reflect new grid size
     canvas.width = gridWidth * gridSize;
     canvas.height = gridHeight * gridSize;
 
@@ -187,8 +180,6 @@ viewport.addEventListener('wheel', (e) => {
 
 export class App {
     initialize() {
-        // Any additional initialization logic can go here
-        // For now, just ensure the canvas is ready
         redraw();
     }
 }
