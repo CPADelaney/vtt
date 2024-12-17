@@ -21,45 +21,42 @@ const DnD5eRuleset = {
         };
     }
 };
+// In app.js
 
 class VirtualTabletopApp {
     constructor() {
         this.initialize();
-        this.currentRuleset = DnD5eRuleset;  // Use the placeholder
+        this.currentRuleset = DnD5eRuleset;
     }
 
-// In app.js initialize method
-initialize() {
-    this.canvas = document.getElementById('grid-canvas');
-    if (!this.canvas) {
-        throw new Error('Grid canvas element not found');
-    }
-    
-    // Log the canvas element
-    console.log('Canvas dimensions:', {
-        width: this.canvas.clientWidth,
-        height: this.canvas.clientHeight,
-        offsetWidth: this.canvas.offsetWidth,
-        offsetHeight: this.canvas.offsetHeight
-    });
+    initialize() {
+        this.canvas = document.getElementById('grid-canvas');
+        if (!this.canvas) {
+            throw new Error('Grid canvas element not found');
+        }
 
-    this.gridConfig = GridConfig.getInstance();
-    this.grid = new Grid(this.canvas);
-    
-    // Test SVG rendering
-    const testCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    testCircle.setAttribute('cx', '50');
-    testCircle.setAttribute('cy', '50');
-    testCircle.setAttribute('r', '25');
-    testCircle.setAttribute('fill', 'blue');
-    this.canvas.appendChild(testCircle);
-    
-    this.tokenManager = new TokenManager(this.currentRuleset);
-    this.interactionManager = new InteractionManager(this.canvas);
-    
-    this.setupEventListeners();
-    this.render();
-}
+        // Initialize the grid
+        this.gridConfig = GridConfig.getInstance();
+        this.grid = new Grid(this.canvas);  // This is where we initialize the grid
+
+        // Initialize other components with access to the grid
+        this.tokenManager = new TokenManager(this.currentRuleset);
+        this.interactionManager = new InteractionManager(this.canvas);
+
+        // Set up transform change listener for chunk updates
+        this.interactionManager.onTransformChange = () => {
+            this.grid.updateVisibleChunks();  // Update chunks when panning/zooming
+        };
+
+        // Example of getting cell at position (you'd use this in your interaction handling)
+        this.interactionManager.onMouseMove = (x, y) => {
+            const cell = this.grid.getCellAtPosition(x, y);
+            // Do something with the cell info if needed
+        };
+
+        this.setupEventListeners();
+        this.render();
+    }
     setupEventListeners() {
         // Listen for ruleset changes
         document.addEventListener('ruleset-changed', (event) => {
