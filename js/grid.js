@@ -15,11 +15,23 @@ export class Grid {
         this.initialize();
     }
 
+    // At the top of grid.js, just after constructor
     initialize() {
+        console.log('Initializing grid with SVG:', this.svg);
+        
         // Set SVG attributes
         this.svg.setAttribute('width', '100%');
         this.svg.setAttribute('height', '100%');
         this.svg.setAttribute('viewBox', `0 0 ${this.width} ${this.height}`);
+        
+        // Draw a test rectangle to verify SVG is working
+        const testRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        testRect.setAttribute('x', '0');
+        testRect.setAttribute('y', '0');
+        testRect.setAttribute('width', '100');
+        testRect.setAttribute('height', '100');
+        testRect.setAttribute('fill', 'red');
+        this.svg.appendChild(testRect);
         
         // Initial render
         this.render();
