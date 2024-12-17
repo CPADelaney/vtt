@@ -61,3 +61,35 @@ body {
     cursor: move;
     z-index: 100;
 }
+
+.marquee {
+    position: fixed;
+    border: 2px solid #007bff;
+    background-color: rgba(0, 123, 255, 0.1);
+    pointer-events: none;
+    z-index: 1000;
+}
+
+.token.selected {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+.context-menu {
+    position: fixed;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 4px 0;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    z-index: 1000;
+}
+
+.context-menu-item {
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+.context-menu-item:hover {
+    background-color: #f0f0f0;
+}
