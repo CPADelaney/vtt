@@ -31,23 +31,26 @@ body {
     cursor: grabbing;
 }
 
+/* Base grid cell styles */
 .grid-cell {
     position: absolute;
-    border: 1px solid #ccc;
     background: rgba(255, 255, 255, 0.5);
+    box-sizing: border-box;
 }
 
-/* Square Grid */
+/* Square grid specific */
 .square-grid .grid-cell {
     width: 50px;
     height: 50px;
+    border: 1px solid #ccc;
 }
 
-/* Hex Grid */
+/* Hex grid specific */
 .hex-grid .grid-cell {
-    width: 57.735px; /* hex width = 2 * size * cos(30) */
-    height: 50px;
-    clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+    width: 51.96px;  /* √3 * 30 */
+    height: 60px;    /* 2 * 30 */
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    border: 2px solid #aaa;
 }
 
 /* Token styles */
@@ -62,6 +65,12 @@ body {
     z-index: 100;
 }
 
+.token.selected {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+/* Selection marquee */
 .marquee {
     position: fixed;
     border: 2px solid #007bff;
@@ -70,11 +79,7 @@ body {
     z-index: 1000;
 }
 
-.token.selected {
-    outline: 2px solid #007bff;
-    outline-offset: 2px;
-}
-
+/* Context menu */
 .context-menu {
     position: fixed;
     background: white;
@@ -90,18 +95,18 @@ body {
     cursor: pointer;
 }
 
-.hex-grid .grid-cell {
-    position: absolute;
-    /* Width is the distance between parallel sides (√3 * size) */
-    width: 51.96px;  /* √3 * 30 */
-    /* Height is twice the size (point to point) */
-    height: 60px;    /* 2 * 30 */
-    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-    background: rgba(255, 255, 255, 0.5);
-    border: 1px solid #ccc;
+.context-menu-item:hover {
+    background-color: #f0f0f0;
 }
 
-/* Version updated */
 #version-display {
-    content: 'v1.2';
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 3px;
+    font-family: monospace;
+    z-index: 1000;
 }
