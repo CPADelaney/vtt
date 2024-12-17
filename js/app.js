@@ -1,3 +1,6 @@
+// app.js
+import { createSquarePattern } from './gridPattern.js';
+
 const canvas = document.getElementById('gridCanvas');
 const ctx = canvas.getContext('2d');
 const viewport = document.getElementById('viewport');
@@ -6,35 +9,37 @@ const version = "1.0.16";
 
 versionElement.textContent = "Version: " + version;
 
+// Grid and scaling parameters
 let gridSize = 50;
+const minZoom = 5;
+const maxZoom = 100;
+
+// Grid dimensions in cells
 let gridWidth = 20;
 let gridHeight = 20;
-let isPanning = false;
-let startX;
-let startY;
+
+// Offsets and dragging states
 let offsetX = 0;
 let offsetY = 0;
 let isDragging = false;
-let dragOffsetX;
-let dragOffsetY;
 let draggedElement = null;
-const minZoom = 5; // Minimum gridSize
-const maxZoom = 100; // Maximum gridSize
+let dragOffsetX = 0;
+let dragOffsetY = 0;
 
+// Tokens
 const tokens = [];
 function Token(x, y, width, height, color) {
-    // Store token position in grid units (relative to the grid origin)
-    this.gridX = x / 50; // Convert from original pixel units to grid units
+    // x, y are originally given in pixels at a 50px cell scale
+    this.gridX = x / 50; // Convert to "grid units"
     this.gridY = y / 50;
     this.width = width;
     this.height = height;
     this.color = color;
 
     this.draw = function() {
-        const scaledWidth = this.width * (gridSize / 50);
-        const scaledHeight = this.height * (gridSize / 50);
-
-        // Calculate screen position based on current grid size and offset
+        const scale = gridSize / 50;
+        const scaledWidth = this.width * scale;
+        const scaledHeight = this.height * scale;
         const screenX = this.gridX * gridSize + offsetX;
         const screenY = this.gridY * gridSize + offsetY;
 
@@ -43,31 +48,16 @@ function Token(x, y, width, height, color) {
     };
 }
 
-
+// Example tokens
 tokens.push(new Token(100, 100, 40, 40, 'red'));
 tokens.push(new Token(250, 150, 30, 60, 'blue'));
 
-function drawGrid() {
-    canvas.width = gridWidth * gridSize;
-    canvas.height = gridHeight * gridSize;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+// Create the grid pattern
+let gridPattern = createSquarePattern(ctx, 50, '#ccc', 1);
 
-    ctx.strokeStyle = '#ccc';
-
-    for (let x = 0; x <= canvas.width; x += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-        ctx.stroke();
-    }
-
-    for (let y = 0; y <= canvas.height; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
-    }
-}
+// Initialize the canvas size
+canvas.width = gridWidth * gridSize;
+canvas.height = gridHeight * gridSize;
 
 function snapToGrid(x, y) {
     const snappedX = Math.round(x / gridSize) * gridSize;
@@ -82,40 +72,47 @@ function drawTokens() {
 }
 
 function redraw() {
-    drawGrid();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Fill the background with the pattern.
+    // The pattern is drawn starting at (offsetX, offsetY), 
+    // but since we're not using translate/scale here, we can just fill starting at offsetX/offsetY.
+    ctx.fillStyle = gridPattern;
+    ctx.fillRect(offsetX, offsetY, gridWidth * gridSize, gridHeight * gridSize);
+
     drawTokens();
 }
 
 function centerGrid() {
-    offsetX = (viewport.clientWidth - canvas.width) / 2;
-    offsetY = (viewport.clientHeight - canvas.height) / 2;
+    // Center the grid in the viewport if desired
+    offsetX = (viewport.clientWidth - (gridWidth * gridSize)) / 2;
+    offsetY = (viewport.clientHeight - (gridHeight * gridSize)) / 2;
     canvas.style.left = offsetX + 'px';
     canvas.style.top = offsetY + 'px';
 }
 
-drawGrid();
+// Initial draw
 centerGrid();
 redraw();
 
+// Event Listeners
 canvas.addEventListener('mousedown', (e) => {
     if (e.button === 2) {
-        isPanning = true;
-        startX = e.clientX - offsetX;
-        startY = e.clientY - offsetY;
-        canvas.classList.add('panning');
-        window.addEventListener('mousemove', doPan, { capture: true });
-        window.addEventListener('mouseup', endPan, { once: true });
+        // Right-click panning: Not used directly here since main.js handles panning via scroll container
+        // If you want to pan by moving the canvas itself, you'd implement it here.
+        return;
     } else {
+        // Left-click: Attempt to pick up a token
         const rect = canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
 
+        const scale = gridSize / 50;
         for (const token of tokens) {
-            const scale = gridSize / 50;
             const scaledWidth = token.width * scale;
             const scaledHeight = token.height * scale;
-            const tokenScreenX = (token.x / 50) * gridSize + offsetX;
-            const tokenScreenY = (token.y / 50) * gridSize + offsetY;
+            const tokenScreenX = token.gridX * gridSize + offsetX;
+            const tokenScreenY = token.gridY * gridSize + offsetY;
 
             if (mouseX >= tokenScreenX && mouseX <= tokenScreenX + scaledWidth &&
                 mouseY >= tokenScreenY && mouseY <= tokenScreenY + scaledHeight) {
@@ -129,21 +126,6 @@ canvas.addEventListener('mousedown', (e) => {
     }
 });
 
-function doPan(e) {
-    offsetX = e.clientX - startX;
-    offsetY = e.clientY - startY;
-    canvas.style.left = offsetX + 'px';
-    canvas.style.top = offsetY + 'px';
-    redraw();
-}
-
-function endPan() {
-    isPanning = false;
-    canvas.classList.remove('panning');
-    window.removeEventListener('mousemove', doPan, { capture: true });
-}
-
-// In the mousemove event listener (for dragging):
 canvas.addEventListener('mousemove', (e) => {
     if (isDragging && draggedElement) {
         const rect = canvas.getBoundingClientRect();
@@ -155,7 +137,7 @@ canvas.addEventListener('mousemove', (e) => {
 
         const snappedPos = snapToGrid(canvasX, canvasY);
 
-        // Update token's grid position (in grid units)
+        // Update token position in grid units
         draggedElement.gridX = snappedPos.x / gridSize;
         draggedElement.gridY = snappedPos.y / gridSize;
 
@@ -172,29 +154,41 @@ canvas.addEventListener('contextmenu', (e) => {
     e.preventDefault();
 });
 
+// Zoom on mouse wheel
 viewport.addEventListener('wheel', (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  const rect = canvas.getBoundingClientRect();
-  const mouseX = e.clientX - rect.left;
-  const mouseY = e.clientY - rect.top;
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
 
-  // Convert mouse position to world coordinates before zooming
-  const worldX = (mouseX - offsetX) / gridSize;
-  const worldY = (mouseY - offsetY) / gridSize;
+    // World coordinates under the mouse before zoom
+    const worldX = (mouseX - offsetX) / gridSize;
+    const worldY = (mouseY - offsetY) / gridSize;
 
-  const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-  const newGridSize = Math.max(minZoom, Math.min(maxZoom, gridSize * zoomFactor));
+    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+    const newGridSize = Math.max(minZoom, Math.min(maxZoom, gridSize * zoomFactor));
 
-  gridSize = newGridSize;
+    gridSize = newGridSize;
 
-  // Adjust offsets so the same world point stays under the mouse
-  offsetX = mouseX - (worldX * gridSize);
-  offsetY = mouseY - (worldY * gridSize);
+    // Adjust offsets so the same world point stays under the mouse
+    offsetX = mouseX - (worldX * gridSize);
+    offsetY = mouseY - (worldY * gridSize);
 
-  canvas.style.left = offsetX + 'px';
-  canvas.style.top = offsetY + 'px';
+    canvas.style.left = offsetX + 'px';
+    canvas.style.top = offsetY + 'px';
+    
+    // Adjust canvas size to reflect new grid size (if needed)
+    canvas.width = gridWidth * gridSize;
+    canvas.height = gridHeight * gridSize;
 
-  redraw();
+    redraw();
 });
 
+export class App {
+    initialize() {
+        // Any additional initialization logic can go here
+        // For now, just ensure the canvas is ready
+        redraw();
+    }
+}
