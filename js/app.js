@@ -2,12 +2,29 @@ import { Grid } from './grid.js';
 import { TokenManager } from './token.js';
 import { InteractionManager } from './interaction.js';
 import { GridConfig } from './config.js';
-import { DnD5eRuleset } from '../rulesets/5e/ruleset.js';
+const DnD5eRuleset = {
+    name: 'Dungeons & Dragons 5th Edition (Placeholder)',
+    validateToken(token) {
+        // Simple validation - token just needs an id and position
+        return token && token.id && 
+            typeof token.x === 'number' && 
+            typeof token.y === 'number';
+    },
+    getDefaultToken() {
+        return {
+            id: `token-${Date.now()}`,
+            x: 0,
+            y: 0,
+            color: 'blue',
+            label: 'Token'
+        };
+    }
+};
 
 class VirtualTabletopApp {
     constructor() {
         this.initialize();
-        this.currentRuleset = DnD5eRuleset;
+        this.currentRuleset = DnD5eRuleset;  // Use the placeholder
     }
 
     initialize() {
