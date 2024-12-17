@@ -9,10 +9,10 @@ class VirtualTabletop {
         this.isHexGrid = false;
         this.scale = 1;
         this.isDragging = false;
+        this.currentX = 0;
+        this.currentY = 0;
         this.startX = 0;
         this.startY = 0;
-        this.scrollLeft = 0;
-        this.scrollTop = 0;
 
         this.gridSize = 50; // Base size for grid cells
         this.cols = Math.ceil(window.innerWidth / this.gridSize) + 5;
@@ -23,10 +23,23 @@ class VirtualTabletop {
     }
 
     initializeEventListeners() {
-        // Pan functionality
-        this.tabletop.addEventListener('mousedown', (e) => this.startDragging(e));
+        // Pan functionality (right-click only)
+        this.tabletop.addEventListener('contextmenu', (e) => {
+            e.preventDefault(); // Prevent context menu from appearing
+        });
+        
+        this.tabletop.addEventListener('mousedown', (e) => {
+            if (e.button === 2) { // Right click
+                this.startDragging(e);
+            }
+        });
+        
         window.addEventListener('mousemove', (e) => this.drag(e));
-        window.addEventListener('mouseup', () => this.stopDragging());
+        window.addEventListener('mouseup', (e) => {
+            if (e.button === 2) { // Right click
+                this.stopDragging();
+            }
+        });
 
         // Zoom functionality
         this.zoomSlider.addEventListener('input', (e) => this.handleZoom(e));
@@ -44,8 +57,8 @@ class VirtualTabletop {
         this.isDragging = true;
         this.tabletop.classList.add('grabbing');
         
-        this.startX = e.pageX - this.tabletop.offsetLeft;
-        this.startY = e.pageY - this.tabletop.offsetTop;
+        this.startX = e.pageX - this.currentX;
+        this.startY = e.pageY - this.currentY;
     }
 
     drag(e) {
@@ -53,13 +66,10 @@ class VirtualTabletop {
         
         e.preventDefault();
         
-        const x = e.pageX - this.tabletop.offsetLeft;
-        const y = e.pageY - this.tabletop.offsetTop;
-        
-        const walkX = (x - this.startX);
-        const walkY = (y - this.startY);
+        this.currentX = e.pageX - this.startX;
+        this.currentY = e.pageY - this.startY;
 
-        this.tabletop.style.transform = `translate(${walkX}px, ${walkY}px) scale(${this.scale})`;
+        this.tabletop.style.transform = `translate(${this.currentX}px, ${this.currentY}px) scale(${this.scale})`;
     }
 
     stopDragging() {
@@ -70,7 +80,7 @@ class VirtualTabletop {
     handleZoom(e) {
         this.scale = parseFloat(e.target.value);
         this.zoomValue.textContent = `${Math.round(this.scale * 100)}%`;
-        this.tabletop.style.transform = `scale(${this.scale})`;
+        this.tabletop.style.transform = `translate(${this.currentX}px, ${this.currentY}px) scale(${this.scale})`;
     }
 
     toggleGridType() {
