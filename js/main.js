@@ -3,7 +3,7 @@ import { App } from './app.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const app = new App();
-  app.initialize(); // The grid should be built here
+  app.initialize(); // The grid and canvas are set up here
 
   requestAnimationFrame(() => {
     resizeCanvasAndCenter();
@@ -18,24 +18,24 @@ function resizeCanvasAndCenter() {
   
   const gridWidth = grid.offsetWidth;
   const gridHeight = grid.offsetHeight;
-  const margin = 1000; // Space around the grid
+  const margin = 1000; // Extra space around the grid
 
   boardCanvas.style.width = (gridWidth + margin * 2) + 'px';
   boardCanvas.style.height = (gridHeight + margin * 2) + 'px';
 
+  // Center the scroll
   boardScroll.scrollLeft = (boardCanvas.offsetWidth - boardScroll.clientWidth) / 2;
   boardScroll.scrollTop = (boardCanvas.offsetHeight - boardScroll.clientHeight) / 2;
 }
+
 function enablePanning() {
   const boardScroll = document.getElementById('board-scroll-container');
   
   let isPanning = false;
   let startX, startY, scrollLeft, scrollTop;
 
-  // Prevent default context menu so right-click pans without popping a menu
-  boardScroll.addEventListener('contextmenu', (e) => {
-    e.preventDefault();
-  });
+  // Prevent the context menu on right-click
+  boardScroll.addEventListener('contextmenu', (e) => e.preventDefault());
 
   boardScroll.addEventListener('mousedown', (e) => {
     // Only start panning if it's the right mouse button
@@ -68,4 +68,3 @@ function enablePanning() {
     boardScroll.scrollTop = scrollTop - (y - startY);
   });
 }
-
