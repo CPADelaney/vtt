@@ -1,21 +1,28 @@
-export function createSquarePattern(mainCtx, cellSize=50, strokeStyle='#ccc', lineWidth=1) {
-    const patternCanvas = document.createElement('canvas');
-    patternCanvas.width = cellSize;
-    patternCanvas.height = cellSize;
-    const pctx = patternCanvas.getContext('2d');
-    pctx.strokeStyle = strokeStyle;
-    pctx.lineWidth = lineWidth;
+export function createGridImage(gridWidth, gridHeight, baseCellSize, lineColor = '#ccc', lineWidth = 1) {
+    // Create an off-screen canvas to render the entire grid once
+    const offCanvas = document.createElement('canvas');
+    offCanvas.width = gridWidth * baseCellSize;
+    offCanvas.height = gridHeight * baseCellSize;
+    const offCtx = offCanvas.getContext('2d');
 
-    // Draw the right and bottom edges of one cell
-    pctx.beginPath();
-    pctx.moveTo(cellSize, 0);
-    pctx.lineTo(cellSize, cellSize);
-    pctx.stroke();
+    offCtx.strokeStyle = lineColor;
+    offCtx.lineWidth = lineWidth;
 
-    pctx.beginPath();
-    pctx.moveTo(0, cellSize);
-    pctx.lineTo(cellSize, cellSize);
-    pctx.stroke();
+    // Draw vertical lines
+    for (let x = 0; x <= gridWidth; x++) {
+        offCtx.beginPath();
+        offCtx.moveTo(x * baseCellSize, 0);
+        offCtx.lineTo(x * baseCellSize, offCanvas.height);
+        offCtx.stroke();
+    }
 
-    return mainCtx.createPattern(patternCanvas, 'repeat');
+    // Draw horizontal lines
+    for (let y = 0; y <= gridHeight; y++) {
+        offCtx.beginPath();
+        offCtx.moveTo(0, y * baseCellSize);
+        offCtx.lineTo(offCanvas.width, y * baseCellSize);
+        offCtx.stroke();
+    }
+
+    return offCanvas;
 }
