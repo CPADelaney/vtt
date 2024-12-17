@@ -99,10 +99,7 @@ class VirtualTabletop {
     }
 }
 
-// Initialize the virtual tabletop when the page loads
 window.addEventListener('load', () => {
     const vtt = new VirtualTabletop();
-    
-    // Example: Add a token at the center of the viewport
     vtt.addToken(window.innerWidth / 2, window.innerHeight / 2);
 });
