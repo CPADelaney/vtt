@@ -1,27 +1,24 @@
 body {
     margin: 0;
-    overflow: hidden; /* Prevent body scrollbars */
+    overflow: hidden; /* No scrollbars on the body */
 }
 
 #viewport {
     width: 100vw;
     height: 100vh;
-    overflow: hidden; /* Enable scrollbars on the viewport */
-    position: relative; /* Needed for canvas positioning */
+    position: relative; /* For absolutely positioned canvas */
+    overflow: hidden;   /* No scrollbars unless you specifically want them */
 }
 
 #gridCanvas {
     position: absolute;
     top: 0;
     left: 0;
-    /* The following is the crucial change */
-    margin: auto; /* Center horizontally and vertically */
-    transform: translate(0, 0); /* Reset transform */
     cursor: grab;
 }
 
-#gridCanvas.panning{
-    cursor: grabbing; /* Cursor during panning */
+#gridCanvas.panning {
+    cursor: grabbing;
 }
 
 #version {
