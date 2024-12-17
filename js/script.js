@@ -1,6 +1,5 @@
 // script.js
 import { MouseHandler } from './mouseHandler.js';
-
 class VirtualTabletop {
     constructor() {
         this.tabletop = document.getElementById('tabletop');
@@ -14,30 +13,26 @@ class VirtualTabletop {
         this.currentX = 0;
         this.currentY = 0;
 
-        this.gridSize = 50; // Base size for grid cells
-        this.tokens = new Set(); // Store token positions
-        
-        // For hex grid
-        this.hexWidth = this.gridSize * 1.1547; // 2/√3
-        this.hexHeight = this.gridSize * 2;
+        // Base size represents the distance from center to any point
+        this.gridSize = 30; // Reduced for better visualization
+        this.tokens = new Set();
+
+        // Hex dimensions
+        this.hexHeight = this.gridSize * 2;  // Distance from top point to bottom point
+        this.hexWidth = Math.sqrt(3) * this.gridSize;  // Distance from left point to right point
         
         this.updateGridDimensions();
-
-        // Initialize mouse handler
         this.mouseHandler = new MouseHandler(this);
-        
-        // Initialize remaining event listeners
         this.initializeEventListeners();
         this.createGrid();
     }
 
     updateGridDimensions() {
         if (this.isHexGrid) {
-            // For hexes, we need to account for the overlap
-            const hexWidth = this.gridSize * Math.sqrt(3);
-            const hexHeight = this.gridSize * 2;
-            this.cols = Math.ceil(window.innerWidth / (hexWidth * 0.75)) + 2;
-            this.rows = Math.ceil(window.innerHeight / (hexHeight * 0.75)) + 2;
+            // For hex grid, account for the 3/4 height overlap
+            const effectiveHeight = this.hexHeight * 0.75;
+            this.rows = Math.ceil(window.innerHeight / effectiveHeight) + 2;
+            this.cols = Math.ceil(window.innerWidth / this.hexWidth) + 2;
         } else {
             this.cols = Math.ceil(window.innerWidth / this.gridSize) + 5;
             this.rows = Math.ceil(window.innerHeight / this.gridSize) + 5;
@@ -109,11 +104,11 @@ class VirtualTabletop {
             }
         }
     }
-
+    
     createHexGrid() {
-        // Horizontal spacing is 100% of hex width
+        // Distance between hex centers horizontally
         const horizontalSpacing = this.hexWidth;
-        // Vertical spacing is 75% of hex height
+        // Distance between hex centers vertically (overlapped)
         const verticalSpacing = this.hexHeight * 0.75;
         
         for (let row = 0; row < this.rows; row++) {
@@ -121,7 +116,7 @@ class VirtualTabletop {
                 const cell = document.createElement('div');
                 cell.className = 'grid-cell';
                 
-                // Offset every other row by half the width
+                // Offset even rows by half the horizontal spacing
                 const offset = row % 2 === 0 ? 0 : horizontalSpacing / 2;
                 
                 cell.style.left = `${col * horizontalSpacing + offset}px`;
