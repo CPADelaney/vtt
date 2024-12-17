@@ -2,16 +2,16 @@ export class GridConfig {
     constructor() {
         this.type = 'square';
         this.size = 50;
-        this.color = '#e0e0e0';
-        this.opacity = 0.5;
+        this.color = '#000000';  // Changed to black for better visibility
+        this.opacity = 1.0;  
     }
 
     // Singleton pattern
     static getInstance() {
-        if (!this.instance) {
-            this.instance = new GridConfig();
+        if (!GridConfig.instance) {
+            GridConfig.instance = new GridConfig();
         }
-        return this.instance;
+        return GridConfig.instance;
     }
 
     updateFromUI() {
