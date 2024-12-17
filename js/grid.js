@@ -15,6 +15,20 @@ export class Grid {
         this.initialize();
     }
 
+    createTransformGroup() {
+        console.log('Creating transform group');
+        // Remove existing transform group if present
+        const existingGroup = this.svg.querySelector('#transform-group');
+        if (existingGroup) {
+            this.svg.removeChild(existingGroup);
+        }
+
+        // Create new transform group
+        this.transformGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        this.transformGroup.setAttribute('id', 'transform-group');
+        this.svg.appendChild(this.transformGroup);
+    }    
+
     initialize() {
         console.log('Initializing grid');
         // Set SVG attributes
