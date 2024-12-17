@@ -34,13 +34,16 @@ body {
     flex-grow: 1;
     position: relative;
     overflow: hidden;
+    min-height: 400px; /* Force minimum height */
+    border: 1px solid blue; /* Debug border */
 }
 
 #grid-canvas {
     width: 100%;
     height: 100%;
     cursor: move;
-    background-color: var(--secondary-bg);
+    background-color: #ffffff; /* White background */
+    border: 1px solid red; /* Debug border */
 }
 
 /* Grid styles */
