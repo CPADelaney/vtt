@@ -2,7 +2,7 @@ const canvas = document.getElementById('gridCanvas');
 const ctx = canvas.getContext('2d');
 const viewport = document.getElementById('viewport');
 const versionElement = document.getElementById('version');
-const version = "1.0.15";
+const version = "1.0.16";
 
 versionElement.textContent = "Version: " + version;
 
@@ -22,25 +22,27 @@ const minZoom = 5; // Minimum gridSize
 const maxZoom = 100; // Maximum gridSize
 
 const tokens = [];
-
 function Token(x, y, width, height, color) {
-    this.x = x;
-    this.y = y;
+    // Store token position in grid units (relative to the grid origin)
+    this.gridX = x / 50; // Convert from original pixel units to grid units
+    this.gridY = y / 50;
     this.width = width;
     this.height = height;
     this.color = color;
 
     this.draw = function() {
-        const scale = gridSize / 50;
-        const scaledWidth = this.width * scale;
-        const scaledHeight = this.height * scale;
-        const screenX = (this.x / 50) * gridSize + offsetX;
-        const screenY = (this.y / 50) * gridSize + offsetY;
+        const scaledWidth = this.width * (gridSize / 50);
+        const scaledHeight = this.height * (gridSize / 50);
+
+        // Calculate screen position based on current grid size and offset
+        const screenX = this.gridX * gridSize + offsetX;
+        const screenY = this.gridY * gridSize + offsetY;
 
         ctx.fillStyle = this.color;
         ctx.fillRect(screenX, screenY, scaledWidth, scaledHeight);
     };
 }
+
 
 tokens.push(new Token(100, 100, 40, 40, 'red'));
 tokens.push(new Token(250, 150, 30, 60, 'blue'));
@@ -141,6 +143,7 @@ function endPan() {
     window.removeEventListener('mousemove', doPan, { capture: true });
 }
 
+// In the mousemove event listener (for dragging):
 canvas.addEventListener('mousemove', (e) => {
     if (isDragging && draggedElement) {
         const rect = canvas.getBoundingClientRect();
@@ -152,8 +155,9 @@ canvas.addEventListener('mousemove', (e) => {
 
         const snappedPos = snapToGrid(canvasX, canvasY);
 
-        draggedElement.x = (snappedPos.x / gridSize) * 50;
-        draggedElement.y = (snappedPos.y / gridSize) * 50;
+        // Update token's grid position (in grid units)
+        draggedElement.gridX = snappedPos.x / gridSize;
+        draggedElement.gridY = snappedPos.y / gridSize;
 
         redraw();
     }
