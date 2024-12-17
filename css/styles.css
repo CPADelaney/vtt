@@ -1,34 +1,34 @@
 body {
-    margin: 0;
-    overflow: hidden; /* No scrollbars on the body */
+  margin: 0;
+  overflow: hidden; /* Prevent body scrollbars */
+  background: #222;
 }
 
 #viewport {
-    width: 100vw;
-    height: 100vh;
-    position: relative; /* For absolutely positioned canvas */
-    overflow: hidden;   /* No scrollbars unless you specifically want them */
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
 }
 
 #gridCanvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    cursor: grab;
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
 }
 
 #gridCanvas.panning {
-    cursor: grabbing;
+  cursor: grabbing;
 }
 
 #version {
-    position: fixed;
-    bottom: 10px;
-    left: 10px;
-    background-color: rgba(0, 0, 0, 0.5);
-    color: white;
-    padding: 5px;
-    border-radius: 5px;
-    font-size: small;
-    z-index: 1000;
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  background-color: rgba(0,0,0,0.5);
+  color: #fff;
+  padding: 5px;
+  border-radius: 5px;
+  font-size: 12px;
 }
