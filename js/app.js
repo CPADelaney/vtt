@@ -16,6 +16,7 @@ const DnD5eRuleset = {
             x: 0,
             y: 0,
             color: 'blue',
+            size: 25,
             label: 'Token'
         };
     }
