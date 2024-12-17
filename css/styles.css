@@ -96,6 +96,27 @@ body {
     clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
 }
 
+#version-display {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 3px;
+    font-family: monospace;
+    z-index: 1000;
+}
+
+.hex-grid .grid-cell {
+    position: absolute;
+    width: 57.735px; /* gridSize * 1.1547 (2/√3) */
+    height: 100px; /* gridSize * 2 */
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    margin: 0;
+    padding: 0;
+}
+
 
 .context-menu-item:hover {
     background-color: #f0f0f0;
