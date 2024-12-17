@@ -5,7 +5,7 @@ const canvas = document.getElementById('gridCanvas');
 const ctx = canvas.getContext('2d');
 const viewport = document.getElementById('viewport');
 const versionElement = document.getElementById('version');
-const version = "1.0.16";
+const version = "1.0.17";
 
 versionElement.textContent = "Version: " + version;
 
