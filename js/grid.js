@@ -1,6 +1,6 @@
 import { GridConfig } from './config.js';
 
-export class grid {
+export class Grid {
     constructor(svgElement, width = 1000, height = 800) {
         this.svg = svgElement;
         this.width = width;
@@ -136,7 +136,6 @@ export class grid {
                `L ${points[10]},${points[11]} Z `;
     }
 
-    // Utility methods for grid calculations
     getGridPosition(x, y) {
         if (this.config.type === 'hex') {
             return this.getHexGridPosition(x, y);
@@ -172,19 +171,16 @@ export class grid {
         };
     }
 
-    // Get nearest grid intersection
     getNearestIntersection(x, y) {
         return this.config.type === 'hex' 
             ? this.getHexGridPosition(x, y)
             : this.getSquareGridPosition(x, y);
     }
 
-    // Check if a point is within the grid bounds
     isWithinBounds(x, y) {
         return x >= 0 && x <= this.width && y >= 0 && y <= this.height;
     }
 
-    // Get grid cell at position
     getCellAtPosition(x, y) {
         const pos = this.getNearestIntersection(x, y);
         if (!this.isWithinBounds(pos.x, pos.y)) return null;
@@ -197,26 +193,13 @@ export class grid {
         };
     }
 
-    // Update dimensions
     updateDimensions(width, height) {
         this.width = width;
         this.height = height;
         this.svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
         this.render();
     }
-
-    // Debug helpers
-    drawDebugPoint(x, y, color = 'red') {
-        const point = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        point.setAttribute('cx', x);
-        point.setAttribute('cy', y);
-        point.setAttribute('r', '3');
-        point.setAttribute('fill', color);
-        this.gridGroup.appendChild(point);
-    }
 }
 
-// Create and export singleton instance
-const svg = document.getElementById('grid-canvas');
-export const grid = new grid(svg);
-export default grid;
+// Export a single instance
+export default Grid;
