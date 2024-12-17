@@ -25,7 +25,6 @@ body {
 #tabletop {
     position: absolute;
     transform-origin: 0 0;
-    cursor: grab;
 }
 
 #tabletop.grabbing {
@@ -36,11 +35,6 @@ body {
     position: absolute;
     border: 1px solid #ccc;
     background: rgba(255, 255, 255, 0.5);
-    transition: background-color 0.2s;
-}
-
-.grid-cell:hover {
-    background: rgba(200, 200, 255, 0.5);
 }
 
 /* Square Grid */
