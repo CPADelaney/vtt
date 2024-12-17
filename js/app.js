@@ -29,17 +29,21 @@ class VirtualTabletopApp {
     }
 
     initialize() {
-        // Initialize the SVG canvas
         this.canvas = document.getElementById('grid-canvas');
         if (!this.canvas) {
             throw new Error('Grid canvas element not found');
         }
-
-        // Set up grid configuration
+    
+        // Add this console.log to check if we're finding the canvas
+        console.log('Canvas found:', this.canvas);
+    
         this.gridConfig = GridConfig.getInstance();
-
-        // Initialize core components
+        
+        // Add these console.logs
+        console.log('Grid config:', this.gridConfig);
+        
         this.grid = new Grid(this.canvas);
+        console.log('Grid created:', this.grid);
         this.tokenManager = new TokenManager(this.currentRuleset);
         this.interactionManager = new InteractionManager(this.canvas);
 
