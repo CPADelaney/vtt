@@ -1,3 +1,5 @@
+import { MouseHandler } from './mouseHandler.js';
+
 class VirtualTabletop {
     constructor() {
         this.tabletop = document.getElementById('tabletop');
@@ -8,42 +10,22 @@ class VirtualTabletop {
         
         this.isHexGrid = false;
         this.scale = 1;
-        this.isDragging = false;
         this.currentX = 0;
         this.currentY = 0;
-        this.startX = 0;
-        this.startY = 0;
 
-        this.gridSize = 50; // Base size for grid cells
+        this.gridSize = 50;
         this.cols = Math.ceil(window.innerWidth / this.gridSize) + 5;
         this.rows = Math.ceil(window.innerHeight / this.gridSize) + 5;
 
+        // Initialize mouse handler
+        this.mouseHandler = new MouseHandler(this);
+        
+        // Initialize remaining event listeners
         this.initializeEventListeners();
         this.createGrid();
     }
 
     initializeEventListeners() {
-        // Pan functionality (right-click only)
-        this.tabletop.addEventListener('contextmenu', (e) => {
-            e.preventDefault(); // Prevent context menu from appearing
-        });
-        
-        this.tabletop.addEventListener('mousedown', (e) => {
-            if (e.button === 2) { // Right click
-                this.startDragging(e);
-            }
-        });
-        
-        window.addEventListener('mousemove', (e) => this.drag(e));
-        window.addEventListener('mouseup', (e) => {
-            if (e.button === 2) { // Right click
-                this.stopDragging();
-            }
-        });
-
-        // Zoom functionality
-        this.zoomSlider.addEventListener('input', (e) => this.handleZoom(e));
-
         // Grid toggle
         this.toggleButton.addEventListener('click', () => this.toggleGridType());
 
@@ -51,35 +33,7 @@ class VirtualTabletop {
         window.addEventListener('resize', () => this.handleResize());
     }
 
-    startDragging(e) {
-        if (e.target.classList.contains('token')) return;
-        
-        this.isDragging = true;
-        this.tabletop.classList.add('grabbing');
-        
-        this.startX = e.pageX - this.currentX;
-        this.startY = e.pageY - this.currentY;
-    }
-
-    drag(e) {
-        if (!this.isDragging) return;
-        
-        e.preventDefault();
-        
-        this.currentX = e.pageX - this.startX;
-        this.currentY = e.pageY - this.startY;
-
-        this.tabletop.style.transform = `translate(${this.currentX}px, ${this.currentY}px) scale(${this.scale})`;
-    }
-
-    stopDragging() {
-        this.isDragging = false;
-        this.tabletop.classList.remove('grabbing');
-    }
-
-    handleZoom(e) {
-        this.scale = parseFloat(e.target.value);
-        this.zoomValue.textContent = `${Math.round(this.scale * 100)}%`;
+    updateTransform() {
         this.tabletop.style.transform = `translate(${this.currentX}px, ${this.currentY}px) scale(${this.scale})`;
     }
 
@@ -120,7 +74,6 @@ class VirtualTabletop {
                 const cell = document.createElement('div');
                 cell.className = 'grid-cell';
                 
-                // Offset every other row
                 const offset = row % 2 === 0 ? 0 : hexWidth / 2;
                 cell.style.left = `${col * hexWidth + offset}px`;
                 cell.style.top = `${row * (hexHeight * 0.75)}px`;
@@ -141,25 +94,8 @@ class VirtualTabletop {
         token.className = 'token';
         token.style.left = `${x}px`;
         token.style.top = `${y}px`;
-        
-        // Make token draggable
-        token.addEventListener('mousedown', (e) => {
-            const moveToken = (moveEvent) => {
-                token.style.left = `${moveEvent.pageX}px`;
-                token.style.top = `${moveEvent.pageY}px`;
-            };
-            
-            const stopMoving = () => {
-                window.removeEventListener('mousemove', moveToken);
-                window.removeEventListener('mouseup', stopMoving);
-            };
-            
-            window.addEventListener('mousemove', moveToken);
-            window.addEventListener('mouseup', stopMoving);
-            e.stopPropagation();
-        });
-        
         this.tabletop.appendChild(token);
+        return token;
     }
 }
 
