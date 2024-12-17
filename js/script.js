@@ -13,13 +13,14 @@ class VirtualTabletop {
         this.currentX = 0;
         this.currentY = 0;
 
-        // Base size represents the distance from center to any point
-        this.gridSize = 30; // Reduced for better visualization
+        // Base grid size
+        this.gridSize = 50; // Back to original size for squares
         this.tokens = new Set();
 
-        // Hex dimensions
-        this.hexHeight = this.gridSize * 2;  // Distance from top point to bottom point
-        this.hexWidth = Math.sqrt(3) * this.gridSize;  // Distance from left point to right point
+        // Hex specific calculations
+        this.hexSize = 30; // Kept smaller for hexes
+        this.hexHeight = this.hexSize * 2;
+        this.hexWidth = Math.sqrt(3) * this.hexSize;
         
         this.updateGridDimensions();
         this.mouseHandler = new MouseHandler(this);
@@ -28,14 +29,17 @@ class VirtualTabletop {
     }
 
     updateGridDimensions() {
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+
         if (this.isHexGrid) {
-            // For hex grid, account for the 3/4 height overlap
             const effectiveHeight = this.hexHeight * 0.75;
-            this.rows = Math.ceil(window.innerHeight / effectiveHeight) + 2;
-            this.cols = Math.ceil(window.innerWidth / this.hexWidth) + 2;
+            this.rows = Math.ceil(viewportHeight / effectiveHeight) + 2;
+            this.cols = Math.ceil(viewportWidth / this.hexWidth) + 2;
         } else {
-            this.cols = Math.ceil(window.innerWidth / this.gridSize) + 5;
-            this.rows = Math.ceil(window.innerHeight / this.gridSize) + 5;
+            // Add just enough cells to cover viewport plus a small buffer
+            this.rows = Math.ceil(viewportHeight / this.gridSize) + 2;
+            this.cols = Math.ceil(viewportWidth / this.gridSize) + 2;
         }
     }
 
@@ -84,31 +88,37 @@ class VirtualTabletop {
     }
 
     createGrid() {
-        this.tabletop.innerHTML = '';
+        // Clear existing grid
+        while (this.tabletop.firstChild) {
+            this.tabletop.removeChild(this.tabletop.firstChild);
+        }
+        
+        // Create grid using document fragment for better performance
+        const fragment = document.createDocumentFragment();
         
         if (this.isHexGrid) {
-            this.createHexGrid();
+            this.createHexGrid(fragment);
         } else {
-            this.createSquareGrid();
+            this.createSquareGrid(fragment);
         }
+        
+        this.tabletop.appendChild(fragment);
     }
 
-    createSquareGrid() {
+    createSquareGrid(fragment) {
         for (let row = 0; row < this.rows; row++) {
             for (let col = 0; col < this.cols; col++) {
                 const cell = document.createElement('div');
                 cell.className = 'grid-cell';
                 cell.style.left = `${col * this.gridSize}px`;
                 cell.style.top = `${row * this.gridSize}px`;
-                this.tabletop.appendChild(cell);
+                fragment.appendChild(cell);
             }
         }
     }
     
-    createHexGrid() {
-        // Distance between hex centers horizontally
+    createHexGrid(fragment) {
         const horizontalSpacing = this.hexWidth;
-        // Distance between hex centers vertically (overlapped)
         const verticalSpacing = this.hexHeight * 0.75;
         
         for (let row = 0; row < this.rows; row++) {
@@ -116,13 +126,11 @@ class VirtualTabletop {
                 const cell = document.createElement('div');
                 cell.className = 'grid-cell';
                 
-                // Offset even rows by half the horizontal spacing
                 const offset = row % 2 === 0 ? 0 : horizontalSpacing / 2;
-                
                 cell.style.left = `${col * horizontalSpacing + offset}px`;
                 cell.style.top = `${row * verticalSpacing}px`;
                 
-                this.tabletop.appendChild(cell);
+                fragment.appendChild(cell);
             }
         }
     }
