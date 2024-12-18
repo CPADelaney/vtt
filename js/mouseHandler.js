@@ -266,46 +266,31 @@ initializeMouseHandlers() {
         
         return { x: snappedX, y: snappedY };
     }
-
+    
     snapToHexGrid(x, y) {
             const hexWidth = this.vtt.hexWidth;
             const hexHeight = this.vtt.hexHeight;
             const verticalSpacing = hexHeight * 0.75;
             
             // Find the nearest row
-            let row = Math.floor(y / verticalSpacing);
-            const rowY = row * verticalSpacing;
-            const nextRowY = (row + 1) * verticalSpacing;
-            
-            // Check if we're closer to the next row
-            if (Math.abs(y - nextRowY) < Math.abs(y - rowY)) {
-                row += 1;
-            }
-            
-            // Determine if we're in an odd or even row
+            let row = Math.round(y / verticalSpacing);
             const isOffsetRow = row % 2 === 1;
             
-            // Calculate the x position
-            // If we're in an offset row, shift the reference point by half a hex
-            const effectiveX = isOffsetRow ? x - hexWidth / 2 : x;
-            
-            // Find the nearest column based on the effective x position
-            let col = Math.floor(effectiveX / hexWidth);
-            const colX = col * hexWidth;
-            const nextColX = (col + 1) * hexWidth;
-            
-            // Check if we're closer to the next column
-            if (Math.abs(effectiveX - nextColX) < Math.abs(effectiveX - colX)) {
-                col += 1;
-            }
-            
-            // Calculate final position
+            // Adjust horizontal spacing based on row
+            const horizontalSpacing = hexWidth;
             const offsetX = isOffsetRow ? hexWidth / 2 : 0;
-            const snappedX = col * hexWidth + offsetX;
-            const snappedY = row * verticalSpacing + (hexHeight / 4);
+            
+            // Find the nearest column
+            let col = Math.round((x - offsetX) / horizontalSpacing);
+            
+            // Calculate final snapped position
+            const snappedX = col * horizontalSpacing + offsetX;
+            // Add vertical offset to center in hex (half the height of the non-overlapping portion)
+            const snappedY = (row * verticalSpacing) - (hexHeight * 0.125);
             
             return { x: snappedX, y: snappedY };
         }
+
 
     createMarquee(e) {
         this.marquee = document.createElement('div');
