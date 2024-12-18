@@ -122,27 +122,34 @@ initializeMouseHandlers() {
         const menu = document.createElement('div');
         menu.className = 'context-menu';
         
-        // Add token option
-        const addTokenOption = document.createElement('div');
-        addTokenOption.className = 'context-menu-item';
-        addTokenOption.textContent = 'Add Token';
-        addTokenOption.onclick = () => {
-            const pos = this.getSnappedPosition(
-                (e.clientX - this.vtt.currentX) / this.vtt.scale,
-                (e.clientY - this.vtt.currentY) / this.vtt.scale
-            );
-            const token = this.vtt.addToken(pos.x, pos.y);
-            this.closeContextMenu();
+        const pos = {
+            x: (e.clientX - this.vtt.currentX) / this.vtt.scale,
+            y: (e.clientY - this.vtt.currentY) / this.vtt.scale
         };
-        menu.appendChild(addTokenOption);
+
+        // Only show "Add Token" if the position is within bounds
+        if (this.isWithinBounds(pos.x, pos.y)) {
+            const addTokenOption = document.createElement('div');
+            addTokenOption.className = 'context-menu-item';
+            addTokenOption.textContent = 'Add Token';
+            addTokenOption.onclick = () => {
+                const snappedPos = this.getSnappedPosition(pos.x, pos.y);
+                const token = this.vtt.addToken(snappedPos.x, snappedPos.y);
+                this.closeContextMenu();
+            };
+            menu.appendChild(addTokenOption);
+        }
 
         // Position the menu
         menu.style.left = `${e.clientX}px`;
         menu.style.top = `${e.clientY}px`;
 
-        // Add to document
-        document.body.appendChild(menu);
+        // Only add menu to document if it has any options
+        if (menu.children.length > 0) {
+            document.body.appendChild(menu);
+        }
     }
+
 
     closeContextMenu() {
         const existingMenu = document.querySelector('.context-menu');
@@ -224,15 +231,15 @@ initializeMouseHandlers() {
             const dy = (e.clientY - startY) / this.vtt.scale;
             
             // Get the potential new position
-            const newX = tokenStartX + dx;
-            const newY = tokenStartY + dy;
+            let newX = tokenStartX + dx;
+            let newY = tokenStartY + dy;
             
-            // Get the snapped position
-            const snappedPos = this.getSnappedPosition(newX, newY);
-            
-            // Apply the snapped position
-            token.style.left = `${snappedPos.x}px`;
-            token.style.top = `${snappedPos.y}px`;
+            // Only snap if within bounds
+            if (this.isWithinBounds(newX, newY)) {
+                const snappedPos = this.getSnappedPosition(newX, newY);
+                token.style.left = `${snappedPos.x}px`;
+                token.style.top = `${snappedPos.y}px`;
+            }
         };
 
         const stopDrag = () => {
@@ -244,7 +251,6 @@ initializeMouseHandlers() {
         document.addEventListener('mouseup', stopDrag);
     }
 
-
     getSnappedPosition(x, y) {
         if (this.vtt.isHexGrid) {
             return this.snapToHexGrid(x, y);
@@ -253,14 +259,41 @@ initializeMouseHandlers() {
         }
     }
 
+    getGridBounds() {
+            if (this.vtt.isHexGrid) {
+                return {
+                    minX: 0,
+                    minY: 0,
+                    maxX: (this.vtt.cols - 1) * this.vtt.hexWidth + (this.vtt.hexWidth / 2),
+                    maxY: (this.vtt.rows - 1) * (this.vtt.hexHeight * 0.75)
+                };
+            } else {
+                return {
+                    minX: this.vtt.gridSize / 2,  // Half cell for center alignment
+                    minY: this.vtt.gridSize / 2,
+                    maxX: (this.vtt.cols * this.vtt.gridSize) - (this.vtt.gridSize / 2),
+                    maxY: (this.vtt.rows * this.vtt.gridSize) - (this.vtt.gridSize / 2)
+                };
+            }
+        }
+    
+        isWithinBounds(x, y) {
+            const bounds = this.getGridBounds();
+            return x >= bounds.minX && x <= bounds.maxX && 
+                   y >= bounds.minY && y <= bounds.maxY;
+        }
+
     snapToSquareGrid(x, y) {
         const gridSize = this.vtt.gridSize;
+        const bounds = this.getGridBounds();
         
-        // Offset by half a grid size to snap to center instead of corner
+        // Clamp x and y to bounds before snapping
+        x = Math.max(bounds.minX, Math.min(bounds.maxX, x));
+        y = Math.max(bounds.minY, Math.min(bounds.maxY, y));
+        
         const offsetX = gridSize / 2;
         const offsetY = gridSize / 2;
         
-        // Round to nearest grid cell and add offset to get to center
         const snappedX = Math.round((x - offsetX) / gridSize) * gridSize + offsetX;
         const snappedY = Math.round((y - offsetY) / gridSize) * gridSize + offsetY;
         
@@ -268,28 +301,29 @@ initializeMouseHandlers() {
     }
     
     snapToHexGrid(x, y) {
-            const hexWidth = this.vtt.hexWidth;
-            const hexHeight = this.vtt.hexHeight;
-            const verticalSpacing = hexHeight * 0.75;
-            
-            // Find the nearest row
-            let row = Math.round(y / verticalSpacing);
-            const isOffsetRow = row % 2 === 1;
-            
-            // Adjust horizontal spacing based on row
-            const horizontalSpacing = hexWidth;
-            const offsetX = isOffsetRow ? hexWidth / 2 : 0;
-            
-            // Find the nearest column
-            let col = Math.round((x - offsetX) / horizontalSpacing);
-            
-            // Calculate final snapped position
-            const snappedX = col * horizontalSpacing + offsetX;
-            // Add vertical offset to center in hex (half the height of the non-overlapping portion)
-            const snappedY = (row * verticalSpacing) - (hexHeight * 0.255);
-            
-            return { x: snappedX, y: snappedY };
-        }
+        const hexWidth = this.vtt.hexWidth;
+        const hexHeight = this.vtt.hexHeight;
+        const verticalSpacing = hexHeight * 0.75;
+        const bounds = this.getGridBounds();
+
+        // Clamp x and y to bounds before snapping
+        x = Math.max(bounds.minX, Math.min(bounds.maxX, x));
+        y = Math.max(bounds.minY, Math.min(bounds.maxY, y));
+        
+        let row = Math.round(y / verticalSpacing);
+        const isOffsetRow = row % 2 === 1;
+        
+        const horizontalSpacing = hexWidth;
+        const offsetX = isOffsetRow ? hexWidth / 2 : 0;
+        
+        let col = Math.round((x - offsetX) / horizontalSpacing);
+        
+        const snappedX = col * horizontalSpacing + offsetX;
+        const snappedY = (row * verticalSpacing) - (hexHeight * 0.255);
+        
+        return { x: snappedX, y: snappedY };
+    }
+
 
 
     createMarquee(e) {
