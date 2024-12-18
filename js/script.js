@@ -147,6 +147,7 @@ class VirtualTabletop {
             }
         }
     }
+    
     calculateHexPoints(centerX, centerY, size) {
         const points = [];
         for (let i = 0; i < 6; i++) {
