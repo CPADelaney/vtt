@@ -286,7 +286,7 @@ initializeMouseHandlers() {
             // Calculate final snapped position
             const snappedX = col * horizontalSpacing + offsetX;
             // Add vertical offset to center in hex (half the height of the non-overlapping portion)
-            const snappedY = (row * verticalSpacing) - (hexHeight * 0.185);
+            const snappedY = (row * verticalSpacing) - (hexHeight * 0.195);
             
             return { x: snappedX, y: snappedY };
         }
