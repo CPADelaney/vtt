@@ -15,27 +15,28 @@ export class MouseHandler {
     }
 
     initializeMouseHandlers() {
-        // Prevent default context menu
+        // Prevent context menu and handle right-click
         this.vtt.tabletop.addEventListener('contextmenu', (e) => {
             e.preventDefault();
-            
-            // Only show context menu if we clicked a token
-            const clickedToken = e.target.closest('.token');
-            if (clickedToken) {
-                this.showContextMenu(e, clickedToken);
-            } else if (!this.isPanning) {
-                // If we're not panning and not clicking a token, maybe show a different context menu
-                this.showGridContextMenu(e);
+            if (!this.isPanning) { // Only show menu if we're not panning
+                const clickedToken = e.target.closest('.token');
+                if (clickedToken) {
+                    this.showContextMenu(e, clickedToken);
+                } else {
+                    this.showGridContextMenu(e);
+                }
             }
         });
 
-        // Close context menu when clicking elsewhere
-        document.addEventListener('mousedown', (e) => {
-            if (!e.target.closest('.context-menu')) {
-                this.closeContextMenu();
+        // Mouse down handler
+        this.vtt.tabletop.addEventListener('mousedown', (e) => {
+            if (e.button === 2) { // Right click
+                this.startPanning(e);
+            } else if (e.button === 0) { // Left click
+                this.handleLeftClick(e);
             }
         });
-        
+
         // Mouse move handler
         document.addEventListener('mousemove', (e) => {
             if (this.isPanning) {
@@ -51,6 +52,13 @@ export class MouseHandler {
                 this.stopPanning();
             } else if (e.button === 0) {
                 this.handleLeftClickRelease(e);
+            }
+        });
+
+        // Close context menu when clicking elsewhere
+        document.addEventListener('mousedown', (e) => {
+            if (!e.target.closest('.context-menu')) {
+                this.closeContextMenu();
             }
         });
 
@@ -221,6 +229,7 @@ export class MouseHandler {
         document.addEventListener('mousemove', handleDrag);
         document.addEventListener('mouseup', stopDrag);
     }
+
 
     getSnappedPosition(x, y) {
         if (this.vtt.isHexGrid) {
