@@ -47,9 +47,15 @@ export class MouseHandler {
             }
         });
 
-        // Zoom handlers
-        this.vtt.container.addEventListener('wheel', (e) => this.handleZoom(e));
-        this.vtt.zoomSlider.addEventListener('input', (e) => this.handleSliderZoom(e));
+        // Wheel zoom handler
+        this.vtt.container.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (e.deltaY < 0) {
+                this.vtt.handleZoomButton(1.1);
+            } else {
+                this.vtt.handleZoomButton(0.9);
+            }
+        });
     }
 
     startPanning(e) {
@@ -80,48 +86,6 @@ export class MouseHandler {
         this.vtt.tabletop.classList.remove('grabbing');
     }
 
-    handleZoom(e) {
-        e.preventDefault();
-        
-        // Get mouse position relative to container
-        const rect = this.vtt.container.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-
-        // Calculate position relative to transformed tabletop
-        const beforeZoomX = (mouseX - this.vtt.currentX) / this.vtt.scale;
-        const beforeZoomY = (mouseY - this.vtt.currentY) / this.vtt.scale;
-
-        // Update scale
-        const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-        this.vtt.scale *= zoomFactor;
-        
-        // Clamp scale
-        this.vtt.scale = Math.min(Math.max(this.vtt.scale, 0.5), 2);
-
-        // Calculate new position to keep mouse point fixed
-        const afterZoomX = (mouseX - this.vtt.currentX) / this.vtt.scale;
-        const afterZoomY = (mouseY - this.vtt.currentY) / this.vtt.scale;
-
-        // Adjust position to maintain mouse point
-        this.vtt.currentX += (afterZoomX - beforeZoomX) * this.vtt.scale;
-        this.vtt.currentY += (afterZoomY - beforeZoomY) * this.vtt.scale;
-
-        this.vtt.updateTransform();
-        this.updateZoomControls();
-    }
-
-    handleSliderZoom(e) {
-        this.vtt.scale = parseFloat(e.target.value);
-        this.updateZoomControls();
-        this.vtt.updateTransform();
-    }
-
-    updateZoomControls() {
-        this.vtt.zoomSlider.value = this.vtt.scale;
-        this.vtt.zoomValue.textContent = `${Math.round(this.vtt.scale * 100)}%`;
-    }
-
     handleLeftClick(e) {
         const clickedToken = e.target.closest('.token');
         
@@ -147,22 +111,84 @@ export class MouseHandler {
             }
         }
     }
-    handleMouseMove(e) {
-        if (this.isSelecting) {
-            this.updateMarquee(e);
+
+    startTokenDrag(token, startEvent) {
+        const startX = startEvent.clientX;
+        const startY = startEvent.clientY;
+        const tokenStartX = parseFloat(token.style.left);
+        const tokenStartY = parseFloat(token.style.top);
+
+        const handleDrag = (e) => {
+            const dx = (e.clientX - startX) / this.vtt.scale;
+            const dy = (e.clientY - startY) / this.vtt.scale;
+            
+            // Get the potential new position
+            const newX = tokenStartX + dx;
+            const newY = tokenStartY + dy;
+            
+            // Get the snapped position
+            const snappedPos = this.getSnappedPosition(newX, newY);
+            
+            // Apply the snapped position
+            token.style.left = `${snappedPos.x}px`;
+            token.style.top = `${snappedPos.y}px`;
+        };
+
+        const stopDrag = () => {
+            document.removeEventListener('mousemove', handleDrag);
+            document.removeEventListener('mouseup', stopDrag);
+        };
+
+        document.addEventListener('mousemove', handleDrag);
+        document.addEventListener('mouseup', stopDrag);
+    }
+
+    getSnappedPosition(x, y) {
+        if (this.vtt.isHexGrid) {
+            return this.snapToHexGrid(x, y);
+        } else {
+            return this.snapToSquareGrid(x, y);
         }
     }
 
-    handleLeftClickRelease(e) {
-        if (this.isSelecting) {
-            this.finalizeSelection();
-        }
-        this.isSelecting = false;
-        if (this.marquee) {
-            this.marquee.remove();
-            this.marquee = null;
-        }
+    snapToSquareGrid(x, y) {
+        const gridSize = this.vtt.gridSize;
+        
+        // Offset by half a grid size to snap to center instead of corner
+        const offsetX = gridSize / 2;
+        const offsetY = gridSize / 2;
+        
+        // Round to nearest grid cell and add offset to get to center
+        const snappedX = Math.round((x - offsetX) / gridSize) * gridSize + offsetX;
+        const snappedY = Math.round((y - offsetY) / gridSize) * gridSize + offsetY;
+        
+        return { x: snappedX, y: snappedY };
     }
+
+    snapToHexGrid(x, y) {
+            const hexWidth = this.vtt.hexWidth;
+            const hexHeight = this.vtt.hexHeight;
+            const verticalSpacing = hexHeight * 0.75;
+            
+            // Find the nearest row
+            let row = Math.round(y / verticalSpacing);
+            const isOffsetRow = row % 2 === 1;
+            
+            // Adjust horizontal spacing based on row
+            const horizontalSpacing = hexWidth;
+            const offsetX = isOffsetRow ? hexWidth / 2 : 0;
+            
+            // Find the nearest column
+            let col = Math.round((x - offsetX) / horizontalSpacing);
+            
+            // Calculate final snapped position
+            // Add hexHeight/2 to y-position to center vertically
+            const snappedX = col * horizontalSpacing + offsetX;
+            const snappedY = row * verticalSpacing + (hexHeight / 4);
+            
+            return { x: snappedX, y: snappedY };
+        }
+
 
     createMarquee(e) {
         this.marquee = document.createElement('div');
@@ -184,15 +210,22 @@ export class MouseHandler {
         this.marquee.style.height = `${maxY - minY}px`;
     }
 
+    handleLeftClickRelease(e) {
+        if (this.isSelecting) {
+            this.finalizeSelection();
+        }
+        this.isSelecting = false;
+        if (this.marquee) {
+            this.marquee.remove();
+            this.marquee = null;
+        }
+    }
+
     finalizeSelection() {
         if (!this.marquee) return;
 
         const marqueeRect = this.marquee.getBoundingClientRect();
         const tokens = document.querySelectorAll('.token');
-
-        if (!event.shiftKey) {
-            this.selectedTokens.clear();
-        }
 
         tokens.forEach(token => {
             const tokenRect = token.getBoundingClientRect();
@@ -218,62 +251,5 @@ export class MouseHandler {
         this.selectedTokens.forEach(token => {
             token.classList.add('selected');
         });
-    }
-
-    startTokenDrag(token, startEvent) {
-        const startX = startEvent.clientX;
-        const startY = startEvent.clientY;
-        const tokenStartX = parseFloat(token.style.left);
-        const tokenStartY = parseFloat(token.style.top);
-
-        const handleDrag = (e) => {
-            const dx = (e.clientX - startX) / this.vtt.scale;
-            const dy = (e.clientY - startY) / this.vtt.scale;
-            
-            token.style.left = `${tokenStartX + dx}px`;
-            token.style.top = `${tokenStartY + dy}px`;
-        };
-
-        const stopDrag = () => {
-            document.removeEventListener('mousemove', handleDrag);
-            document.removeEventListener('mouseup', stopDrag);
-        };
-
-        document.addEventListener('mousemove', handleDrag);
-        document.addEventListener('mouseup', stopDrag);
-    }
-
-    showContextMenu(e) {
-        // Remove any existing context menus
-        const existingMenu = document.querySelector('.context-menu');
-        if (existingMenu) {
-            existingMenu.remove();
-        }
-
-        const menu = document.createElement('div');
-        menu.className = 'context-menu';
-        menu.style.left = `${e.clientX}px`;
-        menu.style.top = `${e.clientY}px`;
-
-        const deleteOption = document.createElement('div');
-        deleteOption.className = 'context-menu-item';
-        deleteOption.textContent = 'Delete token';
-        deleteOption.onclick = () => {
-            this.selectedTokens.forEach(token => token.remove());
-            this.selectedTokens.clear();
-            menu.remove();
-        };
-
-        menu.appendChild(deleteOption);
-        document.body.appendChild(menu);
-
-        // Close menu when clicking outside
-        const closeMenu = (e) => {
-            if (!menu.contains(e.target)) {
-                menu.remove();
-                document.removeEventListener('mousedown', closeMenu);
-            }
-        };
-        document.addEventListener('mousedown', closeMenu);
     }
 }

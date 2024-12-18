@@ -116,3 +116,24 @@ body {
     font-family: monospace;
     z-index: 1000;
 }
+
+.zoom-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 10px;
+}
+
+.zoom-controls button {
+    width: 30px;
+    height: 30px;
+    font-size: 18px;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+}
+
+#zoomValue {
+    min-width: 48px;
+    text-align: center;
+}

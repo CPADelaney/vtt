@@ -9,15 +9,17 @@
 <body>
     <div class="controls">
         <button id="toggleGrid">Toggle Hex/Square</button>
-        <input type="range" id="zoomSlider" min="0.5" max="2" step="0.1" value="1">
-        <span id="zoomValue">100%</span>
+        <div class="zoom-controls">
+            <button id="zoomOut">−</button>
+            <span id="zoomValue">100%</span>
+            <button id="zoomIn">+</button>
+        </div>
     </div>
     <div id="tabletop-container">
         <div id="tabletop" class="square-grid">
             <!-- Grid will be generated here -->
         </div>
     </div>
-    <div id="version-display">v1.2</div>
     <script type="module" src="js/script.js"></script>
 </body>
 </html>
