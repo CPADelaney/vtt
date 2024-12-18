@@ -49,11 +49,26 @@ body {
 .hex-grid .grid-cell {
     width: 51.96px;  /* √3 * 30 */
     height: 60px;    /* 2 * 30 */
+    position: absolute;
+}
+
+.hex-grid .grid-cell::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
     background: rgba(255, 255, 255, 0.5);
-    /* Remove border and use outline for consistent hex edges */
-    outline: 1px solid #ccc;
-    /* Clip slightly inside the outline to make it visible */
-    clip-path: polygon(50% 1%, 99% 25%, 99% 75%, 50% 99%, 1% 75%, 1% 25%);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+
+.hex-grid .grid-cell::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: none;
+    border: 1px solid #ccc;
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
 }
 
 /* Token styles */
