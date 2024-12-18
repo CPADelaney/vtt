@@ -230,8 +230,16 @@ export class MouseHandler {
             const dx = (e.clientX - startX) / this.vtt.scale;
             const dy = (e.clientY - startY) / this.vtt.scale;
             
-            token.style.left = `${tokenStartX + dx}px`;
-            token.style.top = `${tokenStartY + dy}px`;
+            // Get the potential new position
+            const newX = tokenStartX + dx;
+            const newY = tokenStartY + dy;
+            
+            // Get the snapped position
+            const snappedPos = this.getSnappedPosition(newX, newY);
+            
+            // Apply the snapped position
+            token.style.left = `${snappedPos.x}px`;
+            token.style.top = `${snappedPos.y}px`;
         };
 
         const stopDrag = () => {
@@ -242,6 +250,46 @@ export class MouseHandler {
         document.addEventListener('mousemove', handleDrag);
         document.addEventListener('mouseup', stopDrag);
     }
+        getSnappedPosition(x, y) {
+        if (this.vtt.isHexGrid) {
+            return this.snapToHexGrid(x, y);
+        } else {
+            return this.snapToSquareGrid(x, y);
+        }
+    }
+
+    snapToSquareGrid(x, y) {
+        // Simple square grid snapping
+        const gridSize = this.vtt.gridSize;
+        const snappedX = Math.round(x / gridSize) * gridSize;
+        const snappedY = Math.round(y / gridSize) * gridSize;
+        
+        return { x: snappedX, y: snappedY };
+    }
+
+    snapToHexGrid(x, y) {
+        const hexWidth = this.vtt.hexWidth;
+        const hexHeight = this.vtt.hexHeight;
+        const verticalSpacing = hexHeight * 0.75;
+        
+        // Find the nearest row
+        let row = Math.round(y / verticalSpacing);
+        const isOffsetRow = row % 2 === 1;
+        
+        // Adjust horizontal spacing based on row
+        const horizontalSpacing = hexWidth;
+        const offsetX = isOffsetRow ? hexWidth / 2 : 0;
+        
+        // Find the nearest column
+        let col = Math.round((x - offsetX) / horizontalSpacing);
+        
+        // Calculate final snapped position
+        const snappedX = col * horizontalSpacing + offsetX;
+        const snappedY = row * verticalSpacing;
+        
+        return { x: snappedX, y: snappedY };
+    }
+
 
     showContextMenu(e) {
         // Remove any existing context menus
