@@ -18,7 +18,7 @@ export class MouseHandler {
         // Prevent context menu and handle right-click
         this.vtt.tabletop.addEventListener('contextmenu', (e) => {
             e.preventDefault();
-            if (!this.isPanning) { // Only show menu if we're not panning
+            if (!this.isPanning || !this.hasMoved) {
                 const clickedToken = e.target.closest('.token');
                 if (clickedToken) {
                     this.showContextMenu(e, clickedToken);
@@ -144,11 +144,12 @@ export class MouseHandler {
             existingMenu.remove();
         }
     }    
-
+    
     startPanning(e) {
         if (e.target.classList.contains('token')) return;
         
         this.isPanning = true;
+        this.hasMoved = false; // Add this
         this.vtt.tabletop.classList.add('grabbing');
         
         this.panStart = {
@@ -162,9 +163,16 @@ export class MouseHandler {
         
         e.preventDefault();
         
+        // Check if we've moved more than a few pixels
+        const dx = e.pageX - (this.panStart.x + this.vtt.currentX);
+        const dy = e.pageY - (this.panStart.y + this.vtt.currentY);
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+            this.hasMoved = true;
+        }
+        
         this.vtt.currentX = e.pageX - this.panStart.x;
         this.vtt.currentY = e.pageY - this.panStart.y;
-
+    
         this.vtt.updateTransform();
     }
 
