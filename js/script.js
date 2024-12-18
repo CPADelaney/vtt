@@ -5,7 +5,8 @@ class VirtualTabletop {
         this.tabletop = document.getElementById('tabletop');
         this.container = document.getElementById('tabletop-container');
         this.toggleButton = document.getElementById('toggleGrid');
-        this.zoomSlider = document.getElementById('zoomSlider');
+        this.zoomInButton = document.getElementById('zoomIn');
+        this.zoomOutButton = document.getElementById('zoomOut');
         this.zoomValue = document.getElementById('zoomValue');
         
         this.isHexGrid = false;
@@ -44,9 +45,50 @@ class VirtualTabletop {
     }
 
     initializeEventListeners() {
+        // Grid toggle
         this.toggleButton.addEventListener('click', () => this.toggleGridType());
+
+        // Zoom controls
+        this.zoomInButton.addEventListener('click', () => this.handleZoomButton(1.1));
+        this.zoomOutButton.addEventListener('click', () => this.handleZoomButton(0.9));
+
+        // Window resize handling
         window.addEventListener('resize', () => this.handleResize());
     }
+
+    handleZoomButton(factor) {
+        // Get center of viewport for zoom origin
+        const rect = this.container.getBoundingClientRect();
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+
+        // Calculate position relative to transformed tabletop
+        const beforeZoomX = (centerX - this.currentX) / this.scale;
+        const beforeZoomY = (centerY - this.currentY) / this.scale;
+
+        // Update scale
+        this.scale *= factor;
+        
+        // Clamp scale
+        this.scale = Math.min(Math.max(this.scale, 0.5), 2);
+
+        // Calculate new position to keep center point fixed
+        const afterZoomX = (centerX - this.currentX) / this.scale;
+        const afterZoomY = (centerY - this.currentY) / this.scale;
+
+        // Adjust position to maintain center point
+        this.currentX += (afterZoomX - beforeZoomX) * this.scale;
+        this.currentY += (afterZoomY - beforeZoomY) * this.scale;
+
+        // Update display
+        this.updateTransform();
+        this.updateZoomDisplay();
+    }
+
+    updateZoomDisplay() {
+        this.zoomValue.textContent = `${Math.round(this.scale * 100)}%`;
+    }
+    
 
     updateTransform() {
         this.tabletop.style.transform = `translate(${this.currentX}px, ${this.currentY}px) scale(${this.scale})`;
