@@ -158,7 +158,6 @@ class VirtualTabletop {
         points.push('Z');
         return points.join(' ');
     }
-}
 
     handleResize() {
         this.saveTokenPositions();
