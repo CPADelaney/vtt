@@ -166,27 +166,29 @@ export class MouseHandler {
     }
 
     snapToHexGrid(x, y) {
-        const hexWidth = this.vtt.hexWidth;
-        const hexHeight = this.vtt.hexHeight;
-        const verticalSpacing = hexHeight * 0.75;
-        
-        // Find the nearest row
-        let row = Math.round(y / verticalSpacing);
-        const isOffsetRow = row % 2 === 1;
-        
-        // Adjust horizontal spacing based on row
-        const horizontalSpacing = hexWidth;
-        const offsetX = isOffsetRow ? hexWidth / 2 : 0;
-        
-        // Find the nearest column
-        let col = Math.round((x - offsetX) / horizontalSpacing);
-        
-        // Calculate final snapped position
-        const snappedX = col * horizontalSpacing + offsetX;
-        const snappedY = row * verticalSpacing;
-        
-        return { x: snappedX, y: snappedY };
-    }
+            const hexWidth = this.vtt.hexWidth;
+            const hexHeight = this.vtt.hexHeight;
+            const verticalSpacing = hexHeight * 0.75;
+            
+            // Find the nearest row
+            let row = Math.round(y / verticalSpacing);
+            const isOffsetRow = row % 2 === 1;
+            
+            // Adjust horizontal spacing based on row
+            const horizontalSpacing = hexWidth;
+            const offsetX = isOffsetRow ? hexWidth / 2 : 0;
+            
+            // Find the nearest column
+            let col = Math.round((x - offsetX) / horizontalSpacing);
+            
+            // Calculate final snapped position
+            // Add hexHeight/2 to y-position to center vertically
+            const snappedX = col * horizontalSpacing + offsetX;
+            const snappedY = row * verticalSpacing + (hexHeight / 4);
+            
+            return { x: snappedX, y: snappedY };
+        }
+
 
     createMarquee(e) {
         this.marquee = document.createElement('div');
