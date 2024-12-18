@@ -15,20 +15,27 @@ export class MouseHandler {
     }
 
     initializeMouseHandlers() {
-        // Prevent context menu
+        // Prevent default context menu
         this.vtt.tabletop.addEventListener('contextmenu', (e) => {
             e.preventDefault();
-        });
-
-        // Mouse down handler
-        this.vtt.tabletop.addEventListener('mousedown', (e) => {
-            if (e.button === 2) { // Right click
-                this.startPanning(e);
-            } else if (e.button === 0) { // Left click
-                this.handleLeftClick(e);
+            
+            // Only show context menu if we clicked a token
+            const clickedToken = e.target.closest('.token');
+            if (clickedToken) {
+                this.showContextMenu(e, clickedToken);
+            } else if (!this.isPanning) {
+                // If we're not panning and not clicking a token, maybe show a different context menu
+                this.showGridContextMenu(e);
             }
         });
 
+        // Close context menu when clicking elsewhere
+        document.addEventListener('mousedown', (e) => {
+            if (!e.target.closest('.context-menu')) {
+                this.closeContextMenu();
+            }
+        });
+        
         // Mouse move handler
         document.addEventListener('mousemove', (e) => {
             if (this.isPanning) {
@@ -57,6 +64,78 @@ export class MouseHandler {
             }
         });
     }
+
+
+    showContextMenu(e, token) {
+        this.closeContextMenu(); // Close any existing menu
+        
+        const menu = document.createElement('div');
+        menu.className = 'context-menu';
+        
+        // If the token isn't selected, select it
+        if (!this.selectedTokens.has(token)) {
+            this.selectedTokens.clear();
+            this.selectedTokens.add(token);
+            this.highlightSelectedTokens();
+        }
+
+        // Delete option
+        const deleteOption = document.createElement('div');
+        deleteOption.className = 'context-menu-item';
+        deleteOption.textContent = 'Delete Token(s)';
+        deleteOption.onclick = () => {
+            this.selectedTokens.forEach(token => {
+                token.remove();
+                // Remove from VTT tokens set if it exists there
+                this.vtt.tokens.delete(token);
+            });
+            this.selectedTokens.clear();
+            this.closeContextMenu();
+        };
+        menu.appendChild(deleteOption);
+
+        // Position the menu
+        menu.style.left = `${e.clientX}px`;
+        menu.style.top = `${e.clientY}px`;
+
+        // Add to document
+        document.body.appendChild(menu);
+    }
+
+    showGridContextMenu(e) {
+        this.closeContextMenu();
+        
+        const menu = document.createElement('div');
+        menu.className = 'context-menu';
+        
+        // Add token option
+        const addTokenOption = document.createElement('div');
+        addTokenOption.className = 'context-menu-item';
+        addTokenOption.textContent = 'Add Token';
+        addTokenOption.onclick = () => {
+            const pos = this.getSnappedPosition(
+                (e.clientX - this.vtt.currentX) / this.vtt.scale,
+                (e.clientY - this.vtt.currentY) / this.vtt.scale
+            );
+            const token = this.vtt.addToken(pos.x, pos.y);
+            this.closeContextMenu();
+        };
+        menu.appendChild(addTokenOption);
+
+        // Position the menu
+        menu.style.left = `${e.clientX}px`;
+        menu.style.top = `${e.clientY}px`;
+
+        // Add to document
+        document.body.appendChild(menu);
+    }
+
+    closeContextMenu() {
+        const existingMenu = document.querySelector('.context-menu');
+        if (existingMenu) {
+            existingMenu.remove();
+        }
+    }    
 
     startPanning(e) {
         if (e.target.classList.contains('token')) return;
