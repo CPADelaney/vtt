@@ -257,12 +257,17 @@ export class MouseHandler {
             return this.snapToSquareGrid(x, y);
         }
     }
-
+    
     snapToSquareGrid(x, y) {
-        // Simple square grid snapping
         const gridSize = this.vtt.gridSize;
-        const snappedX = Math.round(x / gridSize) * gridSize;
-        const snappedY = Math.round(y / gridSize) * gridSize;
+        
+        // Offset by half a grid size to snap to center instead of corner
+        const offsetX = gridSize / 2;
+        const offsetY = gridSize / 2;
+        
+        // Round to nearest grid cell and add offset to get to center
+        const snappedX = Math.round((x - offsetX) / gridSize) * gridSize + offsetX;
+        const snappedY = Math.round((y - offsetY) / gridSize) * gridSize + offsetY;
         
         return { x: snappedX, y: snappedY };
     }
