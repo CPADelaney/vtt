@@ -47,9 +47,15 @@ export class MouseHandler {
             }
         });
 
-        // Zoom handlers
-        this.vtt.container.addEventListener('wheel', (e) => this.handleZoom(e));
-        this.vtt.zoomSlider.addEventListener('input', (e) => this.handleSliderZoom(e));
+        // Wheel zoom handler
+        this.vtt.container.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (e.deltaY < 0) {
+                this.vtt.handleZoomButton(1.1);
+            } else {
+                this.vtt.handleZoomButton(0.9);
+            }
+        });
     }
 
     startPanning(e) {
@@ -80,48 +86,6 @@ export class MouseHandler {
         this.vtt.tabletop.classList.remove('grabbing');
     }
 
-    handleZoom(e) {
-        e.preventDefault();
-        
-        // Get mouse position relative to container
-        const rect = this.vtt.container.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-
-        // Calculate position relative to transformed tabletop
-        const beforeZoomX = (mouseX - this.vtt.currentX) / this.vtt.scale;
-        const beforeZoomY = (mouseY - this.vtt.currentY) / this.vtt.scale;
-
-        // Update scale
-        const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-        this.vtt.scale *= zoomFactor;
-        
-        // Clamp scale
-        this.vtt.scale = Math.min(Math.max(this.vtt.scale, 0.5), 2);
-
-        // Calculate new position to keep mouse point fixed
-        const afterZoomX = (mouseX - this.vtt.currentX) / this.vtt.scale;
-        const afterZoomY = (mouseY - this.vtt.currentY) / this.vtt.scale;
-
-        // Adjust position to maintain mouse point
-        this.vtt.currentX += (afterZoomX - beforeZoomX) * this.vtt.scale;
-        this.vtt.currentY += (afterZoomY - beforeZoomY) * this.vtt.scale;
-
-        this.vtt.updateTransform();
-        this.updateZoomControls();
-    }
-
-    handleSliderZoom(e) {
-        this.vtt.scale = parseFloat(e.target.value);
-        this.updateZoomControls();
-        this.vtt.updateTransform();
-    }
-
-    updateZoomControls() {
-        this.vtt.zoomSlider.value = this.vtt.scale;
-        this.vtt.zoomValue.textContent = `${Math.round(this.vtt.scale * 100)}%`;
-    }
-
     handleLeftClick(e) {
         const clickedToken = e.target.closest('.token');
         
@@ -146,78 +110,6 @@ export class MouseHandler {
                 this.highlightSelectedTokens();
             }
         }
-    }
-    handleMouseMove(e) {
-        if (this.isSelecting) {
-            this.updateMarquee(e);
-        }
-    }
-
-    handleLeftClickRelease(e) {
-        if (this.isSelecting) {
-            this.finalizeSelection();
-        }
-        this.isSelecting = false;
-        if (this.marquee) {
-            this.marquee.remove();
-            this.marquee = null;
-        }
-    }
-
-    createMarquee(e) {
-        this.marquee = document.createElement('div');
-        this.marquee.className = 'marquee';
-        document.body.appendChild(this.marquee);
-    }
-
-    updateMarquee(e) {
-        if (!this.marquee) return;
-
-        const minX = Math.min(e.clientX, this.marqueeStart.x);
-        const maxX = Math.max(e.clientX, this.marqueeStart.x);
-        const minY = Math.min(e.clientY, this.marqueeStart.y);
-        const maxY = Math.max(e.clientY, this.marqueeStart.y);
-
-        this.marquee.style.left = `${minX}px`;
-        this.marquee.style.top = `${minY}px`;
-        this.marquee.style.width = `${maxX - minX}px`;
-        this.marquee.style.height = `${maxY - minY}px`;
-    }
-
-    finalizeSelection() {
-        if (!this.marquee) return;
-
-        const marqueeRect = this.marquee.getBoundingClientRect();
-        const tokens = document.querySelectorAll('.token');
-
-        if (!event.shiftKey) {
-            this.selectedTokens.clear();
-        }
-
-        tokens.forEach(token => {
-            const tokenRect = token.getBoundingClientRect();
-            if (this.rectsIntersect(marqueeRect, tokenRect)) {
-                this.selectedTokens.add(token);
-            }
-        });
-
-        this.highlightSelectedTokens();
-    }
-
-    rectsIntersect(rect1, rect2) {
-        return !(rect1.right < rect2.left || 
-                rect1.left > rect2.right || 
-                rect1.bottom < rect2.top || 
-                rect1.top > rect2.bottom);
-    }
-
-    highlightSelectedTokens() {
-        document.querySelectorAll('.token').forEach(token => {
-            token.classList.remove('selected');
-        });
-        this.selectedTokens.forEach(token => {
-            token.classList.add('selected');
-        });
     }
 
     startTokenDrag(token, startEvent) {
@@ -250,14 +142,15 @@ export class MouseHandler {
         document.addEventListener('mousemove', handleDrag);
         document.addEventListener('mouseup', stopDrag);
     }
-        getSnappedPosition(x, y) {
+
+    getSnappedPosition(x, y) {
         if (this.vtt.isHexGrid) {
             return this.snapToHexGrid(x, y);
         } else {
             return this.snapToSquareGrid(x, y);
         }
     }
-    
+
     snapToSquareGrid(x, y) {
         const gridSize = this.vtt.gridSize;
         
@@ -295,38 +188,66 @@ export class MouseHandler {
         return { x: snappedX, y: snappedY };
     }
 
+    createMarquee(e) {
+        this.marquee = document.createElement('div');
+        this.marquee.className = 'marquee';
+        document.body.appendChild(this.marquee);
+    }
 
-    showContextMenu(e) {
-        // Remove any existing context menus
-        const existingMenu = document.querySelector('.context-menu');
-        if (existingMenu) {
-            existingMenu.remove();
+    updateMarquee(e) {
+        if (!this.marquee) return;
+
+        const minX = Math.min(e.clientX, this.marqueeStart.x);
+        const maxX = Math.max(e.clientX, this.marqueeStart.x);
+        const minY = Math.min(e.clientY, this.marqueeStart.y);
+        const maxY = Math.max(e.clientY, this.marqueeStart.y);
+
+        this.marquee.style.left = `${minX}px`;
+        this.marquee.style.top = `${minY}px`;
+        this.marquee.style.width = `${maxX - minX}px`;
+        this.marquee.style.height = `${maxY - minY}px`;
+    }
+
+    handleLeftClickRelease(e) {
+        if (this.isSelecting) {
+            this.finalizeSelection();
         }
+        this.isSelecting = false;
+        if (this.marquee) {
+            this.marquee.remove();
+            this.marquee = null;
+        }
+    }
 
-        const menu = document.createElement('div');
-        menu.className = 'context-menu';
-        menu.style.left = `${e.clientX}px`;
-        menu.style.top = `${e.clientY}px`;
+    finalizeSelection() {
+        if (!this.marquee) return;
 
-        const deleteOption = document.createElement('div');
-        deleteOption.className = 'context-menu-item';
-        deleteOption.textContent = 'Delete token';
-        deleteOption.onclick = () => {
-            this.selectedTokens.forEach(token => token.remove());
-            this.selectedTokens.clear();
-            menu.remove();
-        };
+        const marqueeRect = this.marquee.getBoundingClientRect();
+        const tokens = document.querySelectorAll('.token');
 
-        menu.appendChild(deleteOption);
-        document.body.appendChild(menu);
-
-        // Close menu when clicking outside
-        const closeMenu = (e) => {
-            if (!menu.contains(e.target)) {
-                menu.remove();
-                document.removeEventListener('mousedown', closeMenu);
+        tokens.forEach(token => {
+            const tokenRect = token.getBoundingClientRect();
+            if (this.rectsIntersect(marqueeRect, tokenRect)) {
+                this.selectedTokens.add(token);
             }
-        };
-        document.addEventListener('mousedown', closeMenu);
+        });
+
+        this.highlightSelectedTokens();
+    }
+
+    rectsIntersect(rect1, rect2) {
+        return !(rect1.right < rect2.left || 
+                rect1.left > rect2.right || 
+                rect1.bottom < rect2.top || 
+                rect1.top > rect2.bottom);
+    }
+
+    highlightSelectedTokens() {
+        document.querySelectorAll('.token').forEach(token => {
+            token.classList.remove('selected');
+        });
+        this.selectedTokens.forEach(token => {
+            token.classList.add('selected');
+        });
     }
 }
