@@ -270,27 +270,33 @@ initializeMouseHandlers() {
     snapToHexGrid(x, y) {
             const hexWidth = this.vtt.hexWidth;
             const hexHeight = this.vtt.hexHeight;
+            
+            // Using 3/4 of height for row spacing
             const verticalSpacing = hexHeight * 0.75;
             
-            // Find the nearest row
-            let row = Math.round(y / verticalSpacing);
-            const isOffsetRow = row % 2 === 1;
+            // Convert position to axial coordinates
+            // First convert to pixel space relative to hex grid
+            let q = (2/3 * x) / hexWidth;
+            let r = (-1/3 * x + 1/3 * Math.sqrt(3) * y) / hexWidth;
             
-            // Adjust horizontal spacing based on row
-            const horizontalSpacing = hexWidth;
-            const offsetX = isOffsetRow ? hexWidth / 2 : 0;
+            // Round to nearest hex using axial coordinates
+            const roundedQ = Math.round(q);
+            const roundedR = Math.round(r);
             
-            // Find the nearest column
-            let col = Math.round((x - offsetX) / horizontalSpacing);
+            // Convert back to pixel coordinates
+            const pixelX = hexWidth * (3/2 * roundedQ);
+            let pixelY = hexWidth * (Math.sqrt(3)/2 * (roundedQ + 2 * roundedR));
             
-            // Calculate final snapped position
-            // Add hexHeight/2 to y-position to center vertically
-            const snappedX = col * horizontalSpacing + offsetX;
-            const snappedY = row * verticalSpacing + (hexHeight / 4);
+            // Adjust for row offset pattern
+            if (Math.abs(roundedQ % 2) == 1) {
+                pixelY += verticalSpacing / 2;
+            }
             
-            return { x: snappedX, y: snappedY };
+            return { 
+                x: pixelX, 
+                y: pixelY 
+            };
         }
-
 
     createMarquee(e) {
         this.marquee = document.createElement('div');
