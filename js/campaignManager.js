@@ -1,68 +1,114 @@
-// campaignManager.js
-// Responsible for loading and saving the campaign state.
-
-export class CampaignManager {
-  constructor(app) {
-    this.app = app;
-    this.storageKey = 'campaignState'; // Key used in localStorage
-  }
-
-  loadState() {
-    const savedState = localStorage.getItem(this.storageKey);
-    if (savedState) {
-      const state = JSON.parse(savedState);
-      this.applyStateToApp(state);
-    } else {
-      // No saved state, use defaults
-      // You can set default monsters, characters, etc. here if needed
-      this.applyDefaultState();
+// ctateManager.js
+export class campaignManager {
+    constructor(vtt) {
+        this.vtt = vtt;
+        this.campaignId = 'default-campaign'; // Will be set properly when we add campaign management
+        this.autoSaveInterval = 30000; // 30 seconds
+        this.initializeAutoSave();
     }
-  }
 
-  saveState() {
-    const state = this.gatherStateFromApp();
-    localStorage.setItem(this.storageKey, JSON.stringify(state));
-  }
-
-  applyStateToApp(state) {
-    // Assign loaded data to the app's properties
-    if (state.boardState) {
-      this.app.rows = state.boardState.rows || this.app.rows;
-      this.app.cols = state.boardState.cols || this.app.cols;
-      this.app.entityTokens = state.boardState.entityTokens || {};
+    initializeAutoSave() {
+        setInterval(() => this.saveState(), this.autoSaveInterval);
+        // Also save when window is closed/refreshed
+        window.addEventListener('beforeunload', () => this.saveState());
     }
-    this.app.characters = state.characters || [];
-    this.app.monsters = state.monsters || [];
-    this.app.messages = state.messages || [];
-    // Add any other state you'd like to restore
-  }
 
-  applyDefaultState() {
-    // Setup any default data if no saved state is found
-    this.app.monsters = [
-      { id: 1, name: "Sand Wurm", HP: 50, AC: 14, STR: 18, DEX: 8, CON: 16, INT: 5, WIS: 10, CHA: 5, habitats: ["Desert"], attacks: [{ weaponId: 1, customMod: 0 }] },
-      { id: 2, name: "Cactus Crawler", HP: 20, AC: 12, STR: 12, DEX: 14, CON: 10, INT: 2, WIS: 8, CHA: 6, habitats: ["Desert", "Grasslands"], attacks: [] },
-      { id: 3, name: "River Drake", HP: 30, AC: 15, STR: 14, DEX: 12, CON: 13, INT: 6, WIS: 10, CHA: 8, habitats: ["Riverlands"], attacks: [] },
-      { id: 4, name: "Plains Stalker", HP: 25, AC: 13, STR: 13, DEX: 16, CON: 11, INT: 4, WIS: 10, CHA: 6, habitats: ["Grasslands"], attacks: [] }
-    ];
-    // Characters, entityTokens, messages start empty or with your chosen defaults
-    this.app.characters = [];
-    this.app.entityTokens = {};
-    this.app.messages = [];
-  }
+    saveState() {
+        const state = {
+            campaignId: this.campaignId,
+            gridState: this.getGridState(),
+            tokens: this.getTokenState(),
+            timestamp: Date.now()
+        };
 
-  gatherStateFromApp() {
-    // Gather current state from the app
-    return {
-      boardState: {
-        rows: this.app.rows,
-        cols: this.app.cols,
-        entityTokens: this.app.entityTokens
-      },
-      characters: this.app.characters,
-      monsters: this.app.monsters,
-      messages: this.app.messages
-      // Add any other app state you want to persist
-    };
-  }
+        try {
+            localStorage.setItem(`vtt-state-${this.campaignId}`, JSON.stringify(state));
+            console.log('State saved:', new Date().toLocaleTimeString());
+        } catch (e) {
+            console.error('Failed to save state:', e);
+        }
+    }
+
+    loadState() {
+        try {
+            const savedState = localStorage.getItem(`vtt-state-${this.campaignId}`);
+            if (savedState) {
+                const state = JSON.parse(savedState);
+                this.applyGridState(state.gridState);
+                this.applyTokenState(state.tokens);
+                console.log('State loaded from:', new Date(state.timestamp).toLocaleTimeString());
+                return true;
+            }
+        } catch (e) {
+            console.error('Failed to load state:', e);
+        }
+        return false;
+    }
+
+    getGridState() {
+        return {
+            isHexGrid: this.vtt.isHexGrid,
+            scale: this.vtt.scale,
+            position: {
+                x: this.vtt.currentX,
+                y: this.vtt.currentY
+            }
+        };
+    }
+
+    getTokenState() {
+        const tokens = [];
+        document.querySelectorAll('.token').forEach(token => {
+            tokens.push({
+                x: parseFloat(token.style.left),
+                y: parseFloat(token.style.top),
+                stats: token.dataset.stats ? JSON.parse(token.dataset.stats) : {},
+                id: token.id || `token-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+            });
+        });
+        return tokens;
+    }
+
+    applyGridState(gridState) {
+        if (gridState.isHexGrid !== this.vtt.isHexGrid) {
+            this.vtt.toggleGridType();
+        }
+        this.vtt.scale = gridState.scale;
+        this.vtt.currentX = gridState.position.x;
+        this.vtt.currentY = gridState.position.y;
+        this.vtt.updateTransform();
+    }
+
+    applyTokenState(tokens) {
+        // Clear existing tokens
+        document.querySelectorAll('.token').forEach(token => token.remove());
+        this.vtt.tokens.clear();
+
+        // Add saved tokens
+        tokens.forEach(tokenData => {
+            const token = this.vtt.addToken(tokenData.x, tokenData.y);
+            token.id = tokenData.id;
+            if (tokenData.stats) {
+                token.dataset.stats = JSON.stringify(tokenData.stats);
+            }
+        });
+    }
+
+    // Method to update token stats
+    updateTokenStats(tokenId, stats) {
+        const token = document.getElementById(tokenId);
+        if (token) {
+            token.dataset.stats = JSON.stringify(stats);
+            this.saveState(); // Save immediately when stats change
+        }
+    }
+
+    // Helper method to get token stats
+    getTokenStats(tokenId) {
+        const token = document.getElementById(tokenId);
+        if (token && token.dataset.stats) {
+            return JSON.parse(token.dataset.stats);
+        }
+        return null;
+    }
 }
