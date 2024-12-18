@@ -123,9 +123,22 @@ class VirtualTabletop {
         
         for (let row = 0; row < this.rows; row++) {
             for (let col = 0; col < this.cols; col++) {
-                const cell = document.createElement('div');
-                cell.className = 'grid-cell';
+                const cell = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                cell.setAttribute("class", "grid-cell");
+                cell.setAttribute("width", String(this.hexWidth));
+                cell.setAttribute("height", String(this.hexHeight));
                 
+                // Create the hexagon path
+                const hexagon = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                
+                // Calculate hex points
+                const points = this.calculateHexPoints(this.hexWidth/2, this.hexHeight/2, this.hexSize);
+                hexagon.setAttribute("d", points);
+                hexagon.setAttribute("class", "hexagon");
+                
+                cell.appendChild(hexagon);
+                
+                // Position the SVG
                 const offset = row % 2 === 0 ? 0 : horizontalSpacing / 2;
                 cell.style.left = `${col * horizontalSpacing + offset}px`;
                 cell.style.top = `${row * verticalSpacing}px`;
@@ -134,6 +147,18 @@ class VirtualTabletop {
             }
         }
     }
+    calculateHexPoints(centerX, centerY, size) {
+        const points = [];
+        for (let i = 0; i < 6; i++) {
+            const angle = (i * 60 - 30) * Math.PI / 180;
+            const x = centerX + size * Math.cos(angle);
+            const y = centerY + size * Math.sin(angle);
+            points.push(`${i === 0 ? 'M' : 'L'} ${x},${y}`);
+        }
+        points.push('Z');
+        return points.join(' ');
+    }
+}
 
     handleResize() {
         this.saveTokenPositions();
