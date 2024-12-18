@@ -261,11 +261,12 @@ initializeMouseHandlers() {
 
     getGridBounds() {
             if (this.vtt.isHexGrid) {
+                const verticalSpacing = this.vtt.hexHeight * 0.75;
                 return {
-                    minX: 0,
-                    minY: 0,
-                    maxX: (this.vtt.cols - 1) * this.vtt.hexWidth + (this.vtt.hexWidth / 2),
-                    maxY: (this.vtt.rows - 1) * (this.vtt.hexHeight * 0.75)
+                    minX: this.vtt.hexWidth / 2,  // Start from first complete hex
+                    minY: this.vtt.hexHeight * 0.255,  // Match our snap offset
+                    maxX: ((this.vtt.cols - 1) * this.vtt.hexWidth),  // Account for last column
+                    maxY: ((this.vtt.rows - 1) * verticalSpacing) - (this.vtt.hexHeight * 0.255)  // Match our snap offset
                 };
             } else {
                 return {
@@ -276,7 +277,7 @@ initializeMouseHandlers() {
                 };
             }
         }
-    
+
         isWithinBounds(x, y) {
             const bounds = this.getGridBounds();
             return x >= bounds.minX && x <= bounds.maxX && 
