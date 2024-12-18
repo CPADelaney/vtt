@@ -14,23 +14,17 @@ export class MouseHandler {
         this.initializeMouseHandlers();
     }
 
-    initializeMouseHandlers() {
+initializeMouseHandlers() {
         // Prevent context menu and handle right-click
         this.vtt.tabletop.addEventListener('contextmenu', (e) => {
             e.preventDefault();
-            if (!this.isPanning || !this.hasMoved) {
-                const clickedToken = e.target.closest('.token');
-                if (clickedToken) {
-                    this.showContextMenu(e, clickedToken);
-                } else {
-                    this.showGridContextMenu(e);
-                }
-            }
         });
 
         // Mouse down handler
         this.vtt.tabletop.addEventListener('mousedown', (e) => {
             if (e.button === 2) { // Right click
+                this.rightClickStartX = e.clientX;
+                this.rightClickStartY = e.clientY;
                 this.startPanning(e);
             } else if (e.button === 0) { // Left click
                 this.handleLeftClick(e);
@@ -48,7 +42,19 @@ export class MouseHandler {
 
         // Mouse up handler
         document.addEventListener('mouseup', (e) => {
-            if (e.button === 2) {
+            if (e.button === 2) { // Right click release
+                const deltaX = Math.abs(e.clientX - this.rightClickStartX);
+                const deltaY = Math.abs(e.clientY - this.rightClickStartY);
+                
+                // Only show context menu if we haven't moved much
+                if (deltaX < 5 && deltaY < 5) {
+                    const clickedToken = e.target.closest('.token');
+                    if (clickedToken) {
+                        this.showContextMenu(e, clickedToken);
+                    } else {
+                        this.showGridContextMenu(e);
+                    }
+                }
                 this.stopPanning();
             } else if (e.button === 0) {
                 this.handleLeftClickRelease(e);
