@@ -270,32 +270,41 @@ initializeMouseHandlers() {
     snapToHexGrid(x, y) {
             const hexWidth = this.vtt.hexWidth;
             const hexHeight = this.vtt.hexHeight;
-            
-            // Using 3/4 of height for row spacing
             const verticalSpacing = hexHeight * 0.75;
             
-            // Convert position to axial coordinates
-            // First convert to pixel space relative to hex grid
-            let q = (2/3 * x) / hexWidth;
-            let r = (-1/3 * x + 1/3 * Math.sqrt(3) * y) / hexWidth;
+            // Find the nearest row
+            let row = Math.floor(y / verticalSpacing);
+            const rowY = row * verticalSpacing;
+            const nextRowY = (row + 1) * verticalSpacing;
             
-            // Round to nearest hex using axial coordinates
-            const roundedQ = Math.round(q);
-            const roundedR = Math.round(r);
-            
-            // Convert back to pixel coordinates
-            const pixelX = hexWidth * (3/2 * roundedQ);
-            let pixelY = hexWidth * (Math.sqrt(3)/2 * (roundedQ + 2 * roundedR));
-            
-            // Adjust for row offset pattern
-            if (Math.abs(roundedQ % 2) == 1) {
-                pixelY += verticalSpacing / 2;
+            // Check if we're closer to the next row
+            if (Math.abs(y - nextRowY) < Math.abs(y - rowY)) {
+                row += 1;
             }
             
-            return { 
-                x: pixelX, 
-                y: pixelY 
-            };
+            // Determine if we're in an odd or even row
+            const isOffsetRow = row % 2 === 1;
+            
+            // Calculate the x position
+            // If we're in an offset row, shift the reference point by half a hex
+            const effectiveX = isOffsetRow ? x - hexWidth / 2 : x;
+            
+            // Find the nearest column based on the effective x position
+            let col = Math.floor(effectiveX / hexWidth);
+            const colX = col * hexWidth;
+            const nextColX = (col + 1) * hexWidth;
+            
+            // Check if we're closer to the next column
+            if (Math.abs(effectiveX - nextColX) < Math.abs(effectiveX - colX)) {
+                col += 1;
+            }
+            
+            // Calculate final position
+            const offsetX = isOffsetRow ? hexWidth / 2 : 0;
+            const snappedX = col * hexWidth + offsetX;
+            const snappedY = row * verticalSpacing + (hexHeight / 4);
+            
+            return { x: snappedX, y: snappedY };
         }
 
     createMarquee(e) {
