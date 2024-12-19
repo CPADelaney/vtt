@@ -1,6 +1,7 @@
 // script.js
 import { MouseHandler } from './mouseHandler.js';
 import { CampaignManager } from './campaignManager.js';
+import { UIBridge } from './bridge.js';
 
 class VirtualTabletop {
     constructor() {
@@ -30,12 +31,17 @@ class VirtualTabletop {
         this.campaignManager = new CampaignManager(this);
         
         this.initializeEventListeners();
+
+        this.uiBridge = new UIBridge(this);
         
         // Create initial state or load existing
         if (!this.campaignManager.loadState()) {
             this.createGrid();
             this.addToken(window.innerWidth / 2, window.innerHeight / 2);
         }
+
+        // Expose VTT instance globally for React components
+        window.vtt = this;
     }
 
     updateGridDimensions() {
