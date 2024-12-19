@@ -1,5 +1,4 @@
 // js/components/init.jsx
-import { DiceManager } from '/js/DiceManager.js';
 
 console.log('Init.jsx loaded');
 
