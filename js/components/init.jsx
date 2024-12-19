@@ -7,7 +7,7 @@ const { useState, useEffect, useRef } = React;
 console.log('React hooks imported');
 
 // Initialize DiceManager
-const diceManager = new DiceManager();
+const diceManager = new window.DiceManager();
 
 // Simple SVG icons
 const icons = {
