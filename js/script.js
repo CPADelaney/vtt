@@ -242,4 +242,6 @@ class VirtualTabletop {
 // Initialize the virtual tabletop when the page loads
 window.addEventListener('load', () => {
     const vtt = new VirtualTabletop();
+// In script.js, right after creating the VTT instance
+console.log('VTT grid created:', document.querySelector('.grid-cell') !== null);
 });
