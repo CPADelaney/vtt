@@ -4,9 +4,14 @@ console.log('Init.jsx loaded');
 const { useState, useEffect, useRef } = React;
 console.log('React hooks imported');
 
-// Check if lucide is available
+// Updated icon handling
 console.log('Lucide available:', typeof lucide !== 'undefined', lucide);
-const { ChevronLeft, ChevronRight, Swords, MessageSquare, History } = lucide;
+const createIcon = (icon, props = {}) => {
+    return lucide.createElement(icon, {
+        size: props.size || 24,
+        ...props
+    });
+};
 
 // Define Sidebar component
 const Sidebar = ({ bridge }) => {
@@ -28,14 +33,16 @@ const Sidebar = ({ bridge }) => {
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="absolute left-0 top-1/2 -translate-x-full transform bg-white p-2 rounded-l-lg shadow-lg"
             >
-                {isExpanded ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+                {isExpanded 
+                    ? createIcon('chevron-right', { size: 20 }) 
+                    : createIcon('chevron-left', { size: 20 })}
             </button>
 
             {/* Main Sidebar Content */}
             <div className="w-full flex flex-col">
                 <div className="p-4 border-b">
                     <h2 className="font-bold text-lg flex items-center">
-                        <Swords size={20} className="mr-2" /> DM Controls
+                        {createIcon('swords', { size: 20, className: "mr-2" })} DM Controls
                     </h2>
                 </div>
 
@@ -97,7 +104,7 @@ const ChatBox = ({ bridge }) => {
                             : 'text-gray-500'
                     }`}
                 >
-                    <MessageSquare size={16} className="mr-2" />
+                    {createIcon('message-square', { size: 16, className: "mr-2" })}
                     Chat
                 </button>
                 <button
@@ -108,7 +115,7 @@ const ChatBox = ({ bridge }) => {
                             : 'text-gray-500'
                     }`}
                 >
-                    <History size={16} className="mr-2" />
+                    {createIcon('history', { size: 16, className: "mr-2" })}
                     Combat Log
                 </button>
             </div>
