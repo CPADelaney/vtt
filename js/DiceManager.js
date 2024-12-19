@@ -1,5 +1,5 @@
 // js/DiceManager.js
-export class DiceManager {
+class DiceManager {
     constructor() {
         this.currentUser = 'Player'; // We can make this configurable later
     }
