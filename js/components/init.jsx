@@ -4,13 +4,13 @@ console.log('Init.jsx loaded');
 const { useState, useEffect, useRef } = React;
 console.log('React hooks imported');
 
-// Updated icon handling
-console.log('Lucide available:', typeof lucide !== 'undefined', lucide);
-const createIcon = (icon, props = {}) => {
-    return lucide.createElement(icon, {
-        size: props.size || 24,
-        ...props
-    });
+// Simple SVG icons
+const icons = {
+    chevronLeft: <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>,
+    chevronRight: <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>,
+    swords: <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 4 3 3 3-3-3-3-3 3"/><path d="M20 20h-5v-5"/><path d="M15 20 4 9"/><path d="M4 20v-3a3 3 0 0 1 3-3h3"/><path d="M4 9 3 8l3-3 1 1"/></svg>,
+    messageSquare: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>,
+    history: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l4 2"></path></svg>
 };
 
 // Define Sidebar component
@@ -33,16 +33,14 @@ const Sidebar = ({ bridge }) => {
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="absolute left-0 top-1/2 -translate-x-full transform bg-white p-2 rounded-l-lg shadow-lg"
             >
-                {isExpanded 
-                    ? createIcon('chevron-right', { size: 20 }) 
-                    : createIcon('chevron-left', { size: 20 })}
+                {isExpanded ? icons.chevronRight : icons.chevronLeft}
             </button>
 
             {/* Main Sidebar Content */}
             <div className="w-full flex flex-col">
                 <div className="p-4 border-b">
                     <h2 className="font-bold text-lg flex items-center">
-                        {createIcon('swords', { size: 20, className: "mr-2" })} DM Controls
+                        <span className="mr-2">{icons.swords}</span> DM Controls
                     </h2>
                 </div>
 
@@ -62,6 +60,7 @@ const Sidebar = ({ bridge }) => {
         </div>
     );
 };
+
 
 // Define ChatBox component
 const ChatBox = ({ bridge }) => {
@@ -104,7 +103,7 @@ const ChatBox = ({ bridge }) => {
                             : 'text-gray-500'
                     }`}
                 >
-                    {createIcon('message-square', { size: 16, className: "mr-2" })}
+                    <span className="mr-2">{icons.messageSquare}</span>
                     Chat
                 </button>
                 <button
@@ -115,7 +114,7 @@ const ChatBox = ({ bridge }) => {
                             : 'text-gray-500'
                     }`}
                 >
-                    {createIcon('history', { size: 16, className: "mr-2" })}
+                    <span className="mr-2">{icons.history}</span>
                     Combat Log
                 </button>
             </div>
