@@ -4,7 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Virtual Tabletop</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
+    <!-- React and dependencies -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
     <div class="controls">
@@ -20,6 +25,16 @@
             <!-- Grid will be generated here -->
         </div>
     </div>
+    <div id="sidebar-root">Sidebar should appear here</div>
+    
+    <!-- Load core VTT code first -->
+    <script type="module" src="js/mouseHandler.js"></script>
+    <script type="module" src="js/campaignManager.js"></script>
+    <script type="module" src="js/bridge.js"></script>
     <script type="module" src="js/script.js"></script>
+
+    <!-- Then load React components -->
+    <script type="text/babel" src="js/DiceManager.js"></script>
+    <script type="text/babel" src="js/components/init.jsx"></script>
 </body>
 </html>

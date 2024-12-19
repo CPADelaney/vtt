@@ -1,6 +1,7 @@
 // script.js
 import { MouseHandler } from './mouseHandler.js';
 import { CampaignManager } from './campaignManager.js';
+import { UIBridge } from './bridge.js';
 
 class VirtualTabletop {
     constructor() {
@@ -11,33 +12,39 @@ class VirtualTabletop {
         this.zoomOutButton = document.getElementById('zoomOut');
         this.zoomValue = document.getElementById('zoomValue');
         
-        this.isHexGrid = false;
-        this.scale = 1;
-        this.currentX = 0;
-        this.currentY = 0;
+    this.isHexGrid = false;
+    this.scale = 1;
+    this.currentX = 0;
+    this.currentY = 0;
 
-        // Base grid size
-        this.gridSize = 50; // Base size for squares
-        this.tokens = new Set(); // For temporary token position storage during grid switches
+    // Base grid size
+    this.gridSize = 50; // Base size for squares
+    this.tokens = new Set();
 
-        // Hex specific calculations
-        this.hexSize = 30; // Smaller size for hexes
-        this.hexHeight = this.hexSize * 2;
-        this.hexWidth = Math.sqrt(3) * this.hexSize;
-        
-        this.updateGridDimensions();
-        this.mouseHandler = new MouseHandler(this);
-        this.campaignManager = new CampaignManager(this);
-        
-        this.initializeEventListeners();
-        
-        // Create initial state or load existing
-        if (!this.campaignManager.loadState()) {
-            this.createGrid();
-            this.addToken(window.innerWidth / 2, window.innerHeight / 2);
-        }
+    // Hex specific calculations
+    this.hexSize = 30;
+    this.hexHeight = this.hexSize * 2;
+    this.hexWidth = Math.sqrt(3) * this.hexSize;
+    
+    // Update dimensions before creating anything
+    this.updateGridDimensions();
+
+    // Create grid first
+    this.createGrid();
+    
+    // Then initialize everything else
+    this.mouseHandler = new MouseHandler(this);
+    this.campaignManager = new CampaignManager(this);
+    this.initializeEventListeners();
+    this.uiBridge = new UIBridge(this);
+    
+    // Load state or add default token
+    if (!this.campaignManager.loadState()) {
+        this.addToken(window.innerWidth / 2, window.innerHeight / 2);
     }
 
+    window.vtt = this;
+}
     updateGridDimensions() {
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
@@ -235,4 +242,6 @@ class VirtualTabletop {
 // Initialize the virtual tabletop when the page loads
 window.addEventListener('load', () => {
     const vtt = new VirtualTabletop();
+// In script.js, right after creating the VTT instance
+console.log('VTT grid created:', document.querySelector('.grid-cell') !== null);
 });
