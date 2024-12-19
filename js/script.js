@@ -42,6 +42,7 @@ class VirtualTabletop {
 
         // Expose VTT instance globally for React components
         window.vtt = this;
+        console.log('VTT exposed to window:', window.vtt);
     }
 
     updateGridDimensions() {
