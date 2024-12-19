@@ -2,6 +2,10 @@
 console.log('Init.jsx loaded');
 
 const { useState, useEffect, useRef } = React;
+console.log('React hooks imported');
+
+// Check if lucide is available
+console.log('Lucide available:', typeof lucide !== 'undefined', lucide);
 const { ChevronLeft, ChevronRight, Swords, MessageSquare, History } = lucide;
 
 // Define Sidebar component
@@ -180,28 +184,34 @@ const ChatBox = ({ bridge }) => {
     );
 };
 
-// Initialize React components
+// Update initialization code
 window.addEventListener('load', () => {
-    console.log('Checking for VTT...');
+    console.log('Load event fired in init.jsx');
     const checkInterval = setInterval(() => {
+        console.log('Checking VTT...', window.vtt?.uiBridge);
         if (window.vtt && window.vtt.uiBridge) {
-            console.log('VTT found, initializing React components...');
+            console.log('VTT found, initializing React components...', {
+                sidebarRoot: document.getElementById('sidebar-root'),
+                chatRoot: document.getElementById('chat-root')
+            });
             clearInterval(checkInterval);
             try {
                 // Initialize Sidebar
                 const sidebarRoot = ReactDOM.createRoot(document.getElementById('sidebar-root'));
                 sidebarRoot.render(<Sidebar bridge={window.vtt.uiBridge} />);
+                console.log('Sidebar initialized');
 
                 // Initialize ChatBox
                 const chatRoot = ReactDOM.createRoot(document.getElementById('chat-root'));
                 chatRoot.render(<ChatBox bridge={window.vtt.uiBridge} />);
-                
-                console.log('Components initialized');
+                console.log('ChatBox initialized');
             } catch (e) {
                 console.error('Error initializing components:', e);
+                console.error('Error details:', {
+                    message: e.message,
+                    stack: e.stack
+                });
             }
-        } else {
-            console.log('VTT not found yet...');
         }
     }, 100);
 });
