@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Virtual Tabletop</title>
     <link rel="stylesheet" href="css/styles.css">
+    <!-- Add React dependencies -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
     <div class="controls">
@@ -20,6 +24,10 @@
             <!-- Grid will be generated here -->
         </div>
     </div>
+    <!-- New React mount points -->
+    <div id="sidebar-root"></div>
+    <div id="chat-root"></div>
+
     <script type="module" src="js/script.js"></script>
 </body>
 </html>
