@@ -10,65 +10,19 @@ const icons = {
     chevronRight: <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>,
     swords: <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 4 3 3 3-3-3-3-3 3"/><path d="M20 20h-5v-5"/><path d="M15 20 4 9"/><path d="M4 20v-3a3 3 0 0 1 3-3h3"/><path d="M4 9 3 8l3-3 1 1"/></svg>,
     messageSquare: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>,
-    history: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l4 2"></path></svg>
+    history: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l4 2"></path></svg>,
+    settings: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
 };
 
 // Define Sidebar component
 const Sidebar = ({ bridge }) => {
     const [isExpanded, setIsExpanded] = useState(true);
     const [inCombat, setInCombat] = useState(false);
-
-    useEffect(() => {
-        const unsubscribe = bridge.subscribe(state => {
-            setInCombat(state.inCombat);
-        });
-        return unsubscribe;
-    }, [bridge]);
-
-    return (
-        <div className={`sidebar fixed top-0 right-0 h-full bg-white shadow-lg transition-all duration-300 flex
-            ${isExpanded ? 'w-64' : 'w-12'}`}>
-            {/* Collapse/Expand Toggle */}
-            <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="absolute left-0 top-1/2 -translate-x-full transform bg-white p-2 rounded-l-lg shadow-lg"
-            >
-                {isExpanded ? icons.chevronRight : icons.chevronLeft}
-            </button>
-
-            {/* Main Sidebar Content */}
-            <div className="w-full flex flex-col">
-                <div className="p-4 border-b">
-                    <h2 className="font-bold text-lg flex items-center">
-                        <span className="mr-2">{icons.swords}</span> DM Controls
-                    </h2>
-                </div>
-
-                <div className="p-4 space-y-4">
-                    <button 
-                        onClick={() => bridge.toggleCombat()}
-                        className={`w-full font-bold py-2 px-4 rounded transition-colors ${
-                            inCombat 
-                                ? 'bg-red-600 hover:bg-red-700 text-white' 
-                                : 'bg-green-600 hover:bg-green-700 text-white'
-                        }`}
-                    >
-                        {inCombat ? 'End Combat' : 'Start Combat'}
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-
-// Define ChatBox component
-const ChatBox = ({ bridge }) => {
-    const [activeTab, setActiveTab] = useState('chat');
+    const [activeTab, setActiveTab] = useState('dm'); // 'dm', 'chat', or 'combat'
     const [messages, setMessages] = useState([]);
     const [actionHistory, setActionHistory] = useState([]);
-    const [inCombat, setInCombat] = useState(false);
     const messagesEndRef = useRef(null);
+    const inputRef = useRef(null);
 
     useEffect(() => {
         const unsubscribe = bridge.subscribe(state => {
@@ -83,6 +37,17 @@ const ChatBox = ({ bridge }) => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, actionHistory]);
 
+    const handleMessageSend = (e) => {
+        if (e.key === 'Enter' && inputRef.current.value.trim()) {
+            setMessages(prev => [...prev, {
+                id: Date.now(),
+                sender: 'Player',
+                content: inputRef.current.value
+            }]);
+            inputRef.current.value = '';
+        }
+    };
+
     const handleUndo = () => {
         bridge.undoLastAction();
     };
@@ -92,104 +57,138 @@ const ChatBox = ({ bridge }) => {
     };
 
     return (
-        <div className="chatbox fixed bottom-0 right-64 w-96 h-96 bg-white shadow-lg flex flex-col">
-            {/* Chat Tabs */}
-            <div className="flex border-b">
-                <button
-                    onClick={() => setActiveTab('chat')}
-                    className={`flex-1 py-2 px-4 flex items-center justify-center ${
-                        activeTab === 'chat'
-                            ? 'border-b-2 border-blue-500 text-blue-500'
-                            : 'text-gray-500'
-                    }`}
-                >
-                    <span className="mr-2">{icons.messageSquare}</span>
-                    Chat
-                </button>
-                <button
-                    onClick={() => setActiveTab('history')}
-                    className={`flex-1 py-2 px-4 flex items-center justify-center ${
-                        activeTab === 'history'
-                            ? 'border-b-2 border-blue-500 text-blue-500'
-                            : 'text-gray-500'
-                    }`}
-                >
-                    <span className="mr-2">{icons.history}</span>
-                    Combat Log
-                </button>
-            </div>
+        <div className={`sidebar fixed top-0 right-0 h-full bg-white shadow-lg transition-all duration-300 flex flex-col
+            ${isExpanded ? 'w-80' : 'w-12'}`}>
+            {/* Collapse/Expand Toggle */}
+            <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="absolute left-0 top-1/2 -translate-x-full transform bg-white p-2 rounded-l-lg shadow-lg"
+            >
+                {isExpanded ? icons.chevronRight : icons.chevronLeft}
+            </button>
 
-            {/* Content Area */}
-            <div className="flex-1 overflow-y-auto">
-                {activeTab === 'chat' ? (
-                    <div className="space-y-2 p-4">
-                        {messages.map(msg => (
-                            <div key={msg.id} className="p-2 rounded bg-gray-50">
-                                <span className="font-bold">{msg.sender}: </span>
-                                <span>{msg.content}</span>
-                            </div>
-                        ))}
-                        <div ref={messagesEndRef} />
+            {isExpanded && (
+                <>
+                    {/* Tabs */}
+                    <div className="flex border-b">
+                        <button
+                            onClick={() => setActiveTab('dm')}
+                            className={`flex-1 py-2 px-4 flex items-center justify-center ${
+                                activeTab === 'dm'
+                                    ? 'border-b-2 border-blue-500 text-blue-500'
+                                    : 'text-gray-500'
+                            }`}
+                        >
+                            <span className="mr-2">{icons.settings}</span>
+                            DM Tools
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('chat')}
+                            className={`flex-1 py-2 px-4 flex items-center justify-center ${
+                                activeTab === 'chat'
+                                    ? 'border-b-2 border-blue-500 text-blue-500'
+                                    : 'text-gray-500'
+                            }`}
+                        >
+                            <span className="mr-2">{icons.messageSquare}</span>
+                            Chat
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('combat')}
+                            className={`flex-1 py-2 px-4 flex items-center justify-center ${
+                                activeTab === 'combat'
+                                    ? 'border-b-2 border-blue-500 text-blue-500'
+                                    : 'text-gray-500'
+                            }`}
+                        >
+                            <span className="mr-2">{icons.history}</span>
+                            Combat
+                        </button>
                     </div>
-                ) : (
-                    <div className="p-4 space-y-4">
-                        {inCombat && (
-                            <div className="flex justify-end space-x-2 mb-4">
+
+                    {/* Content area */}
+                    <div className="flex-1 overflow-y-auto">
+                        {/* DM Tools Tab */}
+                        {activeTab === 'dm' && (
+                            <div className="p-4 space-y-4">
                                 <button 
-                                    onClick={handleUndo}
-                                    disabled={actionHistory.length === 0}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm disabled:opacity-50"
+                                    onClick={() => bridge.toggleCombat()}
+                                    className={`w-full font-bold py-2 px-4 rounded transition-colors ${
+                                        inCombat 
+                                            ? 'bg-red-600 hover:bg-red-700 text-white' 
+                                            : 'bg-green-600 hover:bg-green-700 text-white'
+                                    }`}
                                 >
-                                    Undo
-                                </button>
-                                <button 
-                                    onClick={handleRevertTurn}
-                                    disabled={actionHistory.length === 0}
-                                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1 px-3 rounded text-sm disabled:opacity-50"
-                                >
-                                    Revert Turn
+                                    {inCombat ? 'End Combat' : 'Start Combat'}
                                 </button>
                             </div>
                         )}
-                        <div className="space-y-2">
-                            {actionHistory.map(action => (
-                                <div key={action.id} className="p-2 bg-gray-100 rounded">
-                                    <div className="text-sm font-medium">{action.type}</div>
-                                    <div className="text-xs text-gray-600">
-                                        {new Date(action.timestamp).toLocaleTimeString()}
-                                    </div>
-                                </div>
-                            ))}
-                            <div ref={messagesEndRef} />
-                        </div>
-                    </div>
-                )}
-            </div>
 
-            {/* Input Area - Only shown in chat tab */}
-            {activeTab === 'chat' && (
-                <div className="p-2 border-t">
-                    <input
-                        type="text"
-                        placeholder="Type your message..."
-                        className="w-full px-3 py-2 border rounded"
-                        onKeyPress={e => {
-                            if (e.key === 'Enter') {
-                                setMessages(prev => [...prev, {
-                                    id: Date.now(),
-                                    sender: 'Player',
-                                    content: e.target.value
-                                }]);
-                                e.target.value = '';
-                            }
-                        }}
-                    />
-                </div>
+                        {/* Chat Tab */}
+                        {activeTab === 'chat' && (
+                            <div className="flex flex-col h-full">
+                                <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                                    {messages.map(msg => (
+                                        <div key={msg.id} className="p-2 rounded bg-gray-50">
+                                            <span className="font-bold">{msg.sender}: </span>
+                                            <span>{msg.content}</span>
+                                        </div>
+                                    ))}
+                                    <div ref={messagesEndRef} />
+                                </div>
+                                <div className="p-2 border-t">
+                                    <input
+                                        ref={inputRef}
+                                        type="text"
+                                        placeholder="Type your message..."
+                                        className="w-full px-3 py-2 border rounded"
+                                        onKeyPress={handleMessageSend}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Combat Log Tab */}
+                        {activeTab === 'combat' && (
+                            <div className="p-4 space-y-4">
+                                {inCombat && (
+                                    <div className="flex justify-end space-x-2 mb-4">
+                                        <button 
+                                            onClick={handleUndo}
+                                            disabled={actionHistory.length === 0}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm disabled:opacity-50"
+                                        >
+                                            Undo
+                                        </button>
+                                        <button 
+                                            onClick={handleRevertTurn}
+                                            disabled={actionHistory.length === 0}
+                                            className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1 px-3 rounded text-sm disabled:opacity-50"
+                                        >
+                                            Revert Turn
+                                        </button>
+                                    </div>
+                                )}
+                                <div className="space-y-2">
+                                    {actionHistory.map(action => (
+                                        <div key={action.id} className="p-2 bg-gray-100 rounded">
+                                            <div className="text-sm font-medium">{action.type}</div>
+                                            <div className="text-xs text-gray-600">
+                                                {new Date(action.timestamp).toLocaleTimeString()}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </>
             )}
         </div>
     );
 };
 
+// Initialize React components
 console.log('Setting up initialization...');
 
 function initializeComponents() {
@@ -197,15 +196,10 @@ function initializeComponents() {
     if (window.vtt && window.vtt.uiBridge) {
         try {
             console.log('Found VTT and bridge, creating roots');
-            // Initialize Sidebar
+            // Initialize Sidebar with integrated chat
             const sidebarRoot = ReactDOM.createRoot(document.getElementById('sidebar-root'));
             sidebarRoot.render(<Sidebar bridge={window.vtt.uiBridge} />);
             console.log('Sidebar initialized');
-
-            // Initialize ChatBox
-            const chatRoot = ReactDOM.createRoot(document.getElementById('chat-root'));
-            chatRoot.render(<ChatBox bridge={window.vtt.uiBridge} />);
-            console.log('ChatBox initialized');
         } catch (e) {
             console.error('Error initializing components:', e);
         }
