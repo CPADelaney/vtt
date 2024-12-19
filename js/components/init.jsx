@@ -1,14 +1,25 @@
 // js/components/init.jsx
 
 console.log('Init.jsx loaded');
+import { Sidebar } from './Sidebar.jsx';
+import { ChatBox } from './ChatBox.jsx';
 
-// Wait for VTT to be initialized
+console.log('Components imported');
+
 window.addEventListener('load', () => {
-    // Check every 100ms for UIBridge to be available
+    console.log('Checking for VTT...');
     const checkInterval = setInterval(() => {
         if (window.vtt && window.vtt.uiBridge) {
+            console.log('VTT found, initializing React components...', window.vtt);
             clearInterval(checkInterval);
-            initializeReactComponents(window.vtt.uiBridge);
+            try {
+                initializeReactComponents(window.vtt.uiBridge);
+                console.log('Components initialized');
+            } catch (e) {
+                console.error('Error initializing components:', e);
+            }
+        } else {
+            console.log('VTT not found yet...');
         }
     }, 100);
 });
