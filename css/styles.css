@@ -136,3 +136,12 @@ body {
     min-width: 48px;
     text-align: center;
 }
+
+/* React component core styles - only what can't be handled by Tailwind */
+.sidebar {
+    z-index: 1000;
+}
+
+.chatbox {
+    z-index: 900;
+}
