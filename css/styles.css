@@ -94,11 +94,13 @@ body {
     padding: 4px 0;
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     z-index: 1000;
+    min-width: 120px;
 }
 
 .context-menu-item {
     padding: 8px 12px;
     cursor: pointer;
+    user-select: none;
 }
 
 .context-menu-item:hover {
@@ -137,3 +139,4 @@ body {
     min-width: 48px;
     text-align: center;
 }
+

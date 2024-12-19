@@ -1,5 +1,7 @@
 // script.js
 import { MouseHandler } from './mouseHandler.js';
+import { CampaignManager } from './campaignManager.js';
+
 class VirtualTabletop {
     constructor() {
         this.tabletop = document.getElementById('tabletop');
@@ -15,18 +17,25 @@ class VirtualTabletop {
         this.currentY = 0;
 
         // Base grid size
-        this.gridSize = 50; // Back to original size for squares
-        this.tokens = new Set();
+        this.gridSize = 50; // Base size for squares
+        this.tokens = new Set(); // For temporary token position storage during grid switches
 
         // Hex specific calculations
-        this.hexSize = 30; // Kept smaller for hexes
+        this.hexSize = 30; // Smaller size for hexes
         this.hexHeight = this.hexSize * 2;
         this.hexWidth = Math.sqrt(3) * this.hexSize;
         
         this.updateGridDimensions();
         this.mouseHandler = new MouseHandler(this);
+        this.campaignManager = new CampaignManager(this);
+        
         this.initializeEventListeners();
-        this.createGrid();
+        
+        // Create initial state or load existing
+        if (!this.campaignManager.loadState()) {
+            this.createGrid();
+            this.addToken(window.innerWidth / 2, window.innerHeight / 2);
+        }
     }
 
     updateGridDimensions() {
@@ -38,21 +47,15 @@ class VirtualTabletop {
             this.rows = Math.ceil(viewportHeight / effectiveHeight) + 2;
             this.cols = Math.ceil(viewportWidth / this.hexWidth) + 2;
         } else {
-            // Add just enough cells to cover viewport plus a small buffer
             this.rows = Math.ceil(viewportHeight / this.gridSize) + 2;
             this.cols = Math.ceil(viewportWidth / this.gridSize) + 2;
         }
     }
 
     initializeEventListeners() {
-        // Grid toggle
         this.toggleButton.addEventListener('click', () => this.toggleGridType());
-
-        // Zoom controls
         this.zoomInButton.addEventListener('click', () => this.handleZoomButton(1.1));
         this.zoomOutButton.addEventListener('click', () => this.handleZoomButton(0.9));
-
-        // Window resize handling
         window.addEventListener('resize', () => this.handleResize());
     }
 
@@ -68,8 +71,6 @@ class VirtualTabletop {
 
         // Update scale
         this.scale *= factor;
-        
-        // Clamp scale
         this.scale = Math.min(Math.max(this.scale, 0.5), 2);
 
         // Calculate new position to keep center point fixed
@@ -80,32 +81,32 @@ class VirtualTabletop {
         this.currentX += (afterZoomX - beforeZoomX) * this.scale;
         this.currentY += (afterZoomY - beforeZoomY) * this.scale;
 
-        // Update display
         this.updateTransform();
         this.updateZoomDisplay();
+        
+        // Save state after zoom
+        this.campaignManager.saveState();
     }
 
     updateZoomDisplay() {
         this.zoomValue.textContent = `${Math.round(this.scale * 100)}%`;
     }
-    
 
     updateTransform() {
         this.tabletop.style.transform = `translate(${this.currentX}px, ${this.currentY}px) scale(${this.scale})`;
     }
 
     toggleGridType() {
-        // Store current tokens before changing grid
         this.saveTokenPositions();
-        
         this.isHexGrid = !this.isHexGrid;
         this.tabletop.className = this.isHexGrid ? 'hex-grid' : 'square-grid';
         
         this.updateGridDimensions();
         this.createGrid();
-        
-        // Restore tokens after grid change
         this.restoreTokens();
+        
+        // Save state after grid change
+        this.campaignManager.saveState();
     }
 
     saveTokenPositions() {
@@ -114,7 +115,9 @@ class VirtualTabletop {
             this.tokens.add({
                 x: parseFloat(token.style.left),
                 y: parseFloat(token.style.top),
-                selected: token.classList.contains('selected')
+                selected: token.classList.contains('selected'),
+                id: token.id,
+                stats: token.dataset.stats
             });
         });
     }
@@ -122,6 +125,8 @@ class VirtualTabletop {
     restoreTokens() {
         this.tokens.forEach(tokenData => {
             const token = this.addToken(tokenData.x, tokenData.y);
+            if (tokenData.id) token.id = tokenData.id;
+            if (tokenData.stats) token.dataset.stats = tokenData.stats;
             if (tokenData.selected) {
                 token.classList.add('selected');
                 this.mouseHandler.selectedTokens.add(token);
@@ -130,12 +135,10 @@ class VirtualTabletop {
     }
 
     createGrid() {
-        // Clear existing grid
         while (this.tabletop.firstChild) {
             this.tabletop.removeChild(this.tabletop.firstChild);
         }
         
-        // Create grid using document fragment for better performance
         const fragment = document.createDocumentFragment();
         
         if (this.isHexGrid) {
@@ -207,6 +210,7 @@ class VirtualTabletop {
         this.updateGridDimensions();
         this.createGrid();
         this.restoreTokens();
+        this.campaignManager.saveState();
     }
 
     addToken(x, y) {
@@ -214,6 +218,15 @@ class VirtualTabletop {
         token.className = 'token';
         token.style.left = `${x}px`;
         token.style.top = `${y}px`;
+        token.id = `token-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Initialize with default stats
+        token.dataset.stats = JSON.stringify({
+            hp: 100,
+            maxHp: 100,
+            name: 'New Token'
+        });
+        
         this.tabletop.appendChild(token);
         return token;
     }
@@ -222,5 +235,4 @@ class VirtualTabletop {
 // Initialize the virtual tabletop when the page loads
 window.addEventListener('load', () => {
     const vtt = new VirtualTabletop();
-    vtt.addToken(window.innerWidth / 2, window.innerHeight / 2);
 });

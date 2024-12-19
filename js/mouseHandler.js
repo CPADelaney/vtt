@@ -14,8 +14,8 @@ export class MouseHandler {
         this.initializeMouseHandlers();
     }
 
-    initializeMouseHandlers() {
-        // Prevent context menu
+initializeMouseHandlers() {
+        // Prevent context menu and handle right-click
         this.vtt.tabletop.addEventListener('contextmenu', (e) => {
             e.preventDefault();
         });
@@ -23,6 +23,8 @@ export class MouseHandler {
         // Mouse down handler
         this.vtt.tabletop.addEventListener('mousedown', (e) => {
             if (e.button === 2) { // Right click
+                this.rightClickStartX = e.clientX;
+                this.rightClickStartY = e.clientY;
                 this.startPanning(e);
             } else if (e.button === 0) { // Left click
                 this.handleLeftClick(e);
@@ -40,10 +42,29 @@ export class MouseHandler {
 
         // Mouse up handler
         document.addEventListener('mouseup', (e) => {
-            if (e.button === 2) {
+            if (e.button === 2) { // Right click release
+                const deltaX = Math.abs(e.clientX - this.rightClickStartX);
+                const deltaY = Math.abs(e.clientY - this.rightClickStartY);
+                
+                // Only show context menu if we haven't moved much
+                if (deltaX < 5 && deltaY < 5) {
+                    const clickedToken = e.target.closest('.token');
+                    if (clickedToken) {
+                        this.showContextMenu(e, clickedToken);
+                    } else {
+                        this.showGridContextMenu(e);
+                    }
+                }
                 this.stopPanning();
             } else if (e.button === 0) {
                 this.handleLeftClickRelease(e);
+            }
+        });
+
+        // Close context menu when clicking elsewhere
+        document.addEventListener('mousedown', (e) => {
+            if (!e.target.closest('.context-menu')) {
+                this.closeContextMenu();
             }
         });
 
@@ -58,10 +79,84 @@ export class MouseHandler {
         });
     }
 
+
+    showContextMenu(e, token) {
+        this.closeContextMenu(); // Close any existing menu
+        
+        const menu = document.createElement('div');
+        menu.className = 'context-menu';
+        
+        // If the token isn't selected, select it
+        if (!this.selectedTokens.has(token)) {
+            this.selectedTokens.clear();
+            this.selectedTokens.add(token);
+            this.highlightSelectedTokens();
+        }
+
+        // Delete option
+        const deleteOption = document.createElement('div');
+        deleteOption.className = 'context-menu-item';
+        deleteOption.textContent = 'Delete Token(s)';
+        deleteOption.onclick = () => {
+            this.selectedTokens.forEach(token => {
+                token.remove();
+                // Remove from VTT tokens set if it exists there
+                this.vtt.tokens.delete(token);
+            });
+            this.selectedTokens.clear();
+            this.closeContextMenu();
+        };
+        menu.appendChild(deleteOption);
+
+        // Position the menu
+        menu.style.left = `${e.clientX}px`;
+        menu.style.top = `${e.clientY}px`;
+
+        // Add to document
+        document.body.appendChild(menu);
+    }
+
+    showGridContextMenu(e) {
+        this.closeContextMenu();
+        
+        const menu = document.createElement('div');
+        menu.className = 'context-menu';
+        
+        // Add token option
+        const addTokenOption = document.createElement('div');
+        addTokenOption.className = 'context-menu-item';
+        addTokenOption.textContent = 'Add Token';
+        addTokenOption.onclick = () => {
+            const pos = this.getSnappedPosition(
+                (e.clientX - this.vtt.currentX) / this.vtt.scale,
+                (e.clientY - this.vtt.currentY) / this.vtt.scale
+            );
+            const token = this.vtt.addToken(pos.x, pos.y);
+            this.closeContextMenu();
+        };
+        menu.appendChild(addTokenOption);
+
+        // Position the menu
+        menu.style.left = `${e.clientX}px`;
+        menu.style.top = `${e.clientY}px`;
+
+        // Add to document
+        document.body.appendChild(menu);
+    }
+
+
+    closeContextMenu() {
+        const existingMenu = document.querySelector('.context-menu');
+        if (existingMenu) {
+            existingMenu.remove();
+        }
+    }    
+    
     startPanning(e) {
         if (e.target.classList.contains('token')) return;
         
         this.isPanning = true;
+        this.hasMoved = false; // Add this
         this.vtt.tabletop.classList.add('grabbing');
         
         this.panStart = {
@@ -75,9 +170,16 @@ export class MouseHandler {
         
         e.preventDefault();
         
+        // Check if we've moved more than a few pixels
+        const dx = e.pageX - (this.panStart.x + this.vtt.currentX);
+        const dy = e.pageY - (this.panStart.y + this.vtt.currentY);
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+            this.hasMoved = true;
+        }
+        
         this.vtt.currentX = e.pageX - this.panStart.x;
         this.vtt.currentY = e.pageY - this.panStart.y;
-
+    
         this.vtt.updateTransform();
     }
 
@@ -111,38 +213,34 @@ export class MouseHandler {
             }
         }
     }
-
+    
     startTokenDrag(token, startEvent) {
         const startX = startEvent.clientX;
         const startY = startEvent.clientY;
         const tokenStartX = parseFloat(token.style.left);
         const tokenStartY = parseFloat(token.style.top);
-
+    
         const handleDrag = (e) => {
             const dx = (e.clientX - startX) / this.vtt.scale;
             const dy = (e.clientY - startY) / this.vtt.scale;
             
-            // Get the potential new position
+            // Calculate new position
             const newX = tokenStartX + dx;
             const newY = tokenStartY + dy;
             
-            // Get the snapped position
             const snappedPos = this.getSnappedPosition(newX, newY);
-            
-            // Apply the snapped position
             token.style.left = `${snappedPos.x}px`;
             token.style.top = `${snappedPos.y}px`;
         };
-
+    
         const stopDrag = () => {
             document.removeEventListener('mousemove', handleDrag);
             document.removeEventListener('mouseup', stopDrag);
         };
-
+    
         document.addEventListener('mousemove', handleDrag);
         document.addEventListener('mouseup', stopDrag);
     }
-
     getSnappedPosition(x, y) {
         if (this.vtt.isHexGrid) {
             return this.snapToHexGrid(x, y);
@@ -151,43 +249,43 @@ export class MouseHandler {
         }
     }
 
+    
     snapToSquareGrid(x, y) {
-        const gridSize = this.vtt.gridSize;
-        
-        // Offset by half a grid size to snap to center instead of corner
-        const offsetX = gridSize / 2;
-        const offsetY = gridSize / 2;
-        
-        // Round to nearest grid cell and add offset to get to center
-        const snappedX = Math.round((x - offsetX) / gridSize) * gridSize + offsetX;
-        const snappedY = Math.round((y - offsetY) / gridSize) * gridSize + offsetY;
-        
-        return { x: snappedX, y: snappedY };
-    }
-
-    snapToHexGrid(x, y) {
-            const hexWidth = this.vtt.hexWidth;
-            const hexHeight = this.vtt.hexHeight;
-            const verticalSpacing = hexHeight * 0.75;
+            const gridSize = this.vtt.gridSize;
             
-            // Find the nearest row
-            let row = Math.round(y / verticalSpacing);
-            const isOffsetRow = row % 2 === 1;
+            // Offset by half a grid size to snap to center instead of corner
+            const offsetX = gridSize / 2;
+            const offsetY = gridSize / 2;
             
-            // Adjust horizontal spacing based on row
-            const horizontalSpacing = hexWidth;
-            const offsetX = isOffsetRow ? hexWidth / 2 : 0;
-            
-            // Find the nearest column
-            let col = Math.round((x - offsetX) / horizontalSpacing);
-            
-            // Calculate final snapped position
-            // Add hexHeight/2 to y-position to center vertically
-            const snappedX = col * horizontalSpacing + offsetX;
-            const snappedY = row * verticalSpacing + (hexHeight / 4);
+            // Round to nearest grid cell and add offset to get to center
+            const snappedX = Math.round((x - offsetX) / gridSize) * gridSize + offsetX;
+            const snappedY = Math.round((y - offsetY) / gridSize) * gridSize + offsetY;
             
             return { x: snappedX, y: snappedY };
         }
+    
+    snapToHexGrid(x, y) {
+        const hexWidth = this.vtt.hexWidth;
+        const hexHeight = this.vtt.hexHeight;
+        const verticalSpacing = hexHeight * 0.75;
+        
+        // Find the nearest row
+        let row = Math.round(y / verticalSpacing);
+        const isOffsetRow = row % 2 === 1;
+        
+        // Adjust horizontal spacing based on row
+        const horizontalSpacing = hexWidth;
+        const offsetX = isOffsetRow ? hexWidth / 2 : 0;
+        
+        // Find the nearest column
+        let col = Math.round((x - offsetX) / horizontalSpacing);
+        
+        // Calculate final snapped position
+        const snappedX = col * horizontalSpacing + offsetX;
+        const snappedY = (row * verticalSpacing) - (hexHeight * 0.255);
+        
+        return { x: snappedX, y: snappedY };
+    }
 
 
     createMarquee(e) {
