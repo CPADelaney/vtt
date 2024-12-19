@@ -1,5 +1,7 @@
 // js/components/init.jsx
 
+console.log('Init.jsx loaded');
+
 // Wait for VTT to be initialized
 window.addEventListener('load', () => {
     // Check every 100ms for UIBridge to be available
