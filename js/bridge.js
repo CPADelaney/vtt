@@ -1,11 +1,13 @@
 // bridge.js
 export class UIBridge {
     constructor(vtt) {
+        console.log('UIBridge constructor called');
         this.vtt = vtt;
         this.subscribers = new Set();
         this.inCombat = false;
         this.actionHistory = [];
         this.currentTurn = null;
+        console.log('UIBridge initialized with:', { vtt, subscribers: this.subscribers });
     }
 
     subscribe(callback) {
