@@ -184,34 +184,39 @@ const ChatBox = ({ bridge }) => {
     );
 };
 
-// Update initialization code
-window.addEventListener('load', () => {
-    console.log('Load event fired in init.jsx');
-    const checkInterval = setInterval(() => {
-        console.log('Checking VTT...', window.vtt?.uiBridge);
-        if (window.vtt && window.vtt.uiBridge) {
-            console.log('VTT found, initializing React components...', {
-                sidebarRoot: document.getElementById('sidebar-root'),
-                chatRoot: document.getElementById('chat-root')
-            });
-            clearInterval(checkInterval);
-            try {
-                // Initialize Sidebar
-                const sidebarRoot = ReactDOM.createRoot(document.getElementById('sidebar-root'));
-                sidebarRoot.render(<Sidebar bridge={window.vtt.uiBridge} />);
-                console.log('Sidebar initialized');
+console.log('Setting up initialization...');
 
-                // Initialize ChatBox
-                const chatRoot = ReactDOM.createRoot(document.getElementById('chat-root'));
-                chatRoot.render(<ChatBox bridge={window.vtt.uiBridge} />);
-                console.log('ChatBox initialized');
-            } catch (e) {
-                console.error('Error initializing components:', e);
-                console.error('Error details:', {
-                    message: e.message,
-                    stack: e.stack
-                });
-            }
+function initializeComponents() {
+    console.log('Attempting to initialize components');
+    if (window.vtt && window.vtt.uiBridge) {
+        try {
+            console.log('Found VTT and bridge, creating roots');
+            // Initialize Sidebar
+            const sidebarRoot = ReactDOM.createRoot(document.getElementById('sidebar-root'));
+            sidebarRoot.render(<Sidebar bridge={window.vtt.uiBridge} />);
+            console.log('Sidebar initialized');
+
+            // Initialize ChatBox
+            const chatRoot = ReactDOM.createRoot(document.getElementById('chat-root'));
+            chatRoot.render(<ChatBox bridge={window.vtt.uiBridge} />);
+            console.log('ChatBox initialized');
+        } catch (e) {
+            console.error('Error initializing components:', e);
         }
-    }, 100);
-});
+    } else {
+        console.log('VTT or bridge not found, retrying...');
+        setTimeout(initializeComponents, 100);
+    }
+}
+
+// Try both load event and immediate initialization
+if (document.readyState === 'complete') {
+    console.log('Document already loaded, initializing now');
+    initializeComponents();
+} else {
+    console.log('Document not loaded, waiting for load event');
+    window.addEventListener('load', () => {
+        console.log('Load event fired');
+        initializeComponents();
+    });
+}
