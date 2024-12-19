@@ -1,7 +1,8 @@
 // js/DiceManager.js
-class DiceManager {
+// Define DiceManager directly on window
+window.DiceManager = class DiceManager {
     constructor() {
-        this.currentUser = 'Player'; // We can make this configurable later
+        this.currentUser = 'Player';
     }
 
     rollSingleDice(sides) {
@@ -43,7 +44,7 @@ class DiceManager {
         }
 
         let detailStr = detailParts.join('');
-        detailStr = detailStr.replace(/^\+/, ''); // Remove leading +
+        detailStr = detailStr.replace(/^\+/, '');
         
         return {
             original: originalExpr,
@@ -60,7 +61,6 @@ class DiceManager {
             const parts = command.split(/\s+/);
             let diceExprIndex = 1;
 
-            // Skip the /roll or /r part
             if (parts[0].toLowerCase() === '/roll' || parts[0].toLowerCase() === '/r') {
                 const diceExpr = parts.slice(diceExprIndex).join('');
                 if (diceExpr) {
@@ -80,13 +80,10 @@ class DiceManager {
             }
         }
 
-        // If not a command, treat as regular message
         return {
             type: 'message',
             text: command,
             sender: this.currentUser
         };
     }
-}
-
-window.DiceManager = DiceManager;
+};
