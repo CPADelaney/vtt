@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Virtual Tabletop</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
@@ -21,21 +21,21 @@
         </div>
     </div>
     <div id="tabletop-container">
-        <div id="tabletop" class="square-grid">
-            <!-- Grid will be generated here -->
-        </div>
+        <div id="tabletop" class="square-grid"></div>
     </div>
     <div id="sidebar-root">Sidebar should appear here</div>
     
-    <!-- Load core VTT code first -->
-    <script type="module" src="js/core/mouseHandler.js"></script>
-    <script type="module" src="js/core/campaignManager.js"></script>
-    <script type="module" src="js/core/bridge.js"></script>
-    <script type="module" src="js/core/script.js"></script>
-
-    <!-- Then load React components -->
-    <script type="text/babel" src="js/core/DiceManager.js"></script>
+    <!-- Load your systemManager code first so it's defined before other scripts use it -->
     <script type="text/babel" src="js/core/systemManager.js"></script>
+
+    <!-- Now load your other core scripts. If they don't need JSX, you can use normal <script> tags instead of text/babel -->
+    <script type="text/babel" src="js/core/mouseHandler.js"></script>
+    <script type="text/babel" src="js/core/campaignManager.js"></script>
+    <script type="text/babel" src="js/core/bridge.js"></script>
+    <script type="text/babel" src="js/core/script.js"></script>
+
+    <!-- Then load other scripts that rely on Babel/JSX -->
+    <script type="text/babel" src="js/core/DiceManager.js"></script>
     <script type="text/babel" src="js/components/init.jsx"></script>
 </body>
 </html>
