@@ -12,39 +12,37 @@ class VirtualTabletop {
         this.zoomOutButton = document.getElementById('zoomOut');
         this.zoomValue = document.getElementById('zoomValue');
         
-    this.isHexGrid = false;
-    this.scale = 1;
-    this.currentX = 0;
-    this.currentY = 0;
+        this.isHexGrid = false;
+        this.scale = 1;
+        this.currentX = 0;
+        this.currentY = 0;
 
-    // Base grid size
-    this.gridSize = 50; // Base size for squares
-    this.tokens = new Set();
+        // Base grid size
+        this.gridSize = 50; // Base size for squares
+        this.tokens = new Set();
 
-    // Hex specific calculations
-    this.hexSize = 30;
-    this.hexHeight = this.hexSize * 2;
-    this.hexWidth = Math.sqrt(3) * this.hexSize;
+        // Hex-specific calculations
+        this.hexSize = 30;
+        this.hexHeight = this.hexSize * 2;
+        this.hexWidth = Math.sqrt(3) * this.hexSize;
     
-    // Update dimensions before creating anything
-    this.updateGridDimensions();
+        this.updateGridDimensions();
+        this.createGrid();
+        
+        this.mouseHandler = new MouseHandler(this);
+        this.campaignManager = new CampaignManager(this);
+        this.uiBridge = new UIBridge(this);
 
-    // Create grid first
-    this.createGrid();
-    
-    // Then initialize everything else
-    this.mouseHandler = new MouseHandler(this);
-    this.campaignManager = new CampaignManager(this);
-    this.initializeEventListeners();
-    this.uiBridge = new UIBridge(this);
-    
-    // Load state or add default token
-    if (!this.campaignManager.loadState()) {
-        this.addToken(window.innerWidth / 2, window.innerHeight / 2);
+        this.initializeEventListeners();
+        
+        // Load state or add default token
+        if (!this.campaignManager.loadState()) {
+            this.addToken(window.innerWidth / 2, window.innerHeight / 2);
+        }
+
+        window.vtt = this;
     }
 
-    window.vtt = this;
-}
     updateGridDimensions() {
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
@@ -67,31 +65,25 @@ class VirtualTabletop {
     }
 
     handleZoomButton(factor) {
-        // Get center of viewport for zoom origin
         const rect = this.container.getBoundingClientRect();
         const centerX = rect.width / 2;
         const centerY = rect.height / 2;
 
-        // Calculate position relative to transformed tabletop
         const beforeZoomX = (centerX - this.currentX) / this.scale;
         const beforeZoomY = (centerY - this.currentY) / this.scale;
 
-        // Update scale
         this.scale *= factor;
         this.scale = Math.min(Math.max(this.scale, 0.5), 2);
 
-        // Calculate new position to keep center point fixed
         const afterZoomX = (centerX - this.currentX) / this.scale;
         const afterZoomY = (centerY - this.currentY) / this.scale;
 
-        // Adjust position to maintain center point
         this.currentX += (afterZoomX - beforeZoomX) * this.scale;
         this.currentY += (afterZoomY - beforeZoomY) * this.scale;
 
         this.updateTransform();
         this.updateZoomDisplay();
         
-        // Save state after zoom
         this.campaignManager.saveState();
     }
 
@@ -112,7 +104,6 @@ class VirtualTabletop {
         this.createGrid();
         this.restoreTokens();
         
-        // Save state after grid change
         this.campaignManager.saveState();
     }
 
@@ -168,7 +159,7 @@ class VirtualTabletop {
             }
         }
     }
-    
+
     createHexGrid(fragment) {
         const horizontalSpacing = this.hexWidth;
         const verticalSpacing = this.hexHeight * 0.75;
@@ -180,17 +171,14 @@ class VirtualTabletop {
                 cell.setAttribute("width", String(this.hexWidth));
                 cell.setAttribute("height", String(this.hexHeight));
                 
-                // Create the hexagon path
                 const hexagon = document.createElementNS("http://www.w3.org/2000/svg", "path");
                 
-                // Calculate hex points
-                const points = this.calculateHexPoints(this.hexWidth/2, this.hexHeight/2, this.hexSize);
+                const points = this.calculateHexPoints(this.hexWidth / 2, this.hexHeight / 2, this.hexSize);
                 hexagon.setAttribute("d", points);
                 hexagon.setAttribute("class", "hexagon");
                 
                 cell.appendChild(hexagon);
                 
-                // Position the SVG
                 const offset = row % 2 === 0 ? 0 : horizontalSpacing / 2;
                 cell.style.left = `${col * horizontalSpacing + offset}px`;
                 cell.style.top = `${row * verticalSpacing}px`;
@@ -199,7 +187,7 @@ class VirtualTabletop {
             }
         }
     }
-    
+
     calculateHexPoints(centerX, centerY, size) {
         const points = [];
         for (let i = 0; i < 6; i++) {
@@ -227,7 +215,6 @@ class VirtualTabletop {
         token.style.top = `${y}px`;
         token.id = `token-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         
-        // Initialize with default stats
         token.dataset.stats = JSON.stringify({
             hp: 100,
             maxHp: 100,
@@ -239,9 +226,8 @@ class VirtualTabletop {
     }
 }
 
-// Initialize the virtual tabletop when the page loads
+// Initialize on page load
 window.addEventListener('load', () => {
     const vtt = new VirtualTabletop();
-// In script.js, right after creating the VTT instance
-console.log('VTT grid created:', document.querySelector('.grid-cell') !== null);
+    console.log('VTT grid created:', document.querySelector('.grid-cell') !== null);
 });
