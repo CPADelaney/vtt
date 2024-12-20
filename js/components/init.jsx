@@ -19,6 +19,8 @@ const icons = {
     dice: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="2"></rect><circle cx="8" cy="8" r="1.5"></circle><circle cx="16" cy="16" r="1.5"></circle><circle cx="8" cy="16" r="1.5"></circle><circle cx="16" cy="8" r="1.5"></circle></svg>
 };
 
+
+
 // Message component for better organization
 const Message = ({ message }) => {
     const getMessageStyle = () => {
@@ -54,6 +56,7 @@ const Sidebar = ({ bridge }) => {
     const [isExpanded, setIsExpanded] = useState(true);
     const [inCombat, setInCombat] = useState(false);
     const [activeTab, setActiveTab] = useState('dm');
+    const [activeSubTab, setActiveSubTab] = useState('messages');
     const [messages, setMessages] = useState([]);
     const [actionHistory, setActionHistory] = useState([]);
     const messagesEndRef = useRef(null);
@@ -150,17 +153,6 @@ const Sidebar = ({ bridge }) => {
                             <span className="mr-2">{icons.messageSquare}</span>
                             Chat
                         </button>
-                        <button
-                            onClick={() => setActiveTab('combat')}
-                            className={`flex-1 py-2 px-4 flex items-center justify-center ${
-                                activeTab === 'combat'
-                                    ? 'border-b-2 border-blue-500 text-blue-500'
-                                    : 'text-gray-500'
-                            }`}
-                        >
-                            <span className="mr-2">{icons.history}</span>
-                            Combat
-                        </button>
                     </div>
 
                     {/* Content area */}
@@ -178,38 +170,81 @@ const Sidebar = ({ bridge }) => {
                                 >
                                     {inCombat ? 'End Combat' : 'Start Combat'}
                                 </button>
-
-                                {/* Quick dice rolls */}
-                                <div className="mt-4">
-                                    <h3 className="font-bold mb-2 flex items-center">
-                                        <span className="mr-2">{icons.dice}</span>
-                                        Quick Rolls
-                                    </h3>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        {['d4', 'd6', 'd8', 'd10', 'd12', 'd20'].map(die => (
-                                            <button
-                                                key={die}
-                                                onClick={() => handleQuickRoll(die)}
-                                                className="bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold py-2 px-4 rounded"
-                                            >
-                                                {die}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
                             </div>
                         )}
 
                         {/* Chat Tab */}
                         {activeTab === 'chat' && (
                             <div className="flex flex-col h-full">
+                                {/* Chat Subtabs */}
+                                <div className="flex border-b bg-gray-50">
+                                    <button
+                                        onClick={() => setActiveSubTab('messages')}
+                                        className={`flex-1 py-1 px-3 text-sm flex items-center justify-center ${
+                                            activeSubTab === 'messages'
+                                                ? 'bg-white border-b-2 border-blue-500 text-blue-500'
+                                                : 'text-gray-500'
+                                        }`}
+                                    >
+                                        <span className="mr-1">{icons.messageSquare}</span>
+                                        Messages
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveSubTab('combat')}
+                                        className={`flex-1 py-1 px-3 text-sm flex items-center justify-center ${
+                                            activeSubTab === 'combat'
+                                                ? 'bg-white border-b-2 border-blue-500 text-blue-500'
+                                                : 'text-gray-500'
+                                        }`}
+                                    >
+                                        <span className="mr-1">{icons.history}</span>
+                                        Combat Log
+                                    </button>
+                                </div>
+                        
+                                {/* Content Area */}
                                 <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                                    {messages.map(msg => (
-                                        <Message key={msg.id} message={msg} />
-                                    ))}
+                                    {activeSubTab === 'messages' ? (
+                                        <>
+                                            {messages.map(msg => (
+                                                <Message key={msg.id} message={msg} />
+                                            ))}
+                                        </>
+                                    ) : (
+                                        <>
+                                            {actionHistory.map(action => (
+                                                <div key={action.id} className="p-2 bg-gray-100 rounded">
+                                                    <div className="text-sm font-medium">{action.type}</div>
+                                                    <div className="text-xs text-gray-600">
+                                                        {new Date(action.timestamp).toLocaleTimeString()}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {inCombat && (
+                                                <div className="flex justify-end space-x-2 mb-4">
+                                                    <button 
+                                                        onClick={handleUndo}
+                                                        disabled={actionHistory.length === 0}
+                                                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm disabled:opacity-50"
+                                                    >
+                                                        Undo
+                                                    </button>
+                                                    <button 
+                                                        onClick={handleRevertTurn}
+                                                        disabled={actionHistory.length === 0}
+                                                        className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1 px-3 rounded text-sm disabled:opacity-50"
+                                                    >
+                                                        Revert Turn
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
                                     <div ref={messagesEndRef} />
                                 </div>
-                                <div className="p-2 border-t">
+                        
+                                {/* Input and Dice Buttons */}
+                                <div className="p-2 border-t space-y-2">
                                     <input
                                         ref={inputRef}
                                         type="text"
@@ -217,40 +252,17 @@ const Sidebar = ({ bridge }) => {
                                         className="w-full px-3 py-2 border rounded"
                                         onKeyPress={handleMessageSend}
                                     />
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Combat Log Tab */}
-                        {activeTab === 'combat' && (
-                            <div className="p-4 space-y-4">
-                                {inCombat && (
-                                    <div className="flex justify-end space-x-2 mb-4">
-                                        <button 
-                                            onClick={handleUndo}
-                                            disabled={actionHistory.length === 0}
-                                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm disabled:opacity-50"
-                                        >
-                                            Undo
-                                        </button>
-                                        <button 
-                                            onClick={handleRevertTurn}
-                                            disabled={actionHistory.length === 0}
-                                            className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1 px-3 rounded text-sm disabled:opacity-50"
-                                        >
-                                            Revert Turn
-                                        </button>
+                                    <div className="flex justify-center gap-1">
+                                        {['d4', 'd6', 'd8', 'd10', 'd12', 'd20'].map(die => (
+                                            <button
+                                                key={die}
+                                                onClick={() => handleQuickRoll(die)}
+                                                className="bg-blue-100 hover:bg-blue-200 text-blue-800 text-sm py-1 px-2 rounded"
+                                            >
+                                                {die}
+                                            </button>
+                                        ))}
                                     </div>
-                                )}
-                                <div className="space-y-2">
-                                    {actionHistory.map(action => (
-                                        <div key={action.id} className="p-2 bg-gray-100 rounded">
-                                            <div className="text-sm font-medium">{action.type}</div>
-                                            <div className="text-xs text-gray-600">
-                                                {new Date(action.timestamp).toLocaleTimeString()}
-                                            </div>
-                                        </div>
-                                    ))}
                                 </div>
                             </div>
                         )}
