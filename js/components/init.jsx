@@ -5,8 +5,9 @@ console.log('Init.jsx loaded');
 const { useState, useEffect, useRef } = React;
 console.log('React hooks imported');
 
-// Initialize DiceManager
+// Initialize managers
 const diceManager = new window.DiceManager();
+const systemManager = new window.SystemManager();
 
 // Simple SVG icons
 const icons = {
@@ -160,6 +161,25 @@ const Sidebar = ({ bridge }) => {
                         {/* DM Tools Tab */}
                         {activeTab === 'dm' && (
                             <div className="p-4 space-y-4">
+                                {/* System Selector */}
+                                <div className="space-y-2">
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Game System
+                                    </label>
+                                    <select
+                                        className="w-full px-3 py-2 border rounded shadow-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                        onChange={(e) => systemManager.setSystem(e.target.value)}
+                                        value={systemManager.currentSystem}
+                                    >
+                                        {systemManager.getAvailableSystems().map(system => (
+                                            <option key={system.id} value={system.id}>
+                                                {system.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                        
+                                {/* Combat Toggle */}
                                 <button 
                                     onClick={() => bridge.toggleCombat()}
                                     className={`w-full font-bold py-2 px-4 rounded transition-colors ${
