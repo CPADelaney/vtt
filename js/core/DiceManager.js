@@ -1,4 +1,4 @@
-// js/DiceManager.js
+// js/core/DiceManager.js
 // Define DiceManager directly on window
 window.DiceManager = class DiceManager {
     constructor() {
