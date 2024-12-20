@@ -1,4 +1,4 @@
-// bridge.js
+//js/core/bridge.js
 export class UIBridge {
     constructor(vtt) {
         console.log('UIBridge constructor called');
