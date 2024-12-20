@@ -1,5 +1,5 @@
 // systemManager.js
-export class SystemManager {
+window.SystemManager = class SystemManager {
     constructor() {
         this.currentSystem = '5e';
         this.availableSystems = {
