@@ -1,4 +1,4 @@
-// campaignManager.js
+//js/core/campaignManager.js
 export class CampaignManager {
     constructor(vtt) {
         this.vtt = vtt;
