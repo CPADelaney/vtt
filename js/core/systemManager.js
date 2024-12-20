@@ -1,5 +1,6 @@
 // systemManager.js
-window.SystemManager = class SystemManager {
+
+class SystemManager {
     constructor() {
         this.currentSystem = '5e';
         this.availableSystems = {
@@ -30,7 +31,6 @@ window.SystemManager = class SystemManager {
     async validateSystems() {
         for (const [systemId, system] of Object.entries(this.availableSystems)) {
             try {
-                // Check if all required components exist
                 const validationResults = await Promise.all(
                     system.requiredComponents.map(async component => {
                         try {
@@ -43,10 +43,9 @@ window.SystemManager = class SystemManager {
                     })
                 );
 
-                // System is ready if all components are available
+                // Mark system as ready only if all components are available
                 system.isReady = validationResults.every(result => result);
-                
-                console.log(`System ${system.name} validation:`, 
+                console.log(`System ${system.name} validation:`,
                     system.isReady ? 'Ready' : 'Missing components');
             } catch (e) {
                 console.error(`Error validating system ${system.name}:`, e);
@@ -67,7 +66,6 @@ window.SystemManager = class SystemManager {
     setSystem(systemId) {
         if (this.availableSystems[systemId]?.isReady) {
             this.currentSystem = systemId;
-            // Could add system initialization here
             console.log(`Switched to system: ${this.availableSystems[systemId].name}`);
             return true;
         }
@@ -79,7 +77,6 @@ window.SystemManager = class SystemManager {
         return this.availableSystems[this.currentSystem];
     }
 
-    // Helper to check if a specific component exists for the current system
     async hasComponent(componentPath) {
         const system = this.getCurrentSystem();
         if (!system) return false;
@@ -93,4 +90,5 @@ window.SystemManager = class SystemManager {
     }
 }
 
+// Attach the class to the global window object
 window.SystemManager = SystemManager;
