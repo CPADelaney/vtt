@@ -1,41 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Virtual Tabletop</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css">
-    <!-- React and dependencies -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Virtual Tabletop</title>
+  
+  <!-- Tailwind CSS -->
+  <link 
+    href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" 
+    rel="stylesheet"
+  />
+
+  <!-- Your Custom Styles -->
+  <link rel="stylesheet" href="css/styles.css">
+
+  <!-- React and dependencies -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
-    <div class="controls">
-        <button id="toggleGrid">Toggle Hex/Square</button>
-        <div class="zoom-controls">
-            <button id="zoomOut">−</button>
-            <span id="zoomValue">100%</span>
-            <button id="zoomIn">+</button>
-        </div>
-    </div>
-    <div id="tabletop-container">
-        <div id="tabletop" class="square-grid"></div>
-    </div>
-    <div id="sidebar-root">Sidebar should appear here</div>
-    
-    <!-- Load your systemManager code first so it's defined before other scripts use it -->
-    <script type="text/babel" src="js/core/systemManager.js"></script>
+  <!-- React App Mount Point -->
+  <div id="root"></div>
 
-    <!-- Now load your other core scripts. If they don't need JSX, you can use normal <script> tags instead of text/babel -->
-    <script type="text/babel" src="js/core/mouseHandler.js"></script>
-    <script type="text/babel" src="js/core/campaignManager.js"></script>
-    <script type="text/babel" src="js/core/bridge.js"></script>
-    <script type="text/babel" src="js/core/script.js"></script>
+  <!-- Scripts for your React-based code -->
+  <!-- 
+       If you are splitting your code among multiple files (hooks, components, etc.),
+       include them in the desired order, each with type="text/babel".
+       For example: 
+  -->
+  <script type="text/babel" src="js/hooks/useSystemManager.js"></script>
+  <script type="text/babel" src="js/hooks/useDiceManager.js"></script>
+  <script type="text/babel" src="js/hooks/usePanning.js"></script>
+  <script type="text/babel" src="js/hooks/useTokenDrag.js"></script>
+  <script type="text/babel" src="js/hooks/useTokenSelection.js"></script>
+  <script type="text/babel" src="js/hooks/useContextMenu.js"></script>
+  <script type="text/babel" src="js/hooks/useGridSnapping.js"></script>
+  <script type="text/babel" src="js/hooks/useCampaignManager.js"></script>
 
-    <!-- Then load other scripts that rely on Babel/JSX -->
-    <script type="text/babel" src="js/core/DiceManager.js"></script>
-    <script type="text/babel" src="js/components/init.jsx"></script>
+  <script type="text/babel" src="js/components/Grid.jsx"></script>
+  <script type="text/babel" src="js/components/Token.jsx"></script>
+  <script type="text/babel" src="js/components/Controls.jsx"></script>
+  <script type="text/babel" src="js/components/VirtualTabletop.jsx"></script>
+
+  <!-- Finally, a main entry point that renders the app -->
+  <script type="text/babel">
+    // Example entry script:
+    const rootElement = document.getElementById('root');
+    const root = ReactDOM.createRoot(rootElement);
+    root.render(<VirtualTabletop />);
+  </script>
 </body>
 </html>
