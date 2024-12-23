@@ -13,22 +13,22 @@
 
   <!-- Your Custom Styles -->
   <link rel="stylesheet" href="css/styles.css">
-
-  <!-- React and dependencies -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
-  <!-- React App Mount Point -->
+  <!-- React mount point -->
   <div id="root"></div>
 
-  <!-- Scripts for your React-based code -->
-  <!-- 
-       If you are splitting your code among multiple files (hooks, components, etc.),
-       include them in the desired order, each with type="text/babel".
-       For example: 
-  -->
+  <!-- Load React and ReactDOM first -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+  <!-- Babel Standalone for dev use only -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Now load your scripts in an order that respects dependencies -->
+  <!-- e.g. system config or hooks first, then components, then main app entry -->
+
+  <!-- Example: hooks -->
   <script type="text/babel" src="js/hooks/useSystemManager.js"></script>
   <script type="text/babel" src="js/hooks/useDiceManager.js"></script>
   <script type="text/babel" src="js/hooks/usePanning.js"></script>
@@ -38,16 +38,17 @@
   <script type="text/babel" src="js/hooks/useGridSnapping.js"></script>
   <script type="text/babel" src="js/hooks/useCampaignManager.js"></script>
 
+  <!-- Example: components -->
   <script type="text/babel" src="js/components/Grid.jsx"></script>
   <script type="text/babel" src="js/components/Token.jsx"></script>
   <script type="text/babel" src="js/components/Controls.jsx"></script>
   <script type="text/babel" src="js/components/VirtualTabletop.jsx"></script>
 
-  <!-- Finally, a main entry point that renders the app -->
+  <!-- Finally, your main entry point to render the app -->
   <script type="text/babel">
-    // Example entry script:
-    const rootElement = document.getElementById('root');
-    const root = ReactDOM.createRoot(rootElement);
+    // Entry script
+    const rootElem = document.getElementById('root');
+    const root = ReactDOM.createRoot(rootElem);
     root.render(<VirtualTabletop />);
   </script>
 </body>
