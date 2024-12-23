@@ -1,147 +1,151 @@
+/* Global */
 body {
-    margin: 0;
-    overflow: hidden;
-    font-family: Arial, sans-serif;
+  margin: 0;
+  overflow: hidden;
+  font-family: Arial, sans-serif;
 }
 
+/* Controls container, now handled by <Controls /> in React */
 .controls {
-    position: fixed;
-    top: 10px;
-    left: 10px;
-    z-index: 1000;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 10px;
-    border-radius: 5px;
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
+/* Zoom controls inside .controls */
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 10px;
+}
+
+.zoom-controls button {
+  width: 30px;
+  height: 30px;
+  font-size: 18px;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* Container for your tabletop, typically 100% of viewport */
 #tabletop-container {
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
-    background: #f0f0f0;
-    position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #f0f0f0;
+  position: relative;
 }
 
+/* The main tabletop element that gets panned/zoomed */
 #tabletop {
-    position: absolute;
-    transform-origin: 0 0;
+  position: absolute;
+  transform-origin: 0 0;
 }
 
+/* Cursor style when panning (grabbing) */
 #tabletop.grabbing {
-    cursor: grabbing;
+  cursor: grabbing;
 }
 
 /* Base grid cell styles */
 .grid-cell {
-    position: absolute;
-    box-sizing: border-box;
+  position: absolute;
+  box-sizing: border-box;
 }
 
-/* Square grid specific */
+/* Square grid specific (when isHexGrid = false) */
 .square-grid .grid-cell {
-    width: 50px;
-    height: 50px;
-    border: 1px solid #ccc;
-    background: rgba(255, 255, 255, 0.5);
+  width: 50px; /* or gridConfig.squareSize */
+  height: 50px;
+  border: 1px solid #ccc;
+  background: rgba(255, 255, 255, 0.5);
 }
 
-/* Hex grid specific */
+/* Hex grid specific (when isHexGrid = true) */
 .hex-grid .grid-cell {
-    position: absolute;
+  position: absolute;
 }
 
 .hexagon {
-    fill: rgba(255, 255, 255, 0.5);
-    stroke: #ccc;
-    stroke-width: 1px;
+  fill: rgba(255, 255, 255, 0.5);
+  stroke: #ccc;
+  stroke-width: 1px;
 }
 
 /* Token styles */
 .token {
-    position: absolute;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: red;
-    transform: translate(-50%, -50%);
-    cursor: move;
-    z-index: 100;
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: red;
+  transform: translate(-50%, -50%);
+  cursor: move;
+  z-index: 100;
 }
 
 .token.selected {
-    outline: 2px solid #007bff;
-    outline-offset: 2px;
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
 }
 
-/* Selection marquee */
+/* Selection marquee (used by your useTokenSelection) */
 .marquee {
-    position: fixed;
-    border: 2px solid #007bff;
-    background-color: rgba(0, 123, 255, 0.1);
-    pointer-events: none;
-    z-index: 1000;
+  position: fixed;
+  border: 2px solid #007bff;
+  background-color: rgba(0, 123, 255, 0.1);
+  pointer-events: none;
+  z-index: 1000;
 }
 
 /* Context menu */
 .context-menu {
-    position: fixed;
-    background: white;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    padding: 4px 0;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    z-index: 1000;
-    min-width: 120px;
+  position: fixed;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 4px 0;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  z-index: 1000;
+  min-width: 120px;
 }
 
 .context-menu-item {
-    padding: 8px 12px;
-    cursor: pointer;
-    user-select: none;
+  padding: 8px 12px;
+  cursor: pointer;
+  user-select: none;
 }
 
 .context-menu-item:hover {
-    background-color: #f0f0f0;
+  background-color: #f0f0f0;
 }
 
+/* A debug or version display element (optional) */
 #version-display {
-    position: fixed;
-    bottom: 10px;
-    right: 10px;
-    background: rgba(0, 0, 0, 0.7);
-    color: white;
-    padding: 5px 10px;
-    border-radius: 3px;
-    font-family: monospace;
-    z-index: 1000;
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 3px;
+  font-family: monospace;
+  z-index: 1000;
 }
 
-.zoom-controls {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    margin-left: 10px;
-}
-
-.zoom-controls button {
-    width: 30px;
-    height: 30px;
-    font-size: 18px;
-    line-height: 1;
-    padding: 0;
-    cursor: pointer;
-}
-
-#zoomValue {
-    min-width: 48px;
-    text-align: center;
-}
-
-/* React component core styles - only what can't be handled by Tailwind */
+/* Sidebar or chat, if you still use them in React. Otherwise, remove. */
 .sidebar {
-    z-index: 1000;
+  z-index: 1000;
 }
 
 .chatbox {
-    z-index: 900;
+  z-index: 900;
 }
