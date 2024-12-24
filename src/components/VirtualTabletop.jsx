@@ -44,7 +44,8 @@ export default function VirtualTabletop() {
   const { isPanning, startPanning } = usePanning({
     currentX: position.x,
     currentY: position.y,
-    updatePosition: (x, y) => setPosition({ x, y })
+    updatePosition: (x, y) => setPosition({ x, y }),
+    scale // Pass the current scale
   });
 
   // Token dragging logic
