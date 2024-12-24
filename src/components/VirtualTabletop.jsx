@@ -215,77 +215,35 @@ export default function VirtualTabletop() {
     [position, scale]
   );
 
-  // Helper to find the "center" of the cell that the mouse is hovering over
-  const getTargetCell = useCallback(
-    (localX, localY) => {
-      // Convert from container's local space to "world" space
-      const gridX = (localX - position.x) / scale;
-      const gridY = (localY - position.y) / scale;
+const handleWheel = useCallback((e) => {
+  e.preventDefault();
+  
+  // Calculate new scale
+  const delta = -Math.sign(e.deltaY);
+  const factor = 1 + (delta * ZOOM_FACTOR);
+  const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
+  
+  // Make mouse position the new origin for the zoom
+  setPosition({
+    x: e.clientX,
+    y: e.clientY
+  });
+  setScale(newScale);
+}, [scale]);
 
-      if (isHexGrid) {
-        // Approximate math for hex row/column
-        const verticalSpacing = gridConfig.hexHeight * 0.75;
-        const row = Math.round(gridY / verticalSpacing);
-        const isOffsetRow = row % 2 === 1;
-        const offsetX = isOffsetRow ? gridConfig.hexWidth / 2 : 0;
-        const col = Math.round((gridX - offsetX) / gridConfig.hexWidth);
+// Button zoom handler (for zoom buttons)
+const handleZoom = useCallback((direction) => {
+  const container = document.getElementById('tabletop-container');
+  if (!container) return;
 
-        return {
-          x: col * gridConfig.hexWidth + offsetX,
-          y: row * verticalSpacing,
-        };
-      } else {
-        // For a square grid, snap to the cell center
-        const cellX = Math.floor(gridX / gridConfig.squareSize);
-        const cellY = Math.floor(gridY / gridConfig.squareSize);
-
-        return {
-          x: cellX * gridConfig.squareSize + gridConfig.squareSize / 2,
-          y: cellY * gridConfig.squareSize + gridConfig.squareSize / 2,
-        };
-      }
-    },
-    [position, scale, isHexGrid, gridConfig]
-  );
-
-  // Wheel-based zoom so that it zooms to the center of the cell under the mouse
-  const handleWheel = useCallback(
-    (e) => {
-      e.preventDefault();
-
-      // Grab the container rect to get container-relative mouse coords
-      const container = document.getElementById('tabletop-container');
-      if (!container) return;
-      const rect = container.getBoundingClientRect();
-
-      const localX = e.clientX - rect.left;
-      const localY = e.clientY - rect.top;
-
-      // Calculate zoom factor
-      const delta = -Math.sign(e.deltaY);
-      const factor = 1 + delta * ZOOM_FACTOR;
-      const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
-
-      // Find the "target cell" in world coords
-      const targetCell = getTargetCell(localX, localY);
-
-      // Where was that cell on-screen before we zoom?
-      const beforeX = targetCell.x * scale + position.x;
-      const beforeY = targetCell.y * scale + position.y;
-
-      // Where will it be on-screen after we zoom?
-      const afterX = targetCell.x * newScale;
-      const afterY = targetCell.y * newScale;
-
-      // Update scale & offset so the cell remains under the mouse
-      setScale(newScale);
-      setPosition({
-        x: beforeX - afterX,
-        y: beforeY - afterY,
-      });
-    },
-    [position, scale, getTargetCell]
-  );
+  const rect = container.getBoundingClientRect();
+  handleWheel({
+    preventDefault: () => {},
+    clientX: rect.width / 2,
+    clientY: rect.height / 2,
+    deltaY: direction === 1.1 ? -100 : 100
+  });
+}, [handleWheel]);
 
   // Mouse handlers
   const handleMouseDown = useCallback(
