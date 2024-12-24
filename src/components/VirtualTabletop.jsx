@@ -185,6 +185,7 @@ export default function VirtualTabletop() {
   }, [updateGridDimensions]);
 
 // Wheel-based zoom so that it zooms to the center of the cell under the mouse
+// Wheel-based zoom that maintains the world point under the mouse
   const handleWheel = useCallback((e) => {
     e.preventDefault();
     
@@ -193,13 +194,23 @@ export default function VirtualTabletop() {
     const factor = 1 + (delta * ZOOM_FACTOR);
     const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
     
-    // Make mouse position the new origin for the zoom
-    setPosition({
-      x: e.clientX,
-      y: e.clientY
-    });
+    // 1. Convert mouse position to world coordinates (pre-scale)
+    const worldX = (e.clientX - position.x) / scale;
+    const worldY = (e.clientY - position.y) / scale;
+    
+    // 2. Set the new scale
     setScale(newScale);
-  }, [scale]);
+    
+    // 3. Calculate where that same world point would end up in screen coordinates after the scale change
+    const newScreenX = worldX * newScale;
+    const newScreenY = worldY * newScale;
+    
+    // 4. Calculate the position adjustment needed to keep the world point under the mouse
+    setPosition({
+      x: e.clientX - newScreenX,
+      y: e.clientY - newScreenY
+    });
+  }, [position, scale]);
 
   // Button zoom handler (for zoom buttons)
   const handleZoom = useCallback((direction) => {
@@ -209,15 +220,23 @@ export default function VirtualTabletop() {
     const rect = container.getBoundingClientRect();
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
+
+    // Use the same logic as handleWheel but with the center point
+    const factor = direction === 1.1 ? 1.1 : 0.9;
+    const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
     
+    // Convert center point to world coordinates
+    const worldX = (centerX - position.x) / scale;
+    const worldY = (centerY - position.y) / scale;
+    
+    setScale(newScale);
+    
+    // Keep the center point stable
     setPosition({
-      x: centerX,
-      y: centerY
+      x: centerX - (worldX * newScale),
+      y: centerY - (worldY * newScale)
     });
-    setScale(prev => 
-      Math.min(Math.max(prev * (direction === 1.1 ? 1.1 : 0.9), MIN_SCALE), MAX_SCALE)
-    );
-  }, []);
+  }, [position, scale]);
 
   // Mouse handlers
   const handleMouseDown = useCallback(
