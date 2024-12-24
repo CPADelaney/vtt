@@ -168,57 +168,6 @@ export default function VirtualTabletop() {
   }, [updateGridDimensions]);
 
   // Button zoom handler
-  const handleZoom = useCallback(factor => {
-    const container = document.getElementById('tabletop-container');
-    if (!container) return;
-  
-    const rect = container.getBoundingClientRect();
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-  
-    const beforeZoomX = (centerX - position.x) / scale;
-    const beforeZoomY = (centerY - position.y) / scale;
-  
-    const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
-  
-    const afterZoomX = (centerX - position.x) / newScale;
-    const afterZoomY = (centerY - position.y) / newScale;
-  
-    setScale(newScale);
-    setPosition({
-      x: position.x + (afterZoomX - beforeZoomX) * newScale,
-      y: position.y + (afterZoomY - beforeZoomY) * newScale
-    });
-  }, [position, scale]);
-const getTargetCell = useCallback((mouseX, mouseY) => {
-  // Convert screen coordinates to grid coordinates
-  const gridX = (mouseX - position.x) / scale;
-  const gridY = (mouseY - position.y) / scale;
-  
-  if (isHexGrid) {
-    const verticalSpacing = gridConfig.hexHeight * 0.75;
-    const row = Math.round(gridY / verticalSpacing);
-    const isOffsetRow = row % 2 === 1;
-    
-    const offsetX = isOffsetRow ? gridConfig.hexWidth / 2 : 0;
-    const col = Math.round((gridX - offsetX) / gridConfig.hexWidth);
-    
-    return {
-      x: (col * gridConfig.hexWidth + offsetX),
-      y: (row * verticalSpacing)
-    };
-  } else {
-    // For square grid, we want the center of the cell
-    const cellX = Math.floor(gridX / gridConfig.squareSize);
-    const cellY = Math.floor(gridY / gridConfig.squareSize);
-    
-    return {
-      x: (cellX * gridConfig.squareSize) + (gridConfig.squareSize / 2),
-      y: (cellY * gridConfig.squareSize) + (gridConfig.squareSize / 2)
-    };
-  }
-}, [position, scale, isHexGrid, gridConfig]);
-
 const handleWheel = useCallback((e) => {
   e.preventDefault();
   
@@ -227,23 +176,21 @@ const handleWheel = useCallback((e) => {
   const factor = 1 + (delta * ZOOM_FACTOR);
   const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
   
-  // Get the cell center we want to zoom towards
-  const targetCell = getTargetCell(e.clientX, e.clientY);
+  // Get the mouse position relative to the grid before zooming
+  const mouseX = e.clientX;
+  const mouseY = e.clientY;
   
-  // Calculate the position of the target cell in screen space before and after zoom
-  const beforeX = (targetCell.x * scale) + position.x;
-  const beforeY = (targetCell.y * scale) + position.y;
+  // Convert mouse position to grid coordinates (world space)
+  const gridX = (mouseX - position.x) / scale;
+  const gridY = (mouseY - position.y) / scale;
   
-  const afterX = (targetCell.x * newScale);
-  const afterY = (targetCell.y * newScale);
-  
-  // Update state while maintaining the target cell position in screen space
+  // Calculate new position to keep mouse over the same grid point
   setScale(newScale);
   setPosition({
-    x: beforeX - afterX,
-    y: beforeY - afterY
+    x: mouseX - (gridX * newScale),
+    y: mouseY - (gridY * newScale)
   });
-}, [position, scale, getTargetCell]);
+}, [position, scale]);
 
   // Mouse handlers
   const handleMouseDown = useCallback(
