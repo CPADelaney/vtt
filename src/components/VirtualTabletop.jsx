@@ -171,63 +171,63 @@ export default function VirtualTabletop() {
     };
   }, [updateGridDimensions]);
 
-  // Zoom logic with constants
-  const handleZoom = useCallback(
-    factor => {
-      const container = document.getElementById('tabletop-container');
-      if (!container) return;
+  // Button zoom handler for consistency
+  const handleZoom = useCallback(factor => {
+    const container = document.getElementById('tabletop-container');
+    if (!container) return;
   
-      const rect = container.getBoundingClientRect();
-      const mouseX = rect.width / 2;  // Zoom around center for button clicks
-      const mouseY = rect.height / 2;
-      
-      const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
-      
-      const distX = (mouseX - position.x) / scale;
-      const distY = (mouseY - position.y) / scale;
-      
-      const newX = mouseX - (distX * newScale);
-      const newY = mouseY - (distY * newScale);
-      
-      setScale(newScale);
-      setPosition({ x: newX, y: newY });
-    },
-    [position, scale]
-  );
+    const rect = container.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+  
+    const beforeZoomX = (centerX - position.x) / scale;
+    const beforeZoomY = (centerY - position.y) / scale;
+  
+    const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
+  
+    const afterZoomX = (centerX - position.x) / newScale;
+    const afterZoomY = (centerY - position.y) / newScale;
+  
+    setScale(newScale);
+    setPosition({
+      x: position.x + (afterZoomX - beforeZoomX) * newScale,
+      y: position.y + (afterZoomY - beforeZoomY) * newScale
+    });
+  }, [position, scale]);
 
-  // Wheel handler with constants
-  const handleWheel = useCallback(
-    (e) => {
-      e.preventDefault();
-      
-      // Get container and mouse position
-      const container = e.currentTarget;
-      const rect = container.getBoundingClientRect();
-      
-      // Mouse position relative to container
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-      
-      // Calculate zoom
-      const delta = -Math.sign(e.deltaY);
-      const factor = 1 + (delta * ZOOM_FACTOR);
-      const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
-      
-      // Calculate position before and after zoom
-      const beforeZoomX = mouseX / scale;
-      const beforeZoomY = mouseY / scale;
-      const afterZoomX = mouseX / newScale;
-      const afterZoomY = mouseY / newScale;
-      
-      // Update position and scale
-      setScale(newScale);
-      setPosition({
-        x: position.x + (afterZoomX - beforeZoomX) * newScale,
-        y: position.y + (afterZoomY - beforeZoomY) * newScale
-      });
-    },
-    [position, scale]
-  );
+  // The zoom handler that matches the original working version
+  const handleWheel = useCallback((e) => {
+    e.preventDefault();
+    
+    // Determine zoom factor based on wheel direction
+    const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+    
+    // Get container reference
+    const container = document.getElementById('tabletop-container');
+    if (!container) return;
+  
+    const rect = container.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+  
+    // Calculate position before zoom
+    const beforeZoomX = (centerX - position.x) / scale;
+    const beforeZoomY = (centerY - position.y) / scale;
+  
+    // Calculate new scale
+    const newScale = Math.min(Math.max(scale * zoomFactor, MIN_SCALE), MAX_SCALE);
+  
+    // Calculate position after zoom
+    const afterZoomX = (centerX - position.x) / newScale;
+    const afterZoomY = (centerY - position.y) / newScale;
+  
+    // Update scale and position
+    setScale(newScale);
+    setPosition({
+      x: position.x + (afterZoomX - beforeZoomX) * newScale,
+      y: position.y + (afterZoomY - beforeZoomY) * newScale
+    });
+  }, [position, scale]);
 
 
   // Mouse handlers
