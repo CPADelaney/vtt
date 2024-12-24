@@ -190,31 +190,28 @@ export default function VirtualTabletop() {
       y: position.y + (afterZoomY - beforeZoomY) * newScale
     });
   }, [position, scale]);
-
 const getTargetCell = useCallback((mouseX, mouseY) => {
-  // Convert screen coordinates to grid coordinates, accounting for current transform
+  // Convert screen coordinates to grid coordinates
   const gridX = (mouseX - position.x) / scale;
   const gridY = (mouseY - position.y) / scale;
   
   if (isHexGrid) {
     const verticalSpacing = gridConfig.hexHeight * 0.75;
-    let row = Math.round(gridY / verticalSpacing);
+    const row = Math.round(gridY / verticalSpacing);
     const isOffsetRow = row % 2 === 1;
     
     const offsetX = isOffsetRow ? gridConfig.hexWidth / 2 : 0;
-    let col = Math.round((gridX - offsetX) / gridConfig.hexWidth);
+    const col = Math.round((gridX - offsetX) / gridConfig.hexWidth);
     
-    // Calculate center of hex cell
     return {
       x: (col * gridConfig.hexWidth + offsetX),
       y: (row * verticalSpacing)
     };
   } else {
-    // Square grid
+    // For square grid, we want the center of the cell
     const cellX = Math.floor(gridX / gridConfig.squareSize);
     const cellY = Math.floor(gridY / gridConfig.squareSize);
     
-    // Calculate center of square cell
     return {
       x: (cellX * gridConfig.squareSize) + (gridConfig.squareSize / 2),
       y: (cellY * gridConfig.squareSize) + (gridConfig.squareSize / 2)
@@ -225,24 +222,26 @@ const getTargetCell = useCallback((mouseX, mouseY) => {
 const handleWheel = useCallback((e) => {
   e.preventDefault();
   
+  // Calculate zoom factor
   const delta = -Math.sign(e.deltaY);
   const factor = 1 + (delta * ZOOM_FACTOR);
   const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
-
-  // Get target cell center
-  const target = getTargetCell(e.clientX, e.clientY);
   
-  // Calculate how the target cell position changes with zoom
-  const beforeX = target.x * scale;
-  const beforeY = target.y * scale;
+  // Get the cell center we want to zoom towards
+  const targetCell = getTargetCell(e.clientX, e.clientY);
   
-  const afterX = target.x * newScale;
-  const afterY = target.y * newScale;
+  // Calculate the position of the target cell in screen space before and after zoom
+  const beforeX = (targetCell.x * scale) + position.x;
+  const beforeY = (targetCell.y * scale) + position.y;
   
+  const afterX = (targetCell.x * newScale);
+  const afterY = (targetCell.y * newScale);
+  
+  // Update state while maintaining the target cell position in screen space
   setScale(newScale);
   setPosition({
-    x: position.x - (afterX - beforeX),
-    y: position.y - (afterY - beforeY)
+    x: beforeX - afterX,
+    y: beforeY - afterY
   });
 }, [position, scale, getTargetCell]);
 
