@@ -14,7 +14,7 @@ import { Grid } from './Grid';
 import { Token } from './Token';
 import { Controls } from './Controls';
 import { Sidebar } from './Sidebar';
-import { Chatbox } from './Chatbox';
+import { ChatBox } from './ChatBox';
 
 export default function VirtualTabletop() {
   // Core state
