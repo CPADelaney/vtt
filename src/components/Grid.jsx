@@ -11,7 +11,8 @@ export const Grid = memo(function Grid({
 }) {
   const width = isHexGrid ? cols * hexWidth : cols * squareSize;
   const height = isHexGrid ? rows * (hexHeight * 0.75) : rows * squareSize;
-
+  
+  // Add two patterns for even/odd rows of hexes
   return (
     <svg 
       width={width} 
@@ -25,19 +26,38 @@ export const Grid = memo(function Grid({
     >
       <defs>
         {isHexGrid ? (
-          <pattern 
-            id="hexPattern" 
-            width={hexWidth} 
-            height={hexHeight * 0.75} 
-            patternUnits="userSpaceOnUse"
-          >
-            <path 
-              d={createHexPath(hexSize, hexWidth, hexHeight)}
-              fill="rgba(255, 255, 255, 0.5)"
-              stroke="#ccc"
-              strokeWidth="1"
-            />
-          </pattern>
+          <>
+            {/* Pattern for even rows */}
+            <pattern 
+              id="hexPatternEven" 
+              width={hexWidth}
+              height={hexHeight * 1.5} 
+              patternUnits="userSpaceOnUse"
+            >
+              <path 
+                d={createHexPath(hexSize, hexWidth, hexHeight)}
+                fill="rgba(255, 255, 255, 0.5)"
+                stroke="#ccc"
+                strokeWidth="1"
+                transform={`translate(0,${hexHeight * 0.25})`}
+              />
+            </pattern>
+            {/* Pattern for odd rows, offset horizontally */}
+            <pattern 
+              id="hexPatternOdd" 
+              width={hexWidth}
+              height={hexHeight * 1.5}
+              patternUnits="userSpaceOnUse"
+            >
+              <path 
+                d={createHexPath(hexSize, hexWidth, hexHeight)}
+                fill="rgba(255, 255, 255, 0.5)"
+                stroke="#ccc"
+                strokeWidth="1"
+                transform={`translate(${hexWidth/2},${hexHeight * 0.75})`}
+              />
+            </pattern>
+          </>
         ) : (
           <pattern 
             id="squarePattern" 
@@ -46,9 +66,9 @@ export const Grid = memo(function Grid({
             patternUnits="userSpaceOnUse"
           >
             <rect 
-              width={squareSize - 1} // Subtract 1 to prevent double borders
+              width={squareSize - 1}
               height={squareSize - 1}
-              x="0.5" // Offset by half pixel to align borders
+              x="0.5"
               y="0.5"
               fill="rgba(255, 255, 255, 0.5)"
               stroke="#ccc"
@@ -58,16 +78,31 @@ export const Grid = memo(function Grid({
         )}
       </defs>
 
-      <rect
-        width={width}
-        height={height}
-        fill={`url(#${isHexGrid ? 'hexPattern' : 'squarePattern'})`}
-      />
+      {isHexGrid ? (
+        // For hex grid, use two rectangles with different patterns
+        <>
+          <rect
+            width={width}
+            height={height}
+            fill="url(#hexPatternEven)"
+          />
+          <rect
+            width={width}
+            height={height}
+            fill="url(#hexPatternOdd)"
+          />
+        </>
+      ) : (
+        <rect
+          width={width}
+          height={height}
+          fill="url(#squarePattern)"
+        />
+      )}
     </svg>
   );
 });
 
-// Helper to create hex path
 function createHexPath(size, width, height) {
   const points = [];
   for (let i = 0; i < 6; i++) {
@@ -78,4 +113,4 @@ function createHexPath(size, width, height) {
   }
   points.push('Z');
   return points.join(' ');
-}
+  }
