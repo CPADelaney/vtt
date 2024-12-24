@@ -191,63 +191,62 @@ export default function VirtualTabletop() {
     });
   }, [position, scale]);
 
-  // Get target cell for zooming
+// Updated getTargetCell function
   const getTargetCell = useCallback((mouseX, mouseY) => {
-    const gridX = (mouseX - position.x) / scale;
-    const gridY = (mouseY - position.y) / scale;
+    // Convert screen coordinates to grid coordinates
+    // We're using clientX/Y which is relative to viewport
+    const gridX = mouseX - position.x;  // Remove scale division
+    const gridY = mouseY - position.y;
     
     if (isHexGrid) {
       const verticalSpacing = gridConfig.hexHeight * 0.75;
-      let row = Math.round(gridY / verticalSpacing);
+      let row = Math.round(gridY / (verticalSpacing * scale));
       const isOffsetRow = row % 2 === 1;
       
-      const offsetX = isOffsetRow ? gridConfig.hexWidth / 2 : 0;
-      let col = Math.round((gridX - offsetX) / gridConfig.hexWidth);
+      const offsetX = isOffsetRow ? (gridConfig.hexWidth * scale) / 2 : 0;
+      let col = Math.round((gridX - offsetX) / (gridConfig.hexWidth * scale));
       
       return {
-        x: col * gridConfig.hexWidth + offsetX + (gridConfig.hexWidth / 2),
-        y: row * verticalSpacing + (gridConfig.hexHeight / 2)
+        x: gridX,  // Return mouse position in grid space
+        y: gridY
       };
     } else {
-      const cellX = Math.floor(gridX / gridConfig.squareSize);
-      const cellY = Math.floor(gridY / gridConfig.squareSize);
+      const cellSize = gridConfig.squareSize * scale;
+      const cellX = Math.floor(gridX / cellSize);
+      const cellY = Math.floor(gridY / cellSize);
       
       return {
-        x: (cellX * gridConfig.squareSize) + (gridConfig.squareSize / 2),
-        y: (cellY * gridConfig.squareSize) + (gridConfig.squareSize / 2)
+        x: gridX,  // Return mouse position in grid space
+        y: gridY
       };
     }
   }, [position, scale, isHexGrid, gridConfig]);
 
-  // Wheel zoom handler with cell snapping
-const handleWheel = useCallback((e) => {
-  e.preventDefault();
-  
-  const delta = -Math.sign(e.deltaY);
-  const factor = 1 + (delta * ZOOM_FACTOR);
-  const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
+  // Updated handleWheel function
+  const handleWheel = useCallback((e) => {
+    e.preventDefault();
+    
+    const delta = -Math.sign(e.deltaY);
+    const factor = 1 + (delta * ZOOM_FACTOR);
+    const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
 
-  const target = getTargetCell(e.clientX, e.clientY);
-  
-  console.log('Mouse position:', { x: e.clientX, y: e.clientY });
-  console.log('Target cell:', target);
-  console.log('Current position:', position);
-  console.log('Current scale:', scale);
-
-  const beforeZoomX = (target.x * scale - position.x) / scale;
-  const beforeZoomY = (target.y * scale - position.y) / scale;
-  
-  const afterZoomX = (target.x * newScale - position.x) / newScale;
-  const afterZoomY = (target.y * newScale - position.y) / newScale;
-
-  console.log('Zoom calculations:', {
-    beforeZoom: { x: beforeZoomX, y: beforeZoomY },
-    afterZoom: { x: afterZoomX, y: afterZoomY },
-    newPosition: {
+    // Get mouse position relative to viewport
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
+    
+    // Calculate zoom
+    const beforeZoomX = (mouseX - position.x) / scale;
+    const beforeZoomY = (mouseY - position.y) / scale;
+    
+    const afterZoomX = (mouseX - position.x) / newScale;
+    const afterZoomY = (mouseY - position.y) / newScale;
+    
+    setScale(newScale);
+    setPosition({
       x: position.x + (afterZoomX - beforeZoomX) * newScale,
       y: position.y + (afterZoomY - beforeZoomY) * newScale
-    }
-  });
+    });
+  }, [position, scale]);
   
   setScale(newScale);
   setPosition({
