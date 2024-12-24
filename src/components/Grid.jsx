@@ -11,19 +11,23 @@ export const Grid = memo(function Grid({
 }) {
   // Calculate visible grid bounds (with buffer)
   const visibleBounds = {
-    width: Math.min(cols * (isHexGrid ? hexWidth : squareSize), 2000), // Max 2000px width
-    height: Math.min(rows * (isHexGrid ? (hexHeight * 0.75) : squareSize), 2000) // Max 2000px height
+    width: Math.min(cols * (isHexGrid ? hexWidth : squareSize), 2000),
+    height: Math.min(rows * (isHexGrid ? (hexHeight * 0.75) : squareSize), 2000)
+  };
+
+  const containerStyle = {
+    width: visibleBounds.width,
+    height: visibleBounds.height,
+    position: 'relative',
+    overflow: 'hidden',
+    // Add a border to the container itself
+    border: '1px solid #ccc'
   };
 
   return (
     <div 
       className={`grid-container ${isHexGrid ? 'hex-grid' : 'square-grid'}`}
-      style={{
-        width: visibleBounds.width,
-        height: visibleBounds.height,
-        position: 'relative',
-        overflow: 'hidden'
-      }}
+      style={containerStyle}
     >
       {isHexGrid ? (
         <HexGrid 
@@ -46,26 +50,38 @@ export const Grid = memo(function Grid({
   );
 });
 
+const SquareCell = memo(function SquareCell({ x, y, size }) {
+  return (
+    <div
+      className="grid-cell"
+      style={{
+        position: 'absolute',
+        width: `${size}px`,
+        height: `${size}px`,
+        left: x * size,
+        top: y * size,
+        borderTop: '1px solid #ccc',
+        borderLeft: '1px solid #ccc',
+        backgroundColor: 'rgba(255, 255, 255, 0.5)',
+        willChange: 'transform' // Performance hint to browser
+      }}
+    />
+  );
+});
+
 function SquareGrid({ squareSize, rows, cols, bounds }) {
-  const cells = [];
   const maxCols = Math.min(cols, Math.ceil(bounds.width / squareSize));
   const maxRows = Math.min(rows, Math.ceil(bounds.height / squareSize));
-
+  
+  const cells = [];
   for (let r = 0; r < maxRows; r++) {
     for (let c = 0; c < maxCols; c++) {
       cells.push(
-        <div
+        <SquareCell 
           key={`square-${r}-${c}`}
-          className="grid-cell"
-          style={{
-            position: 'absolute',
-            width: `${squareSize}px`,
-            height: `${squareSize}px`,
-            left: c * squareSize,
-            top: r * squareSize,
-            border: '1px solid #ccc',
-            backgroundColor: 'rgba(255, 255, 255, 0.5)'
-          }}
+          x={c}
+          y={r}
+          size={squareSize}
         />
       );
     }
@@ -73,38 +89,48 @@ function SquareGrid({ squareSize, rows, cols, bounds }) {
   return <>{cells}</>;
 }
 
+const HexCell = memo(function HexCell({ col, row, size, width, height, xPos, yPos }) {
+  return (
+    <svg
+      className="grid-cell"
+      width={width}
+      height={height}
+      style={{
+        position: 'absolute',
+        left: xPos,
+        top: yPos,
+        willChange: 'transform'
+      }}
+    >
+      <HexPath size={size} width={width} height={height} />
+    </svg>
+  );
+});
+
 function HexGrid({ hexSize, hexWidth, hexHeight, rows, cols, bounds }) {
-  const cells = [];
   const verticalSpacing = hexHeight * 0.75;
   const maxCols = Math.min(cols, Math.ceil(bounds.width / hexWidth));
   const maxRows = Math.min(rows, Math.ceil(bounds.height / verticalSpacing));
 
+  const cells = [];
   for (let r = 0; r < maxRows; r++) {
     for (let c = 0; c < maxCols; c++) {
       const offset = r % 2 === 0 ? 0 : (hexWidth / 2);
       const xPos = c * hexWidth + offset;
       const yPos = r * verticalSpacing;
 
-      // Only render if within bounds
       if (xPos < bounds.width && yPos < bounds.height) {
         cells.push(
-          <svg
+          <HexCell
             key={`hex-${r}-${c}`}
-            className="grid-cell"
+            col={c}
+            row={r}
+            size={hexSize}
             width={hexWidth}
             height={hexHeight}
-            style={{
-              position: 'absolute',
-              left: xPos,
-              top: yPos
-            }}
-          >
-            <HexPath 
-              size={hexSize} 
-              width={hexWidth} 
-              height={hexHeight} 
-            />
-          </svg>
+            xPos={xPos}
+            yPos={yPos}
+          />
         );
       }
     }
@@ -112,7 +138,7 @@ function HexGrid({ hexSize, hexWidth, hexHeight, rows, cols, bounds }) {
   return <>{cells}</>;
 }
 
-function HexPath({ size, width, height }) {
+const HexPath = memo(function HexPath({ size, width, height }) {
   const points = [];
   for (let i = 0; i < 6; i++) {
     const angle = (i * 60 - 30) * Math.PI / 180;
@@ -133,4 +159,4 @@ function HexPath({ size, width, height }) {
       }}
     />
   );
-}
+});
