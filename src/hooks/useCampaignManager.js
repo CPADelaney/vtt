@@ -2,144 +2,125 @@
 import { useEffect, useMemo, useCallback } from 'react';
 
 export function useCampaignManager(vtt, campaignId = 'default-campaign') {
-    // Helper function to get grid state
-    const getGridState = useCallback(() => ({
-        isHexGrid: vtt.isHexGrid,
-        scale: vtt.scale,
-        position: {
-            x: vtt.currentX,
-            y: vtt.currentY
-        }
-    }), [vtt]);
+  // Helper function to get grid state
+  const getGridState = useCallback(() => ({
+    isHexGrid: vtt.isHexGrid,
+    scale: vtt.scale,
+    position: {
+      x: vtt.currentX,
+      y: vtt.currentY
+    }
+  }), [vtt]);
 
-    // Helper function to get token state
-    const getTokenState = useCallback(() => {
-        try {
-            return Array.from(document.querySelectorAll('.token')).map(token => ({
-                x: parseFloat(token.style.left),
-                y: parseFloat(token.style.top),
-                stats: JSON.parse(token.dataset.stats ?? '{}'),
-                id: token.id ?? `token-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
-            }));
-        } catch (error) {
-            console.error('Error collecting token state:', error);
-            return [];
-        }
-    }, []);
+  // Helper function to get token state from DOM, if needed
+  // (This might be less critical if you're fully in React, but we'll keep it.)
+  const getTokenState = useCallback(() => {
+    try {
+      return Array.from(document.querySelectorAll('.token')).map(token => ({
+        x: parseFloat(token.style.left),
+        y: parseFloat(token.style.top),
+        stats: JSON.parse(token.dataset.stats ?? '{}'),
+        id: token.id ?? `token-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+      }));
+    } catch (error) {
+      console.error('Error collecting token state:', error);
+      return [];
+    }
+  }, []);
 
-    // Save current state to localStorage
-    const saveState = useCallback(() => {
-        const state = {
-            campaignId,
-            gridState: getGridState(),
-            tokens: getTokenState(),
-            timestamp: Date.now()
-        };
+  // Save current state to localStorage
+  const saveState = useCallback(() => {
+    const state = {
+      campaignId,
+      gridState: getGridState(),
+      tokens: getTokenState(),
+      timestamp: Date.now()
+    };
 
-        try {
-            localStorage.setItem(`vtt-state-${campaignId}`, JSON.stringify(state));
-            console.log(`Campaign '${campaignId}' saved:`, new Date().toLocaleTimeString());
-        } catch (error) {
-            console.error('Failed to save campaign state:', error);
-        }
-    }, [campaignId, getGridState, getTokenState]);
+    try {
+      localStorage.setItem(`vtt-state-${campaignId}`, JSON.stringify(state));
+      console.log(`Campaign '${campaignId}' saved:`, new Date().toLocaleTimeString());
+    } catch (error) {
+      console.error('Failed to save campaign state:', error);
+    }
+  }, [campaignId, getGridState, getTokenState]);
 
-    // Load and apply saved state
-    const loadState = useCallback(() => {
-        try {
-            const savedState = localStorage.getItem(`vtt-state-${campaignId}`);
-            if (!savedState) return false;
+  // Load and apply saved state, returning an array of token objects
+  const loadState = useCallback(() => {
+    try {
+      const savedState = localStorage.getItem(`vtt-state-${campaignId}`);
+      if (!savedState) return null;
 
-            const state = JSON.parse(savedState);
+      const state = JSON.parse(savedState);
 
-            // Apply grid state
-            if (state.gridState.isHexGrid !== vtt.isHexGrid) {
-                vtt.toggleGridType();
-            }
-            vtt.scale = state.gridState.scale;
-            vtt.currentX = state.gridState.position.x;
-            vtt.currentY = state.gridState.position.y;
-            // Removed the call to vtt.updateTransform();
+      // Apply grid state
+      if (state.gridState.isHexGrid !== vtt.isHexGrid) {
+        vtt.toggleGridType();
+      }
+      vtt.scale = state.gridState.scale;
+      vtt.currentX = state.gridState.position.x;
+      vtt.currentY = state.gridState.position.y;
 
-            // loadState
-            const loadState = useCallback(() => {
-              try {
-                const savedState = localStorage.getItem(`vtt-state-${campaignId}`);
-                if (!savedState) return false;
-            
-                const state = JSON.parse(savedState);
-            
-                // Remove old tokens from DOM, but in a React system
-                // we typically track tokens in React state, so let's skip DOM removal:
-                setTokens([]);
-            
-                // Instead of calling vtt.addToken, let's just return these tokens
-            +   const loadedTokens = state.tokens.map(tokenData => ({
-            +     id: tokenData.id,
-            +     position: { x: tokenData.x, y: tokenData.y },
-            +     stats: tokenData.stats,
-            +   }));
-            
-                // Also apply grid state
-                if (state.gridState.isHexGrid !== vtt.isHexGrid) {
-                  vtt.toggleGridType();
-                }
-                vtt.scale = state.gridState.scale;
-                vtt.currentX = state.gridState.position.x;
-                vtt.currentY = state.gridState.position.y;
-            
-                console.log(`Campaign '${campaignId}' loaded from:`, 
-                  new Date(state.timestamp).toLocaleTimeString());
-            +   return loadedTokens;
-            
-              } catch (error) {
-                console.error('Failed to load campaign state:', error);
-                return false;
-              }
-            }, [campaignId, vtt]);
+      // Instead of calling vtt.addToken(), just transform the token data
+      // into an array of objects for React to handle:
+      const loadedTokens = state.tokens.map(tokenData => ({
+        id: tokenData.id,
+        position: { x: tokenData.x, y: tokenData.y },
+        stats: tokenData.stats
+      }));
 
+      console.log(
+        `Campaign '${campaignId}' loaded from:`,
+        new Date(state.timestamp).toLocaleTimeString()
+      );
+      return loadedTokens;
+    } catch (error) {
+      console.error('Failed to load campaign state:', error);
+      return null;
+    }
+  }, [campaignId, vtt]);
 
-    // Token stats management
-    const updateTokenStats = useCallback((tokenId, stats) => {
-        const token = document.getElementById(tokenId);
-        if (!token) return;
+  // Token stats management (still references DOM, but you could adapt for React state)
+  const updateTokenStats = useCallback((tokenId, stats) => {
+    const token = document.getElementById(tokenId);
+    if (!token) return;
 
-        try {
-            token.dataset.stats = JSON.stringify(stats);
-            saveState(); // Save immediately when stats change
-        } catch (error) {
-            console.error('Error updating token stats:', error);
-        }
-    }, [saveState]);
+    try {
+      token.dataset.stats = JSON.stringify(stats);
+      saveState(); // Save immediately when stats change
+    } catch (error) {
+      console.error('Error updating token stats:', error);
+    }
+  }, [saveState]);
 
-    const getTokenStats = useCallback((tokenId) => {
-        const token = document.getElementById(tokenId);
-        if (!token?.dataset?.stats) return null;
+  const getTokenStats = useCallback((tokenId) => {
+    const token = document.getElementById(tokenId);
+    if (!token?.dataset?.stats) return null;
 
-        try {
-            return JSON.parse(token.dataset.stats);
-        } catch (error) {
-            console.error('Error parsing token stats:', error);
-            return {};
-        }
-    }, []);
+    try {
+      return JSON.parse(token.dataset.stats);
+    } catch (error) {
+      console.error('Error parsing token stats:', error);
+      return {};
+    }
+  }, []);
 
-    // Set up autosave
-    useEffect(() => {
-        const saveInterval = setInterval(saveState, 30000);
-        window.addEventListener('beforeunload', saveState);
+  // Set up autosave
+  useEffect(() => {
+    const saveInterval = setInterval(saveState, 30000);
+    window.addEventListener('beforeunload', saveState);
 
-        return () => {
-            clearInterval(saveInterval);
-            window.removeEventListener('beforeunload', saveState);
-        };
-    }, [saveState]);
+    return () => {
+      clearInterval(saveInterval);
+      window.removeEventListener('beforeunload', saveState);
+    };
+  }, [saveState]);
 
-    // Return memoized manager object
-    return useMemo(() => ({
-        saveState,
-        loadState,
-        getTokenStats,
-        updateTokenStats
-    }), [saveState, loadState, getTokenStats, updateTokenStats]);
+  // Return memoized manager object
+  return useMemo(() => ({
+    saveState,
+    loadState,
+    getTokenStats,
+    updateTokenStats
+  }), [saveState, loadState, getTokenStats, updateTokenStats]);
 }
