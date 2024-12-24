@@ -14,7 +14,7 @@ import { Grid } from './Grid';
 import { Token } from './Token';
 import { Controls } from './Controls';
 
-export function VirtualTabletop() {
+export default function VirtualTabletop() {
   // Core state
   const [isHexGrid, setIsHexGrid] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
