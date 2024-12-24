@@ -184,36 +184,40 @@ export default function VirtualTabletop() {
     };
   }, [updateGridDimensions]);
 
-// Button zoom handler (for zoom buttons)
-const handleZoom = useCallback((direction) => {
-  const container = document.getElementById('tabletop-container');
-  if (!container) return;
+// Wheel-based zoom so that it zooms to the center of the cell under the mouse
+  const handleWheel = useCallback((e) => {
+    e.preventDefault();
+    
+    // Calculate new scale
+    const delta = -Math.sign(e.deltaY);
+    const factor = 1 + (delta * ZOOM_FACTOR);
+    const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
+    
+    // Make mouse position the new origin for the zoom
+    setPosition({
+      x: e.clientX,
+      y: e.clientY
+    });
+    setScale(newScale);
+  }, [scale]);
 
-  const rect = container.getBoundingClientRect();
-  handleWheel({
-    preventDefault: () => {},
-    clientX: rect.width / 2,
-    clientY: rect.height / 2,
-    deltaY: direction === 1.1 ? -100 : 100
-  });
-}, [handleWheel]);
+  // Button zoom handler (for zoom buttons)
+  const handleZoom = useCallback((direction) => {
+    const container = document.getElementById('tabletop-container');
+    if (!container) return;
 
-  // Wheel-based zoom so that it zooms to the center of the cell under the mouse
-const handleWheel = useCallback((e) => {
-  e.preventDefault();
-  
-  // Calculate new scale
-  const delta = -Math.sign(e.deltaY);
-  const factor = 1 + (delta * ZOOM_FACTOR);
-  const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
-  
-  // Make mouse position the new origin for the zoom
-  setPosition({
-    x: e.clientX,
-    y: e.clientY
-  });
-  setScale(newScale);
-}, [scale]);
+    const rect = container.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    
+    setPosition({
+      x: centerX,
+      y: centerY
+    });
+    setScale(prev => 
+      Math.min(Math.max(prev * (direction === 1.1 ? 1.1 : 0.9), MIN_SCALE), MAX_SCALE)
+    );
+  }, []);
 
   // Mouse handlers
   const handleMouseDown = useCallback(
