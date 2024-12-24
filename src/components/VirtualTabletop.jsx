@@ -69,12 +69,18 @@ export default function VirtualTabletop() {
     scale
   });
 
-  // Prevent default wheel behavior
+  // Remove the old wheel preventDefault effect
+  
+  // New wheel event handler effect
   useEffect(() => {
-    const preventDefault = (e) => e.preventDefault();
-    document.addEventListener('wheel', preventDefault, { passive: false });
-    return () => document.removeEventListener('wheel', preventDefault);
-  }, []);
+    const container = document.getElementById('tabletop-container');
+    if (!container) return;
+    
+    const wheelHandler = (e) => handleWheel(e);
+    container.addEventListener('wheel', wheelHandler, { passive: false });
+    
+    return () => container.removeEventListener('wheel', wheelHandler);
+  }, [handleWheel]);
 
   // Token dragging logic
   const { startDrag } = useTokenDrag({
@@ -168,29 +174,47 @@ export default function VirtualTabletop() {
   }, [updateGridDimensions]);
 
   // Button zoom handler
-const handleWheel = useCallback((e) => {
-  e.preventDefault();
-  
-  // Calculate zoom factor
-  const delta = -Math.sign(e.deltaY);
-  const factor = 1 + (delta * ZOOM_FACTOR);
-  const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
-  
-  // Get the mouse position relative to the grid before zooming
-  const mouseX = e.clientX;
-  const mouseY = e.clientY;
-  
-  // Convert mouse position to grid coordinates (world space)
-  const gridX = (mouseX - position.x) / scale;
-  const gridY = (mouseY - position.y) / scale;
-  
-  // Calculate new position to keep mouse over the same grid point
-  setScale(newScale);
-  setPosition({
-    x: mouseX - (gridX * newScale),
-    y: mouseY - (gridY * newScale)
-  });
-}, [position, scale]);
+  const handleZoom = useCallback((direction) => {
+    const container = document.getElementById('tabletop-container');
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+
+    // Simulate a wheel event at the center of the container
+    const simulatedEvent = {
+      preventDefault: () => {},
+      clientX: centerX,
+      clientY: centerY,
+      deltaY: direction === 1.1 ? -100 : 100
+    };
+
+    handleWheel(simulatedEvent);
+  }, [handleWheel]);
+
+  // Updated wheel handler
+  const handleWheel = useCallback((e) => {
+    e.preventDefault();
+    
+    // Calculate zoom factor
+    const delta = -Math.sign(e.deltaY);
+    const factor = 1 + (delta * ZOOM_FACTOR);
+    const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
+    
+    // Get the mouse position relative to the scene
+    const worldX = (e.clientX - position.x) / scale;
+    const worldY = (e.clientY - position.y) / scale;
+    
+    // Update scale first
+    setScale(newScale);
+    
+    // Then update position to maintain the point under the mouse
+    setPosition({
+      x: e.clientX - (worldX * newScale),
+      y: e.clientY - (worldY * newScale)
+    });
+  }, [position, scale]);
 
   // Mouse handlers
   const handleMouseDown = useCallback(
