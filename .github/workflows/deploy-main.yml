@@ -1,0 +1,53 @@
+name: Deploy Main to GitHub Pages
+
+on:
+  push:
+    branches: ["main"] # Triggered by pushes to the main branch
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Check out your repo
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      # 2. Use Node to install dependencies
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      # 3. Build with Vite (or whichever bundler)
+      - name: Build
+        run: npm run build  # -> dist/ folder
+
+      # 4. Setup Pages
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      # 5. Upload the built dist/ folder
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'dist'  # **Only** dist, not the entire repo
+
+      # 6. Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
