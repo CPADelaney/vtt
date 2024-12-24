@@ -184,37 +184,21 @@ export default function VirtualTabletop() {
     };
   }, [updateGridDimensions]);
 
-  // Optional: button-based zoom in/out
-  const handleZoom = useCallback(
-    (factor) => {
-      const container = document.getElementById('tabletop-container');
-      if (!container) return;
-      const rect = container.getBoundingClientRect();
+// Button zoom handler (for zoom buttons)
+const handleZoom = useCallback((direction) => {
+  const container = document.getElementById('tabletop-container');
+  if (!container) return;
 
-      // Zoom relative to the center of the container
-      const centerX = rect.width / 2;
-      const centerY = rect.height / 2;
+  const rect = container.getBoundingClientRect();
+  handleWheel({
+    preventDefault: () => {},
+    clientX: rect.width / 2,
+    clientY: rect.height / 2,
+    deltaY: direction === 1.1 ? -100 : 100
+  });
+}, [handleWheel]);
 
-      // Convert center to "world" coords
-      const gridX = (centerX - position.x) / scale;
-      const gridY = (centerY - position.y) / scale;
-
-      const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
-
-      // After we zoom, figure out where the center coords land
-      const afterX = gridX * newScale;
-      const afterY = gridY * newScale;
-
-      // Shift the position so that the center doesn't move
-      setScale(newScale);
-      setPosition({
-        x: centerX - afterX,
-        y: centerY - afterY,
-      });
-    },
-    [position, scale]
-  );
-
+  // Wheel-based zoom so that it zooms to the center of the cell under the mouse
 const handleWheel = useCallback((e) => {
   e.preventDefault();
   
@@ -230,20 +214,6 @@ const handleWheel = useCallback((e) => {
   });
   setScale(newScale);
 }, [scale]);
-
-// Button zoom handler (for zoom buttons)
-const handleZoom = useCallback((direction) => {
-  const container = document.getElementById('tabletop-container');
-  if (!container) return;
-
-  const rect = container.getBoundingClientRect();
-  handleWheel({
-    preventDefault: () => {},
-    clientX: rect.width / 2,
-    clientY: rect.height / 2,
-    deltaY: direction === 1.1 ? -100 : 100
-  });
-}, [handleWheel]);
 
   // Mouse handlers
   const handleMouseDown = useCallback(
