@@ -4,6 +4,11 @@ on:
   push:
     branches: [ "main" ]
 
+permissions:
+contents: write    # <--- Provide write perms
+pages: write       # <--- Provide GH Pages perms
+id-token: write    # <--- If needed
+
 jobs:
   build-deploy:
     runs-on: ubuntu-latest
