@@ -191,67 +191,58 @@ export default function VirtualTabletop() {
     });
   }, [position, scale]);
 
-// Updated getTargetCell function
-  const getTargetCell = useCallback((mouseX, mouseY) => {
-    // Convert screen coordinates to grid coordinates
-    // We're using clientX/Y which is relative to viewport
-    const gridX = mouseX - position.x;  // Remove scale division
-    const gridY = mouseY - position.y;
+const getTargetCell = useCallback((mouseX, mouseY) => {
+  // Convert screen coordinates to grid coordinates, accounting for current transform
+  const gridX = (mouseX - position.x) / scale;
+  const gridY = (mouseY - position.y) / scale;
+  
+  if (isHexGrid) {
+    const verticalSpacing = gridConfig.hexHeight * 0.75;
+    let row = Math.round(gridY / verticalSpacing);
+    const isOffsetRow = row % 2 === 1;
     
-    if (isHexGrid) {
-      const verticalSpacing = gridConfig.hexHeight * 0.75;
-      let row = Math.round(gridY / (verticalSpacing * scale));
-      const isOffsetRow = row % 2 === 1;
-      
-      const offsetX = isOffsetRow ? (gridConfig.hexWidth * scale) / 2 : 0;
-      let col = Math.round((gridX - offsetX) / (gridConfig.hexWidth * scale));
-      
-      return {
-        x: gridX,  // Return mouse position in grid space
-        y: gridY
-      };
-    } else {
-      const cellSize = gridConfig.squareSize * scale;
-      const cellX = Math.floor(gridX / cellSize);
-      const cellY = Math.floor(gridY / cellSize);
-      
-      return {
-        x: gridX,  // Return mouse position in grid space
-        y: gridY
-      };
-    }
-  }, [position, scale, isHexGrid, gridConfig]);
+    const offsetX = isOffsetRow ? gridConfig.hexWidth / 2 : 0;
+    let col = Math.round((gridX - offsetX) / gridConfig.hexWidth);
+    
+    // Calculate center of hex cell
+    return {
+      x: (col * gridConfig.hexWidth + offsetX),
+      y: (row * verticalSpacing)
+    };
+  } else {
+    // Square grid
+    const cellX = Math.floor(gridX / gridConfig.squareSize);
+    const cellY = Math.floor(gridY / gridConfig.squareSize);
+    
+    // Calculate center of square cell
+    return {
+      x: (cellX * gridConfig.squareSize) + (gridConfig.squareSize / 2),
+      y: (cellY * gridConfig.squareSize) + (gridConfig.squareSize / 2)
+    };
+  }
+}, [position, scale, isHexGrid, gridConfig]);
 
-  // Updated handleWheel function
-  const handleWheel = useCallback((e) => {
-    e.preventDefault();
-    
-    const delta = -Math.sign(e.deltaY);
-    const factor = 1 + (delta * ZOOM_FACTOR);
-    const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
+const handleWheel = useCallback((e) => {
+  e.preventDefault();
+  
+  const delta = -Math.sign(e.deltaY);
+  const factor = 1 + (delta * ZOOM_FACTOR);
+  const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
 
-    // Get mouse position relative to viewport
-    const mouseX = e.clientX;
-    const mouseY = e.clientY;
-    
-    // Calculate zoom
-    const beforeZoomX = (mouseX - position.x) / scale;
-    const beforeZoomY = (mouseY - position.y) / scale;
-    
-    const afterZoomX = (mouseX - position.x) / newScale;
-    const afterZoomY = (mouseY - position.y) / newScale;
-    
-    setScale(newScale);
-    setPosition({
-      x: position.x + (afterZoomX - beforeZoomX) * newScale,
-      y: position.y + (afterZoomY - beforeZoomY) * newScale
-    });
-  }, [position, scale]);
+  // Get target cell center
+  const target = getTargetCell(e.clientX, e.clientY);
+  
+  // Calculate how the target cell position changes with zoom
+  const beforeX = target.x * scale;
+  const beforeY = target.y * scale;
+  
+  const afterX = target.x * newScale;
+  const afterY = target.y * newScale;
   
   setScale(newScale);
   setPosition({
-    x: position.x + (afterZoomX - beforeZoomX) * newScale,
-    y: position.y + (afterZoomY - beforeZoomY) * newScale
+    x: position.x - (afterX - beforeX),
+    y: position.y - (afterY - beforeY)
   });
 }, [position, scale, getTargetCell]);
 
