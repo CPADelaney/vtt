@@ -1,4 +1,4 @@
-// js/components/VirtualTabletop.jsx
+// src/components/VirtualTabletop.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 
 // Hooks
@@ -13,6 +13,7 @@ import { useCampaignManager } from '../hooks/useCampaignManager';
 import { Grid } from './Grid';
 import { Token } from './Token';
 import { Controls } from './Controls';
+// If you use Sidebar or ChatBox, keep them imported:
 import { Sidebar } from './Sidebar';
 import { ChatBox } from './ChatBox';
 
@@ -87,25 +88,25 @@ export default function VirtualTabletop() {
     onDeleteTokens: () => {
       // Remove selected tokens from state
       setTokens(prev =>
-        prev.filter(t => !selectedTokens.has(document.getElementById(t.id)))
+        prev.filter(t => {
+          const el = document.getElementById(t.id);
+          return !selectedTokens.has(el);
+        })
       );
       clearSelection();
     }
   });
 
-  // Campaign manager hook (load/save state)
-  const campaign = useCampaignManager({
-    transform: { x: position.x, y: position.y, scale },
-    tokens,
+  // Campaign manager hook (we pass an object for vtt, which includes some properties, or a dummy if needed)
+  const vttObject = {
     isHexGrid,
-    onStateChange: state => {
-      // Called when campaign state is loaded or changed
-      setPosition({ x: state.transform.x, y: state.transform.y });
-      setScale(state.transform.scale);
-      setTokens(state.tokens);
-      setIsHexGrid(state.isHexGrid);
-    }
-  });
+    scale,
+    currentX: position.x,
+    currentY: position.y,
+    toggleGridType: () => setIsHexGrid(prev => !prev)
+  };
+
+  const campaign = useCampaignManager(vttObject, 'default-campaign');
 
   // Calculate grid dimensions (rows, cols) based on window size
   useEffect(() => {
@@ -201,18 +202,22 @@ export default function VirtualTabletop() {
   useEffect(() => {
     const loadedTokens = campaign.loadState();
     if (!loadedTokens) {
-      // No saved campaign => drop default token
-      const idStr = `token-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-      setTokens([{
-        id: idStr,
-        position: {
-          x: window.innerWidth / 2,
-          y: window.innerHeight / 2
-        },
-        stats: { hp: 100, maxHp: 100, name: 'New Token' }
-      }]);
+      // No saved campaign => drop default token in center
+      const idStr = `token-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 9)}`;
+      setTokens([
+        {
+          id: idStr,
+          position: {
+            x: window.innerWidth / 2,
+            y: window.innerHeight / 2
+          },
+          stats: { hp: 100, maxHp: 100, name: 'New Token' }
+        }
+      ]);
     } else {
-      // We got some tokens from loadState
+      // We have loaded tokens from localStorage
       setTokens(loadedTokens);
     }
   }, [campaign]);
