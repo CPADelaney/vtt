@@ -255,6 +255,62 @@ export default function VirtualTabletop() {
     [startPanning, clearSelection, selectTokenId, tokens, startDrag, startMarquee]
   );
 
+const getTargetCell = useCallback((mouseX, mouseY) => {
+  // Convert screen coordinates to grid coordinates
+  const gridX = (mouseX - position.x) / scale;
+  const gridY = (mouseY - position.y) / scale;
+  
+  if (isHexGrid) {
+    const verticalSpacing = gridConfig.hexHeight * 0.75;
+    // Find the nearest row
+    let row = Math.round(gridY / verticalSpacing);
+    const isOffsetRow = row % 2 === 1;
+    
+    // Adjust horizontal spacing based on row
+    const offsetX = isOffsetRow ? gridConfig.hexWidth / 2 : 0;
+    let col = Math.round((gridX - offsetX) / gridConfig.hexWidth);
+    
+    // Calculate cell center
+    return {
+      x: col * gridConfig.hexWidth + offsetX + (gridConfig.hexWidth / 2),
+      y: row * verticalSpacing + (gridConfig.hexHeight / 2)
+    };
+  } else {
+    // Square grid
+    const cellX = Math.floor(gridX / gridConfig.squareSize);
+    const cellY = Math.floor(gridY / gridConfig.squareSize);
+    
+    return {
+      x: (cellX * gridConfig.squareSize) + (gridConfig.squareSize / 2),
+      y: (cellY * gridConfig.squareSize) + (gridConfig.squareSize / 2)
+    };
+  }
+}, [position, scale, isHexGrid, gridConfig]);
+
+const handleWheel = useCallback((e) => {
+  e.preventDefault();
+  
+  const delta = -Math.sign(e.deltaY);
+  const factor = 1 + (delta * ZOOM_FACTOR);
+  const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
+
+  // Get the target cell center
+  const target = getTargetCell(e.clientX, e.clientY);
+  
+  // Calculate zoom
+  const beforeZoomX = (target.x * scale - position.x) / scale;
+  const beforeZoomY = (target.y * scale - position.y) / scale;
+  
+  const afterZoomX = (target.x * newScale - position.x) / newScale;
+  const afterZoomY = (target.y * newScale - position.y) / newScale;
+  
+  setScale(newScale);
+  setPosition({
+    x: position.x + (afterZoomX - beforeZoomX) * newScale,
+    y: position.y + (afterZoomY - beforeZoomY) * newScale
+  });
+}, [position, scale, getTargetCell]);
+
   const handleContextMenu = useCallback(
     e => {
       e.preventDefault();
