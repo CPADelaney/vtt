@@ -39,7 +39,7 @@ export default function VirtualTabletop() {
     hexHeight: DEFAULT_HEX_SIZE * 2
   }), []);
 
-  // Memoized tabletop style
+  // Memoized styles
   const tabletopStyle = useMemo(() => ({
     position: 'relative',
     transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
@@ -47,7 +47,6 @@ export default function VirtualTabletop() {
     height: '100%'
   }), [position.x, position.y, scale]);
 
-  // Memoized container style
   const containerStyle = useMemo(() => ({
     width: '100vw',
     height: '100vh',
@@ -77,19 +76,16 @@ export default function VirtualTabletop() {
     return () => document.removeEventListener('wheel', preventDefault);
   }, []);
 
-  // Memoized token manipulation callbacks
-  const handleTokenDragMove = useCallback((tokenId, newPos) => {
-    setTokens(prev =>
-      prev.map(t => (t.id === tokenId ? { ...t, position: newPos } : t))
-    );
-  }, []);
-
   // Token dragging logic
   const { startDrag } = useTokenDrag({
     scale,
     getSnappedPosition,
-    onDragMove: handleTokenDragMove,
-    onDragEnd: _.noop // Remove if you implement save functionality
+    onDragMove: (tokenId, newPos) => {
+      setTokens(prev =>
+        prev.map(t => (t.id === tokenId ? { ...t, position: newPos } : t))
+      );
+    },
+    onDragEnd: _.noop
   });
 
   // Token selection
@@ -100,7 +96,7 @@ export default function VirtualTabletop() {
     startMarquee
   } = useTokenSelection();
 
-  // Memoized token handlers
+  // Token handlers
   const handleAddToken = useCallback(e => {
     const x = (e.clientX - position.x) / scale;
     const y = (e.clientY - position.y) / scale;
@@ -139,7 +135,7 @@ export default function VirtualTabletop() {
   // Campaign manager
   const { saveState, loadState } = useCampaignManager(vttObject, 'default-campaign');
 
-  // Debounced grid dimension update
+  // Grid dimension update
   const updateGridDimensions = useMemo(
     () => _.debounce(() => {
       const viewportWidth = window.innerWidth;
@@ -171,7 +167,7 @@ export default function VirtualTabletop() {
     };
   }, [updateGridDimensions]);
 
-  // Button zoom handler for consistency
+  // Button zoom handler
   const handleZoom = useCallback(factor => {
     const container = document.getElementById('tabletop-container');
     if (!container) return;
@@ -195,40 +191,56 @@ export default function VirtualTabletop() {
     });
   }, [position, scale]);
 
-  // The zoom handler that matches the original working version
+  // Get target cell for zooming
+  const getTargetCell = useCallback((mouseX, mouseY) => {
+    const gridX = (mouseX - position.x) / scale;
+    const gridY = (mouseY - position.y) / scale;
+    
+    if (isHexGrid) {
+      const verticalSpacing = gridConfig.hexHeight * 0.75;
+      let row = Math.round(gridY / verticalSpacing);
+      const isOffsetRow = row % 2 === 1;
+      
+      const offsetX = isOffsetRow ? gridConfig.hexWidth / 2 : 0;
+      let col = Math.round((gridX - offsetX) / gridConfig.hexWidth);
+      
+      return {
+        x: col * gridConfig.hexWidth + offsetX + (gridConfig.hexWidth / 2),
+        y: row * verticalSpacing + (gridConfig.hexHeight / 2)
+      };
+    } else {
+      const cellX = Math.floor(gridX / gridConfig.squareSize);
+      const cellY = Math.floor(gridY / gridConfig.squareSize);
+      
+      return {
+        x: (cellX * gridConfig.squareSize) + (gridConfig.squareSize / 2),
+        y: (cellY * gridConfig.squareSize) + (gridConfig.squareSize / 2)
+      };
+    }
+  }, [position, scale, isHexGrid, gridConfig]);
+
+  // Wheel zoom handler with cell snapping
   const handleWheel = useCallback((e) => {
     e.preventDefault();
     
-    // Determine zoom factor based on wheel direction
-    const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+    const delta = -Math.sign(e.deltaY);
+    const factor = 1 + (delta * ZOOM_FACTOR);
+    const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
+
+    const target = getTargetCell(e.clientX, e.clientY);
     
-    // Get container reference
-    const container = document.getElementById('tabletop-container');
-    if (!container) return;
-  
-    const rect = container.getBoundingClientRect();
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-  
-    // Calculate position before zoom
-    const beforeZoomX = (centerX - position.x) / scale;
-    const beforeZoomY = (centerY - position.y) / scale;
-  
-    // Calculate new scale
-    const newScale = Math.min(Math.max(scale * zoomFactor, MIN_SCALE), MAX_SCALE);
-  
-    // Calculate position after zoom
-    const afterZoomX = (centerX - position.x) / newScale;
-    const afterZoomY = (centerY - position.y) / newScale;
-  
-    // Update scale and position
+    const beforeZoomX = (target.x * scale - position.x) / scale;
+    const beforeZoomY = (target.y * scale - position.y) / scale;
+    
+    const afterZoomX = (target.x * newScale - position.x) / newScale;
+    const afterZoomY = (target.y * newScale - position.y) / newScale;
+    
     setScale(newScale);
     setPosition({
       x: position.x + (afterZoomX - beforeZoomX) * newScale,
       y: position.y + (afterZoomY - beforeZoomY) * newScale
     });
-  }, [position, scale]);
-
+  }, [position, scale, getTargetCell]);
 
   // Mouse handlers
   const handleMouseDown = useCallback(
@@ -254,62 +266,6 @@ export default function VirtualTabletop() {
     },
     [startPanning, clearSelection, selectTokenId, tokens, startDrag, startMarquee]
   );
-
-const getTargetCell = useCallback((mouseX, mouseY) => {
-  // Convert screen coordinates to grid coordinates
-  const gridX = (mouseX - position.x) / scale;
-  const gridY = (mouseY - position.y) / scale;
-  
-  if (isHexGrid) {
-    const verticalSpacing = gridConfig.hexHeight * 0.75;
-    // Find the nearest row
-    let row = Math.round(gridY / verticalSpacing);
-    const isOffsetRow = row % 2 === 1;
-    
-    // Adjust horizontal spacing based on row
-    const offsetX = isOffsetRow ? gridConfig.hexWidth / 2 : 0;
-    let col = Math.round((gridX - offsetX) / gridConfig.hexWidth);
-    
-    // Calculate cell center
-    return {
-      x: col * gridConfig.hexWidth + offsetX + (gridConfig.hexWidth / 2),
-      y: row * verticalSpacing + (gridConfig.hexHeight / 2)
-    };
-  } else {
-    // Square grid
-    const cellX = Math.floor(gridX / gridConfig.squareSize);
-    const cellY = Math.floor(gridY / gridConfig.squareSize);
-    
-    return {
-      x: (cellX * gridConfig.squareSize) + (gridConfig.squareSize / 2),
-      y: (cellY * gridConfig.squareSize) + (gridConfig.squareSize / 2)
-    };
-  }
-}, [position, scale, isHexGrid, gridConfig]);
-
-const handleWheel = useCallback((e) => {
-  e.preventDefault();
-  
-  const delta = -Math.sign(e.deltaY);
-  const factor = 1 + (delta * ZOOM_FACTOR);
-  const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
-
-  // Get the target cell center
-  const target = getTargetCell(e.clientX, e.clientY);
-  
-  // Calculate zoom
-  const beforeZoomX = (target.x * scale - position.x) / scale;
-  const beforeZoomY = (target.y * scale - position.y) / scale;
-  
-  const afterZoomX = (target.x * newScale - position.x) / newScale;
-  const afterZoomY = (target.y * newScale - position.y) / newScale;
-  
-  setScale(newScale);
-  setPosition({
-    x: position.x + (afterZoomX - beforeZoomX) * newScale,
-    y: position.y + (afterZoomY - beforeZoomY) * newScale
-  });
-}, [position, scale, getTargetCell]);
 
   const handleContextMenu = useCallback(
     e => {
