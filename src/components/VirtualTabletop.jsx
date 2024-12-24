@@ -13,6 +13,8 @@ import { useCampaignManager } from '../hooks/useCampaignManager';
 import { Grid } from './Grid';
 import { Token } from './Token';
 import { Controls } from './Controls';
+import { Sidebar } from './Sidebar';
+import { Chatbox } from './Chatbox';
 
 export default function VirtualTabletop() {
   // Core state
