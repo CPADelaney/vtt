@@ -198,50 +198,56 @@ export default function VirtualTabletop() {
 const handleWheel = useCallback((e) => {
     e.preventDefault();
     
-    logCoordinates('Pre-zoom State', {
-      mouseScreen: { x: e.clientX, y: e.clientY },
-      currentPosition: position,
-      currentScale: scale,
+    // Get the screen point we want to maintain
+    const pointX = e.clientX;
+    const pointY = e.clientY;
+
+    // Calculate the point in the current transformed space
+    const currentTransformedX = (pointX - position.x) / scale;
+    const currentTransformedY = (pointY - position.y) / scale;
+
+    logCoordinates('Before Zoom', {
+      screenPoint: { x: pointX, y: pointY },
+      currentTransform: { scale, position },
+      transformedPoint: { x: currentTransformedX, y: currentTransformedY },
+      currentCell: {
+        x: Math.floor(currentTransformedX / gridConfig.squareSize),
+        y: Math.floor(currentTransformedY / gridConfig.squareSize)
+      }
     });
 
     // Calculate new scale
     const delta = -Math.sign(e.deltaY);
     const factor = 1 + (delta * ZOOM_FACTOR);
     const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
-    
-    // Get the current mouse position relative to the grid origin point (top-left)
-    const gridRelativeX = (e.clientX - position.x) / scale;
-    const gridRelativeY = (e.clientY - position.y) / scale;
-    
-    logCoordinates('Grid-relative point', {
-      x: gridRelativeX,
-      y: gridRelativeY,
-      gridCell: {
-        x: Math.floor(gridRelativeX / gridConfig.squareSize),
-        y: Math.floor(gridRelativeY / gridConfig.squareSize)
-      }
-    });
 
-    // Calculate the offset needed to keep the same grid point under the mouse
+    // To maintain the same point after scaling:
+    // pointX = currentTransformedX * newScale + newPosition.x
+    // Solve for newPosition.x:
+    // newPosition.x = pointX - (currentTransformedX * newScale)
     const newPosition = {
-      x: e.clientX - (gridRelativeX * newScale),
-      y: e.clientY - (gridRelativeY * newScale)
+      x: pointX - (currentTransformedX * newScale),
+      y: pointY - (currentTransformedY * newScale)
     };
 
-    logCoordinates('Post-zoom State', {
-      newPosition,
+    logCoordinates('After Zoom', {
       newScale,
-      expectedGridPoint: {
-        x: (e.clientX - newPosition.x) / newScale,
-        y: (e.clientY - newPosition.y) / newScale
+      newPosition,
+      maintainedPoint: {
+        screen: { x: pointX, y: pointY },
+        transformed: {
+          x: (pointX - newPosition.x) / newScale,
+          y: (pointY - newPosition.y) / newScale
+        }
       }
     });
 
+    // Update state
     setScale(newScale);
     setPosition(newPosition);
   }, [position, scale, gridConfig]);
 
-  // Button zoom handler (for zoom buttons)
+  // Button zoom handler
   const handleZoom = useCallback((direction) => {
     const container = document.getElementById('tabletop-container');
     if (!container) return;
@@ -254,7 +260,7 @@ const handleWheel = useCallback((e) => {
       deltaY: direction === 1.1 ? -100 : 100
     });
   }, [handleWheel]);
-
+  
   // Mouse handlers
   const handleMouseDown = useCallback(
     (e) => {
