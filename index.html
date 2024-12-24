@@ -1,4 +1,4 @@
-<!-- index.html at project root for Vite -->
+<!-- index.html at project root -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,7 +7,9 @@
 </head>
 <body>
   <div id="root"></div>
-  <!-- Vite will automatically handle scripts for dev, 
-       or inject references into dist/index.html in production. -->
+  
+  <!-- The critical part: a module script that loads your main.jsx -->
+  <script type="module" src="/src/main.jsx"></script>
+  
 </body>
 </html>
