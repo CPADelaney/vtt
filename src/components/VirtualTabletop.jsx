@@ -220,27 +220,41 @@ export default function VirtualTabletop() {
   }, [position, scale, isHexGrid, gridConfig]);
 
   // Wheel zoom handler with cell snapping
-  const handleWheel = useCallback((e) => {
-    e.preventDefault();
-    
-    const delta = -Math.sign(e.deltaY);
-    const factor = 1 + (delta * ZOOM_FACTOR);
-    const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
+const handleWheel = useCallback((e) => {
+  e.preventDefault();
+  
+  const delta = -Math.sign(e.deltaY);
+  const factor = 1 + (delta * ZOOM_FACTOR);
+  const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
 
-    const target = getTargetCell(e.clientX, e.clientY);
-    
-    const beforeZoomX = (target.x * scale - position.x) / scale;
-    const beforeZoomY = (target.y * scale - position.y) / scale;
-    
-    const afterZoomX = (target.x * newScale - position.x) / newScale;
-    const afterZoomY = (target.y * newScale - position.y) / newScale;
-    
-    setScale(newScale);
-    setPosition({
+  const target = getTargetCell(e.clientX, e.clientY);
+  
+  console.log('Mouse position:', { x: e.clientX, y: e.clientY });
+  console.log('Target cell:', target);
+  console.log('Current position:', position);
+  console.log('Current scale:', scale);
+
+  const beforeZoomX = (target.x * scale - position.x) / scale;
+  const beforeZoomY = (target.y * scale - position.y) / scale;
+  
+  const afterZoomX = (target.x * newScale - position.x) / newScale;
+  const afterZoomY = (target.y * newScale - position.y) / newScale;
+
+  console.log('Zoom calculations:', {
+    beforeZoom: { x: beforeZoomX, y: beforeZoomY },
+    afterZoom: { x: afterZoomX, y: afterZoomY },
+    newPosition: {
       x: position.x + (afterZoomX - beforeZoomX) * newScale,
       y: position.y + (afterZoomY - beforeZoomY) * newScale
-    });
-  }, [position, scale, getTargetCell]);
+    }
+  });
+  
+  setScale(newScale);
+  setPosition({
+    x: position.x + (afterZoomX - beforeZoomX) * newScale,
+    y: position.y + (afterZoomY - beforeZoomY) * newScale
+  });
+}, [position, scale, getTargetCell]);
 
   // Mouse handlers
   const handleMouseDown = useCallback(
