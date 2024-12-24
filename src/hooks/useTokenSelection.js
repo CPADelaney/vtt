@@ -2,29 +2,30 @@
 import { useState, useCallback, useEffect } from 'react';
 
 /**
- * useTokenSelection manages selecting tokens and marquee selection.
- * 
- * Note: This version still manipulates DOM tokens. Over time,
- * you can migrate to storing tokens in React state.
+ * Manages selection of tokens by ID, plus marquee logic.
  */
 export function useTokenSelection() {
-  const [selectedTokens, setSelectedTokens] = useState(new Set());
+  // A set of token IDs that are selected
+  const [selectedTokenIds, setSelectedTokenIds] = useState(new Set());
   const [marqueeState, setMarqueeState] = useState(null);
 
   const clearSelection = useCallback(() => {
-    setSelectedTokens(new Set());
+    setSelectedTokenIds(new Set());
   }, []);
 
-  const selectToken = useCallback((tokenEl, additive = false) => {
-    setSelectedTokens(prev => {
-      const newSelection = additive ? new Set(prev) : new Set();
-      newSelection.add(tokenEl);
-      return newSelection;
+  /**
+   * selectTokenId: adds a token's ID to the selection (or replaces it if not additive).
+   */
+  const selectTokenId = useCallback((tokenId, additive = false) => {
+    setSelectedTokenIds(prev => {
+      const newSet = additive ? new Set(prev) : new Set();
+      newSet.add(tokenId);
+      return newSet;
     });
   }, []);
 
   /**
-   * Start the marquee selection by creating a DOM element and storing initial coords.
+   * startMarquee: create the marquee <div>, track coords
    */
   const startMarquee = useCallback((e) => {
     const marqueeEl = document.createElement('div');
@@ -56,11 +57,11 @@ export function useTokenSelection() {
 
     function onMouseUp(e) {
       const rect = marqueeState.element.getBoundingClientRect();
-      const tokens = document.querySelectorAll('.token');
-
-      tokens.forEach(tokenEl => {
+      // Instead of toggling .selected, 
+      // we collect all tokens from somewhere (like from your state) or from the DOM:
+      const tokenEls = document.querySelectorAll('.token');
+      tokenEls.forEach(tokenEl => {
         const tokenRect = tokenEl.getBoundingClientRect();
-        // Simple collision check
         const intersects = !(
           rect.right < tokenRect.left ||
           rect.left > tokenRect.right ||
@@ -68,7 +69,8 @@ export function useTokenSelection() {
           rect.top > tokenRect.bottom
         );
         if (intersects) {
-          selectToken(tokenEl, e.shiftKey);
+          // select the token by ID
+          selectTokenId(tokenEl.id, e.shiftKey);
         }
       });
 
@@ -82,20 +84,11 @@ export function useTokenSelection() {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
     };
-  }, [marqueeState, selectToken]);
-
-  /**
-   * Sync DOM classes to match selectedTokens
-   */
-  useEffect(() => {
-    document.querySelectorAll('.token').forEach(tokenEl => {
-      tokenEl.classList.toggle('selected', selectedTokens.has(tokenEl));
-    });
-  }, [selectedTokens]);
+  }, [marqueeState, selectTokenId]);
 
   return {
-    selectedTokens,    // A Set of DOM elements
-    selectToken,
+    selectedTokenIds,
+    selectTokenId, 
     clearSelection,
     startMarquee
   };
