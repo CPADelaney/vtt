@@ -184,35 +184,76 @@ export default function VirtualTabletop() {
     };
   }, [updateGridDimensions]);
 
-// Wheel-based zoom so that it zooms to the center of the cell under the mouse
-// Wheel-based zoom that maintains the world point under the mouse
+// Debug logging function
+  const logCoordinates = useCallback((label, coords) => {
+    console.log(
+      `%c${label}`,
+      'color: #4CAF50; font-weight: bold;',
+      coords
+    );
+  }, []);
+
+  // Wheel-based zoom with detailed logging
   const handleWheel = useCallback((e) => {
     e.preventDefault();
+    
+    // Log initial state
+    logCoordinates('Current State', {
+      mouseScreen: { x: e.clientX, y: e.clientY },
+      currentPosition: position,
+      currentScale: scale,
+      viewportSize: {
+        width: window.innerWidth,
+        height: window.innerHeight
+      }
+    });
     
     // Calculate new scale
     const delta = -Math.sign(e.deltaY);
     const factor = 1 + (delta * ZOOM_FACTOR);
     const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
     
-    // 1. Convert mouse position to world coordinates (pre-scale)
+    // Convert mouse position to world coordinates
     const worldX = (e.clientX - position.x) / scale;
     const worldY = (e.clientY - position.y) / scale;
     
-    // 2. Set the new scale
-    setScale(newScale);
+    logCoordinates('Calculated World Point', {
+      worldX,
+      worldY,
+      mouseScreen: { x: e.clientX, y: e.clientY },
+      scaleFactor: factor,
+      newScale
+    });
     
-    // 3. Calculate where that same world point would end up in screen coordinates after the scale change
+    // Calculate new screen position of the world point
     const newScreenX = worldX * newScale;
     const newScreenY = worldY * newScale;
     
-    // 4. Calculate the position adjustment needed to keep the world point under the mouse
-    setPosition({
+    const newPosition = {
       x: e.clientX - newScreenX,
       y: e.clientY - newScreenY
-    });
-  }, [position, scale]);
+    };
 
-  // Button zoom handler (for zoom buttons)
+    logCoordinates('New Position Calculation', {
+      newScreenPoint: { x: newScreenX, y: newScreenY },
+      resultingPosition: newPosition,
+      mouseStaysAt: { x: e.clientX, y: e.clientY }
+    });
+    
+    // Apply changes
+    setScale(newScale);
+    setPosition(newPosition);
+    
+    // Log final state after changes
+    logCoordinates('Final Transform', {
+      position: newPosition,
+      scale: newScale,
+      worldPoint: { x: worldX, y: worldY },
+      expectedScreenPoint: { x: e.clientX, y: e.clientY }
+    });
+  }, [position, scale, logCoordinates]);
+
+  // Button zoom handler with logging
   const handleZoom = useCallback((direction) => {
     const container = document.getElementById('tabletop-container');
     if (!container) return;
@@ -221,22 +262,20 @@ export default function VirtualTabletop() {
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
 
-    // Use the same logic as handleWheel but with the center point
-    const factor = direction === 1.1 ? 1.1 : 0.9;
-    const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
-    
-    // Convert center point to world coordinates
-    const worldX = (centerX - position.x) / scale;
-    const worldY = (centerY - position.y) / scale;
-    
-    setScale(newScale);
-    
-    // Keep the center point stable
-    setPosition({
-      x: centerX - (worldX * newScale),
-      y: centerY - (worldY * newScale)
+    logCoordinates('Button Zoom', {
+      centerPoint: { x: centerX, y: centerY },
+      direction,
+      currentScale: scale,
+      currentPosition: position
     });
-  }, [position, scale]);
+
+    handleWheel({
+      preventDefault: () => {},
+      clientX: centerX,
+      clientY: centerY,
+      deltaY: direction === 1.1 ? -100 : 100
+    });
+  }, [handleWheel]);
 
   // Mouse handlers
   const handleMouseDown = useCallback(
