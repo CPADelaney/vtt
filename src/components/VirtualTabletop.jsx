@@ -199,22 +199,21 @@ export default function VirtualTabletop() {
 
   // Load saved state or place default token if none found
   useEffect(() => {
-    const hadState = campaign.loadState();
-    if (!hadState) {
-      // No saved campaign => drop default token in center
-      const idStr = `token-${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2, 9)}`;
-      setTokens([
-        {
-          id: idStr,
-          position: {
-            x: window.innerWidth / 2,
-            y: window.innerHeight / 2
-          },
-          stats: { hp: 100, maxHp: 100, name: 'New Token' }
-        }
-      ]);
+    const loadedTokens = campaign.loadState();
+    if (!loadedTokens) {
+      // No saved campaign => drop default token
+      const idStr = `token-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      setTokens([{
+        id: idStr,
+        position: {
+          x: window.innerWidth / 2,
+          y: window.innerHeight / 2
+        },
+        stats: { hp: 100, maxHp: 100, name: 'New Token' }
+      }]);
+    } else {
+      // We got some tokens from loadState
+      setTokens(loadedTokens);
     }
   }, [campaign]);
 
