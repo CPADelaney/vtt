@@ -46,8 +46,10 @@ export const Grid = memo(function Grid({
             patternUnits="userSpaceOnUse"
           >
             <rect 
-              width={squareSize} 
-              height={squareSize}
+              width={squareSize - 1} // Subtract 1 to prevent double borders
+              height={squareSize - 1}
+              x="0.5" // Offset by half pixel to align borders
+              y="0.5"
               fill="rgba(255, 255, 255, 0.5)"
               stroke="#ccc"
               strokeWidth="1"
