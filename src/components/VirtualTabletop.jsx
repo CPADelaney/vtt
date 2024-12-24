@@ -70,16 +70,53 @@ export default function VirtualTabletop() {
   });
 
   // Remove the old wheel preventDefault effect
-  
-  // New wheel event handler effect
+
+  // Updated wheel handler - defined before the effect that uses it
+  const handleWheel = useCallback((e) => {
+    e.preventDefault();
+    
+    // Calculate zoom factor
+    const delta = -Math.sign(e.deltaY);
+    const factor = 1 + (delta * ZOOM_FACTOR);
+    const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
+    
+    // Get the mouse position relative to the scene
+    const worldX = (e.clientX - position.x) / scale;
+    const worldY = (e.clientY - position.y) / scale;
+    
+    // Update scale and position together
+    setScale(newScale);
+    setPosition({
+      x: e.clientX - (worldX * newScale),
+      y: e.clientY - (worldY * newScale)
+    });
+  }, [position, scale]);
+
+  // Button zoom handler
+  const handleZoom = useCallback((direction) => {
+    const container = document.getElementById('tabletop-container');
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+
+    // Simulate a wheel event at the center of the container
+    handleWheel({
+      preventDefault: () => {},
+      clientX: centerX,
+      clientY: centerY,
+      deltaY: direction === 1.1 ? -100 : 100
+    });
+  }, [handleWheel]);
+
+  // Wheel event handler effect
   useEffect(() => {
     const container = document.getElementById('tabletop-container');
     if (!container) return;
     
-    const wheelHandler = (e) => handleWheel(e);
-    container.addEventListener('wheel', wheelHandler, { passive: false });
-    
-    return () => container.removeEventListener('wheel', wheelHandler);
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheel);
   }, [handleWheel]);
 
   // Token dragging logic
@@ -191,55 +228,6 @@ export default function VirtualTabletop() {
     };
 
     handleWheel(simulatedEvent);
-  }, [handleWheel]);
-
-  // Updated wheel handler
-  // Updated wheel handler - defined before the effect that uses it
-  const handleWheel = useCallback((e) => {
-    e.preventDefault();
-    
-    // Calculate zoom factor
-    const delta = -Math.sign(e.deltaY);
-    const factor = 1 + (delta * ZOOM_FACTOR);
-    const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
-    
-    // Get the mouse position relative to the scene
-    const worldX = (e.clientX - position.x) / scale;
-    const worldY = (e.clientY - position.y) / scale;
-    
-    // Update scale and position together
-    setScale(newScale);
-    setPosition({
-      x: e.clientX - (worldX * newScale),
-      y: e.clientY - (worldY * newScale)
-    });
-  }, [position, scale]);
-
-  // Button zoom handler
-  const handleZoom = useCallback((direction) => {
-    const container = document.getElementById('tabletop-container');
-    if (!container) return;
-
-    const rect = container.getBoundingClientRect();
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-
-    // Simulate a wheel event at the center of the container
-    handleWheel({
-      preventDefault: () => {},
-      clientX: centerX,
-      clientY: centerY,
-      deltaY: direction === 1.1 ? -100 : 100
-    });
-  }, [handleWheel]);
-
-  // Wheel event handler effect
-  useEffect(() => {
-    const container = document.getElementById('tabletop-container');
-    if (!container) return;
-    
-    container.addEventListener('wheel', handleWheel, { passive: false });
-    return () => container.removeEventListener('wheel', handleWheel);
   }, [handleWheel]);
 
   // Mouse handlers
