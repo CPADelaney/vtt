@@ -59,7 +59,7 @@ export function useCampaignManager(vtt, campaignId = 'default-campaign') {
             vtt.scale = state.gridState.scale;
             vtt.currentX = state.gridState.position.x;
             vtt.currentY = state.gridState.position.y;
-            vtt.updateTransform();
+            // Removed the call to vtt.updateTransform();
 
             // Apply token state
             document.querySelectorAll('.token').forEach(token => token.remove());
