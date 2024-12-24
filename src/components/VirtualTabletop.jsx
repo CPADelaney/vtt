@@ -195,68 +195,65 @@ export default function VirtualTabletop() {
     );
   }, []);
 
-  // Wheel-based zoom with expanded logging
-  const handleWheel = useCallback((e) => {
+const handleWheel = useCallback((e) => {
     e.preventDefault();
     
-    // Log initial state
-    logCoordinates('Current State', {
+    logCoordinates('Pre-zoom State', {
       mouseScreen: { x: e.clientX, y: e.clientY },
       currentPosition: position,
       currentScale: scale,
-      viewportSize: {
-        width: window.innerWidth,
-        height: window.innerHeight
-      },
-      gridConfig: {
-        squareSize: gridConfig.squareSize,
-        currentGridCell: {
-          x: Math.floor((e.clientX - position.x) / (scale * gridConfig.squareSize)),
-          y: Math.floor((e.clientY - position.y) / (scale * gridConfig.squareSize))
-        }
-      }
     });
-    
+
     // Calculate new scale
     const delta = -Math.sign(e.deltaY);
     const factor = 1 + (delta * ZOOM_FACTOR);
     const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
     
-    // Convert mouse to world position (pre-transform coordinates)
-    const worldX = (e.clientX - position.x) / scale;
-    const worldY = (e.clientY - position.y) / scale;
+    // Get the current mouse position relative to the grid origin point (top-left)
+    const gridRelativeX = (e.clientX - position.x) / scale;
+    const gridRelativeY = (e.clientY - position.y) / scale;
     
-    logCoordinates('World Space Calculation', {
-      mouseInWorld: { x: worldX, y: worldY },
-      currentTransform: {
-        position: position,
-        scale: scale
-      },
-      scalingTo: newScale,
-      mouseScreen: { x: e.clientX, y: e.clientY }
+    logCoordinates('Grid-relative point', {
+      x: gridRelativeX,
+      y: gridRelativeY,
+      gridCell: {
+        x: Math.floor(gridRelativeX / gridConfig.squareSize),
+        y: Math.floor(gridRelativeY / gridConfig.squareSize)
+      }
     });
-    
-    // Calculate screen position after transform
-    const newScreenX = worldX * newScale;
-    const newScreenY = worldY * newScale;
-    
+
+    // Calculate the offset needed to keep the same grid point under the mouse
     const newPosition = {
-      x: e.clientX - newScreenX,
-      y: e.clientY - newScreenY
+      x: e.clientX - (gridRelativeX * newScale),
+      y: e.clientY - (gridRelativeY * newScale)
     };
 
-    logCoordinates('Transform Results', {
-      worldPoint: { x: worldX, y: worldY },
-      screenBeforeZoom: { x: worldX * scale + position.x, y: worldY * scale + position.y },
-      screenAfterZoom: { x: worldX * newScale + newPosition.x, y: worldY * newScale + newPosition.y },
-      mousePosition: { x: e.clientX, y: e.clientY },
-      newPosition: newPosition
+    logCoordinates('Post-zoom State', {
+      newPosition,
+      newScale,
+      expectedGridPoint: {
+        x: (e.clientX - newPosition.x) / newScale,
+        y: (e.clientY - newPosition.y) / newScale
+      }
     });
-    
-    // Apply changes
+
     setScale(newScale);
     setPosition(newPosition);
-  }, [position, scale, gridConfig, logCoordinates]);
+  }, [position, scale, gridConfig]);
+
+  // Button zoom handler (for zoom buttons)
+  const handleZoom = useCallback((direction) => {
+    const container = document.getElementById('tabletop-container');
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    handleWheel({
+      preventDefault: () => {},
+      clientX: rect.width / 2,
+      clientY: rect.height / 2,
+      deltaY: direction === 1.1 ? -100 : 100
+    });
+  }, [handleWheel]);
 
   // Mouse handlers
   const handleMouseDown = useCallback(
