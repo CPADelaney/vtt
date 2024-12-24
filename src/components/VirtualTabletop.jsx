@@ -17,8 +17,8 @@ import { Sidebar } from './Sidebar';
 import { ChatBox } from './ChatBox';
 
 // Constants
-const MIN_SCALE = 0.5;
-const MAX_SCALE = 2;
+const MIN_SCALE = 0.8;
+const MAX_SCALE = 3;
 const ZOOM_FACTOR = 0.1;
 const DEFAULT_SQUARE_SIZE = 50;
 const DEFAULT_HEX_SIZE = 30;
@@ -176,24 +176,21 @@ export default function VirtualTabletop() {
     factor => {
       const container = document.getElementById('tabletop-container');
       if (!container) return;
-
+  
       const rect = container.getBoundingClientRect();
-      const centerX = rect.width / 2;
-      const centerY = rect.height / 2;
-
-      const beforeZoomX = (centerX - position.x) / scale;
-      const beforeZoomY = (centerY - position.y) / scale;
-
+      const mouseX = rect.width / 2;  // Zoom around center for button clicks
+      const mouseY = rect.height / 2;
+      
       const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
-
-      const afterZoomX = (centerX - position.x) / newScale;
-      const afterZoomY = (centerY - position.y) / newScale;
-
+      
+      const distX = (mouseX - position.x) / scale;
+      const distY = (mouseY - position.y) / scale;
+      
+      const newX = mouseX - (distX * newScale);
+      const newY = mouseY - (distY * newScale);
+      
       setScale(newScale);
-      setPosition({
-        x: position.x + (afterZoomX - beforeZoomX) * newScale,
-        y: position.y + (afterZoomY - beforeZoomY) * newScale
-      });
+      setPosition({ x: newX, y: newY });
     },
     [position, scale]
   );
@@ -202,30 +199,31 @@ export default function VirtualTabletop() {
   const handleWheel = useCallback(
     (e) => {
       e.preventDefault();
+      
       const delta = -Math.sign(e.deltaY);
       const factor = 1 + (delta * ZOOM_FACTOR);
       
-      const container = e.currentTarget;
-      const rect = container.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
+      // Get mouse position relative to page
+      const mouseX = e.pageX;
+      const mouseY = e.pageY;
       
-      const beforeZoomX = (mouseX - position.x) / scale;
-      const beforeZoomY = (mouseY - position.y) / scale;
-      
+      // Calculate new scale
       const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
       
-      const afterZoomX = (mouseX - position.x) / newScale;
-      const afterZoomY = (mouseY - position.y) / newScale;
+      // Calculate how far the mouse is from the transformation origin in scaled coordinates
+      const distX = (mouseX - position.x) / scale;
+      const distY = (mouseY - position.y) / scale;
+      
+      // Calculate new position based on zoom around mouse
+      const newX = mouseX - (distX * newScale);
+      const newY = mouseY - (distY * newScale);
       
       setScale(newScale);
-      setPosition({
-        x: position.x + (afterZoomX - beforeZoomX) * newScale,
-        y: position.y + (afterZoomY - beforeZoomY) * newScale
-      });
+      setPosition({ x: newX, y: newY });
     },
     [position, scale]
   );
+
 
   // Mouse handlers
   const handleMouseDown = useCallback(
