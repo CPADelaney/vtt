@@ -61,24 +61,43 @@ export function useCampaignManager(vtt, campaignId = 'default-campaign') {
             vtt.currentY = state.gridState.position.y;
             // Removed the call to vtt.updateTransform();
 
-            // Apply token state
-            document.querySelectorAll('.token').forEach(token => token.remove());
-            state.tokens.forEach(tokenData => {
-                const token = vtt.addToken(tokenData.x, tokenData.y);
-                token.id = tokenData.id;
-                if (tokenData.stats) {
-                    token.dataset.stats = JSON.stringify(tokenData.stats);
+            // loadState
+            const loadState = useCallback(() => {
+              try {
+                const savedState = localStorage.getItem(`vtt-state-${campaignId}`);
+                if (!savedState) return false;
+            
+                const state = JSON.parse(savedState);
+            
+                // Remove old tokens from DOM, but in a React system
+                // we typically track tokens in React state, so let's skip DOM removal:
+                document.querySelectorAll('.token').forEach(token => token.remove());
+            
+                // Instead of calling vtt.addToken, let's just return these tokens
+            +   const loadedTokens = state.tokens.map(tokenData => ({
+            +     id: tokenData.id,
+            +     position: { x: tokenData.x, y: tokenData.y },
+            +     stats: tokenData.stats,
+            +   }));
+            
+                // Also apply grid state
+                if (state.gridState.isHexGrid !== vtt.isHexGrid) {
+                  vtt.toggleGridType();
                 }
-            });
+                vtt.scale = state.gridState.scale;
+                vtt.currentX = state.gridState.position.x;
+                vtt.currentY = state.gridState.position.y;
+            
+                console.log(`Campaign '${campaignId}' loaded from:`, 
+                  new Date(state.timestamp).toLocaleTimeString());
+            +   return loadedTokens;
+            
+              } catch (error) {
+                console.error('Failed to load campaign state:', error);
+                return false;
+              }
+            }, [campaignId, vtt]);
 
-            console.log(`Campaign '${campaignId}' loaded from:`, 
-                new Date(state.timestamp).toLocaleTimeString());
-            return true;
-        } catch (error) {
-            console.error('Failed to load campaign state:', error);
-            return false;
-        }
-    }, [campaignId, vtt]);
 
     // Token stats management
     const updateTokenStats = useCallback((tokenId, stats) => {
