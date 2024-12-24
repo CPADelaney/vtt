@@ -13,12 +13,13 @@ import { useCampaignManager } from '../hooks/useCampaignManager';
 import { Grid } from './Grid';
 import { Token } from './Token';
 import { Controls } from './Controls';
-// If you use Sidebar or ChatBox, keep them imported:
+
+// If you also use these, keep them:
 import { Sidebar } from './Sidebar';
 import { ChatBox } from './ChatBox';
 
 export default function VirtualTabletop() {
-  // Core state
+  // Core React state
   const [isHexGrid, setIsHexGrid] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [scale, setScale] = useState(1);
@@ -29,11 +30,11 @@ export default function VirtualTabletop() {
   const gridConfig = {
     squareSize: 50,
     hexSize: 30,
-    hexWidth: Math.sqrt(3) * 30, // ~51.96
-    hexHeight: 60                // 2 * 30
+    hexWidth: Math.sqrt(3) * 30,
+    hexHeight: 60
   };
 
-  // Snap logic for tokens or other items
+  // Hook for snapping positions
   const { getSnappedPosition } = useGridSnapping({
     isHexGrid,
     gridSize: gridConfig.squareSize,
@@ -41,14 +42,14 @@ export default function VirtualTabletop() {
     hexHeight: gridConfig.hexHeight
   });
 
-  // Panning logic (right-click + drag)
+  // Hook for panning (right-click + drag)
   const { isPanning, startPanning } = usePanning({
     currentX: position.x,
     currentY: position.y,
     updatePosition: (x, y) => setPosition({ x, y })
   });
 
-  // Token dragging logic (left-click + drag)
+  // Hook for token dragging
   const { startDrag } = useTokenDrag({
     scale,
     getSnappedPosition,
@@ -60,7 +61,7 @@ export default function VirtualTabletop() {
     }
   });
 
-  // Selecting tokens (marquee, shift-click, etc.)
+  // Hook for token selection
   const {
     selectedTokens,
     selectToken,
@@ -71,11 +72,12 @@ export default function VirtualTabletop() {
   // Context menu logic (right-click with no drag)
   const { showMenu } = useContextMenu({
     onAddToken: e => {
-      // Calculate position relative to camera/scale
+      // On "Add Token" context menu
       const x = (e.clientX - position.x) / scale;
       const y = (e.clientY - position.y) / scale;
       const snappedPos = getSnappedPosition(x, y);
 
+      // Add a new token to React state
       setTokens(prev => [
         ...prev,
         {
@@ -86,7 +88,7 @@ export default function VirtualTabletop() {
       ]);
     },
     onDeleteTokens: () => {
-      // Remove selected tokens from state
+      // Remove selected tokens from our React state
       setTokens(prev =>
         prev.filter(t => {
           const el = document.getElementById(t.id);
@@ -97,7 +99,11 @@ export default function VirtualTabletop() {
     }
   });
 
-  // Campaign manager hook (we pass an object for vtt, which includes some properties, or a dummy if needed)
+  /**
+   * We create a minimal vtt-like object to pass to our campaign manager hook.
+   * We'll let the hook read `isHexGrid`, scale, x/y, etc.
+   * We'll also let it call `toggleGridType` if needed.
+   */
   const vttObject = {
     isHexGrid,
     scale,
@@ -106,22 +112,22 @@ export default function VirtualTabletop() {
     toggleGridType: () => setIsHexGrid(prev => !prev)
   };
 
-  const campaign = useCampaignManager(vttObject, 'default-campaign');
+  const { saveState, loadState } = useCampaignManager(vttObject, 'default-campaign');
 
-  // Calculate grid dimensions (rows, cols) based on window size
+  // Recompute grid dimension on window resize
   useEffect(() => {
     function updateGridDimensions() {
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
 
       if (isHexGrid) {
-        const effectiveHeight = gridConfig.hexHeight * 0.75; // 60 * 0.75 = 45
+        const effectiveHeight = gridConfig.hexHeight * 0.75;
         setDimensions({
           rows: Math.ceil(viewportHeight / effectiveHeight) + 2,
           cols: Math.ceil(viewportWidth / gridConfig.hexWidth) + 2
         });
       } else {
-        const size = gridConfig.squareSize; // 50
+        const size = gridConfig.squareSize;
         setDimensions({
           rows: Math.ceil(viewportHeight / size) + 2,
           cols: Math.ceil(viewportWidth / size) + 2
@@ -144,14 +150,11 @@ export default function VirtualTabletop() {
       const centerX = rect.width / 2;
       const centerY = rect.height / 2;
 
-      // Current center in local coords (before zoom)
       const beforeZoomX = (centerX - position.x) / scale;
       const beforeZoomY = (centerY - position.y) / scale;
 
-      // Apply zoom factor, clamp between 0.5 and 2
       const newScale = Math.min(Math.max(scale * factor, 0.5), 2);
 
-      // Recompute position so the same center is maintained
       const afterZoomX = (centerX - position.x) / newScale;
       const afterZoomY = (centerY - position.y) / newScale;
 
@@ -164,7 +167,7 @@ export default function VirtualTabletop() {
     [position, scale]
   );
 
-  // Mouse down logic (panning vs. token drag vs. marquee)
+  // Mouse down logic
   const handleMouseDown = useCallback(
     e => {
       if (e.button === 2) {
@@ -174,10 +177,12 @@ export default function VirtualTabletop() {
         // Left-click => token drag or marquee
         const tokenEl = e.target.closest('.token');
         if (tokenEl) {
+          // If we didn't hold SHIFT, clear old selection
           if (!e.shiftKey) clearSelection();
           selectToken(tokenEl);
           startDrag(tokenEl, e);
         } else {
+          // Start marquee
           if (!e.shiftKey) clearSelection();
           startMarquee(e);
         }
@@ -198,29 +203,37 @@ export default function VirtualTabletop() {
     [isPanning, showMenu]
   );
 
-  // Load saved state or place default token if none found
+  // On mount, load state or place default token
   useEffect(() => {
-    const loadedTokens = campaign.loadState();
-    if (!loadedTokens) {
-      // No saved campaign => drop default token in center
+    const loaded = loadState();
+    if (!loaded) {
+      // No campaign => place default
       const idStr = `token-${Date.now()}-${Math.random()
         .toString(36)
         .slice(2, 9)}`;
-      setTokens([
-        {
-          id: idStr,
-          position: {
-            x: window.innerWidth / 2,
-            y: window.innerHeight / 2
-          },
-          stats: { hp: 100, maxHp: 100, name: 'New Token' }
-        }
-      ]);
+      setTokens([{
+        id: idStr,
+        position: {
+          x: window.innerWidth / 2,
+          y: window.innerHeight / 2
+        },
+        stats: { hp: 100, maxHp: 100, name: 'New Token' }
+      }]);
     } else {
-      // We have loaded tokens from localStorage
-      setTokens(loadedTokens);
+      // Apply loaded tokens
+      setTokens(loaded.tokens);
+
+      // Apply loaded grid
+      setPosition({ x: loaded.grid.x, y: loaded.grid.y });
+      setScale(loaded.grid.scale);
+      setIsHexGrid(loaded.grid.isHexGrid);
     }
-  }, [campaign]);
+  }, [loadState]);
+
+  // Example: if you want to save automatically sometimes, do:
+  // useEffect(() => {
+  //   campaign.saveState(tokens);
+  // }, [tokens, campaign]);
 
   return (
     <>
@@ -263,7 +276,7 @@ export default function VirtualTabletop() {
                 !![...selectedTokens].find(el => el?.id === token.id)
               }
               onClick={e => {
-                e.stopPropagation(); // don't let it bubble up to handleMouseDown
+                e.stopPropagation(); // don't let it bubble up
                 if (!e.shiftKey) clearSelection();
                 selectToken(e.currentTarget);
               }}
