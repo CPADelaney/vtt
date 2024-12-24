@@ -3,32 +3,30 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Virtual Tabletop</title>
+  <title>Virtual Tabletop - Minimal</title>
 
-  <!-- Tailwind CSS (optional if you use it) -->
+  <!-- Tailwind CSS (Optional) -->
   <link 
     href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" 
     rel="stylesheet"
   />
 
-  <!-- Your custom stylesheet (if needed) -->
-  <link rel="stylesheet" href="css/styles.css" />
+  <!-- Your custom CSS (Optional) -->
+  <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <!-- React mount point -->
+  <!-- React Mount Point -->
   <div id="root"></div>
 
   <!-- 1. Load React & ReactDOM from CDN -->
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 
-  <!-- 2. Load Babel Standalone (for dev only; not recommended in production) -->
+  <!-- 2. Load Babel (for dev only; not for production) -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  <!-- 3. Load your app scripts using type="text/babel". 
-       Order matters if some scripts depend on others. Example:
-  -->
-  <!-- Hooks -->
+  <!-- 3. Load Your Hooks & Components (ES Modules/JSX) Using type="text/babel" -->
+  <!-- Hooks (assuming they are pure ES and do not import Node-only libs) -->
   <script type="text/babel" src="js/hooks/useSystemManager.js"></script>
   <script type="text/babel" src="js/hooks/useDiceManager.js"></script>
   <script type="text/babel" src="js/hooks/usePanning.js"></script>
@@ -38,13 +36,13 @@
   <script type="text/babel" src="js/hooks/useGridSnapping.js"></script>
   <script type="text/babel" src="js/hooks/useCampaignManager.js"></script>
 
-  <!-- Components -->
+  <!-- Components (Grid, Token, Controls, VirtualTabletop, etc.) -->
   <script type="text/babel" src="js/components/Grid.jsx"></script>
   <script type="text/babel" src="js/components/Token.jsx"></script>
   <script type="text/babel" src="js/components/Controls.jsx"></script>
   <script type="text/babel" src="js/components/VirtualTabletop.jsx"></script>
 
-  <!-- 4. Final entry script that renders <VirtualTabletop /> -->
+  <!-- 4. Final Entry Script - Renders <VirtualTabletop /> -->
   <script type="text/babel">
     const rootElem = document.getElementById('root');
     const root = ReactDOM.createRoot(rootElem);
