@@ -2,31 +2,26 @@
 import { useState, useCallback, useEffect } from 'react';
 
 /**
- * useTokenDrag manages the drag state for a single token at a time.
- * 
- * @param {number} scale - The current zoom scale.
- * @param {function} getSnappedPosition - A function that snaps (x, y) to a grid or hex.
- * @param {function} onDragEnd - Optional callback to finalize the new position in React state.
+ * A more React-centric approach:
+ *  - Instead of updating tokenEl.style, we track the dragged token's ID and pass
+ *    a callback to update the React state, so <Token> re-renders at the new position.
  */
-export function useTokenDrag({ scale, getSnappedPosition, onDragEnd }) {
+export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd }) {
   const [dragState, setDragState] = useState(null);
 
   /**
-   * Called to begin dragging a token (DOM element).
-   * @param {HTMLElement} tokenEl - The DOM element representing the token.
-   * @param {MouseEvent} e - The mouse event that started the drag.
+   * startDrag: Called when user starts dragging a token.
+   *  - token: an object describing the token (e.g. { id, x, y })
+   *  - e: the mouse event
    */
-  const startDrag = useCallback((tokenEl, e) => {
-    // Extract the token’s current position from style
-    const tokenStartX = parseFloat(tokenEl.style.left) || 0;
-    const tokenStartY = parseFloat(tokenEl.style.top) || 0;
-
+  const startDrag = useCallback((token, e) => {
+    // We'll store initial info so we can track delta
     setDragState({
-      tokenEl,
-      startX: e.clientX,
-      startY: e.clientY,
-      tokenStartX,
-      tokenStartY
+      tokenId: token.id,
+      startMouseX: e.clientX,
+      startMouseY: e.clientY,
+      tokenStartX: token.position.x,
+      tokenStartY: token.position.y
     });
   }, []);
 
@@ -34,25 +29,24 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragEnd }) {
     if (!dragState) return;
 
     function onMouseMove(e) {
-      const dx = (e.clientX - dragState.startX) / scale;
-      const dy = (e.clientY - dragState.startY) / scale;
-      
+      // Calculate deltas
+      const dx = (e.clientX - dragState.startMouseX) / scale;
+      const dy = (e.clientY - dragState.startMouseY) / scale;
+
       const newX = dragState.tokenStartX + dx;
       const newY = dragState.tokenStartY + dy;
-      
+
+      // Snap the position
       const { x: snappedX, y: snappedY } = getSnappedPosition(newX, newY);
 
-      // Update the DOM element position
-      dragState.tokenEl.style.left = `${snappedX}px`;
-      dragState.tokenEl.style.top = `${snappedY}px`;
+      // If we want a “live” drag update, call onDragMove
+      onDragMove?.(dragState.tokenId, { x: snappedX, y: snappedY });
     }
 
     function onMouseUp() {
+      // Final position
       if (onDragEnd) {
-        // If you want to store final position in React state:
-        const finalX = parseFloat(dragState.tokenEl.style.left) || 0;
-        const finalY = parseFloat(dragState.tokenEl.style.top) || 0;
-        onDragEnd(dragState.tokenEl, { x: finalX, y: finalY });
+        onDragEnd(dragState.tokenId);
       }
       setDragState(null);
     }
@@ -63,7 +57,7 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragEnd }) {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
     };
-  }, [dragState, scale, getSnappedPosition, onDragEnd]);
+  }, [dragState, scale, getSnappedPosition, onDragMove, onDragEnd]);
 
   return { startDrag };
 }
