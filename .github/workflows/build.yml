@@ -1,31 +1,30 @@
-name: Build VTT
+name: Build and Deploy
 
 on:
   push:
-    branches: [ "main" ]  # or your preferred branch
+    branches: [ "main" ]
 
 jobs:
-  build:
+  build-deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Use Node
+      - name: Setup Node
         uses: actions/setup-node@v3
         with:
           node-version: 18
 
-      - name: Install dependencies
+      - name: Install
         run: npm install
 
       - name: Build
         run: npm run build
 
-      - name: Upload build artifact
-        if: always()
-        uses: actions/upload-artifact@v3
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
         with:
-          name: dist
-          path: dist
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          # Optionally set cname: YOURDOMAIN.com if needed
