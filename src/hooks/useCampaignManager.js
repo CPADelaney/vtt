@@ -1,8 +1,14 @@
 // js/hooks/useCampaignManager.js
 import { useEffect, useMemo, useCallback } from 'react';
 
+/**
+ * A simplified example that:
+ *  - Reads/writes "grid state" (scale, position, isHexGrid) to localStorage
+ *  - Saves/loads an array of token objects
+ *  - Returns loadState and saveState so your React component can control when to load or save
+ */
 export function useCampaignManager(vtt, campaignId = 'default-campaign') {
-  // Helper function to get grid state
+  // Helper to get current grid state from vtt-like object
   const getGridState = useCallback(() => ({
     isHexGrid: vtt.isHexGrid,
     scale: vtt.scale,
@@ -12,40 +18,30 @@ export function useCampaignManager(vtt, campaignId = 'default-campaign') {
     }
   }), [vtt]);
 
-  // Helper function to get token state from DOM, if needed
-  // (This might be less critical if you're fully in React, but we'll keep it.)
-  const getTokenState = useCallback(() => {
-    try {
-      return Array.from(document.querySelectorAll('.token')).map(token => ({
-        x: parseFloat(token.style.left),
-        y: parseFloat(token.style.top),
-        stats: JSON.parse(token.dataset.stats ?? '{}'),
-        id: token.id ?? `token-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
-      }));
-    } catch (error) {
-      console.error('Error collecting token state:', error);
-      return [];
-    }
-  }, []);
-
-  // Save current state to localStorage
-  const saveState = useCallback(() => {
+  /**
+   * Saves the given tokens array plus the current grid state to localStorage
+   */
+  const saveState = useCallback((tokens) => {
     const state = {
       campaignId,
       gridState: getGridState(),
-      tokens: getTokenState(),
+      // Here we rely on the tokens array we get from React state
+      tokens: tokens || [],
       timestamp: Date.now()
     };
 
     try {
       localStorage.setItem(`vtt-state-${campaignId}`, JSON.stringify(state));
-      console.log(`Campaign '${campaignId}' saved:`, new Date().toLocaleTimeString());
+      console.log(`Campaign '${campaignId}' saved at`, new Date().toLocaleTimeString());
     } catch (error) {
       console.error('Failed to save campaign state:', error);
     }
-  }, [campaignId, getGridState, getTokenState]);
+  }, [campaignId, getGridState]);
 
-  // Load and apply saved state, returning an array of token objects
+  /**
+   * loadState: Reads localStorage. 
+   * Returns an object { tokens, grid } if found, else null.
+   */
   const loadState = useCallback(() => {
     try {
       const savedState = localStorage.getItem(`vtt-state-${campaignId}`);
@@ -53,74 +49,47 @@ export function useCampaignManager(vtt, campaignId = 'default-campaign') {
 
       const state = JSON.parse(savedState);
 
-      // Apply grid state
+      // Possibly toggle hexGrid if needed
       if (state.gridState.isHexGrid !== vtt.isHexGrid) {
-        vtt.toggleGridType();
+        vtt.toggleGridType?.();
       }
-      vtt.scale = state.gridState.scale;
-      vtt.currentX = state.gridState.position.x;
-      vtt.currentY = state.gridState.position.y;
-
-      // Instead of calling vtt.addToken(), just transform the token data
-      // into an array of objects for React to handle:
-      const loadedTokens = state.tokens.map(tokenData => ({
-        id: tokenData.id,
-        position: { x: tokenData.x, y: tokenData.y },
-        stats: tokenData.stats
-      }));
 
       console.log(
-        `Campaign '${campaignId}' loaded from:`,
+        `Campaign '${campaignId}' loaded at`,
         new Date(state.timestamp).toLocaleTimeString()
       );
-      return loadedTokens;
+
+      return {
+        tokens: state.tokens || [],
+        grid: {
+          scale: state.gridState.scale,
+          x: state.gridState.position.x,
+          y: state.gridState.position.y,
+          isHexGrid: state.gridState.isHexGrid,
+        }
+      };
     } catch (error) {
       console.error('Failed to load campaign state:', error);
       return null;
     }
   }, [campaignId, vtt]);
 
-  // Token stats management (still references DOM, but you could adapt for React state)
-  const updateTokenStats = useCallback((tokenId, stats) => {
-    const token = document.getElementById(tokenId);
-    if (!token) return;
-
-    try {
-      token.dataset.stats = JSON.stringify(stats);
-      saveState(); // Save immediately when stats change
-    } catch (error) {
-      console.error('Error updating token stats:', error);
-    }
-  }, [saveState]);
-
-  const getTokenStats = useCallback((tokenId) => {
-    const token = document.getElementById(tokenId);
-    if (!token?.dataset?.stats) return null;
-
-    try {
-      return JSON.parse(token.dataset.stats);
-    } catch (error) {
-      console.error('Error parsing token stats:', error);
-      return {};
-    }
-  }, []);
-
-  // Set up autosave
+  /**
+   * Example auto-save logic every 30s (optional).
+   * If you want it, you need your component to call something like `saveState(tokens)`.
+   */
   useEffect(() => {
-    const saveInterval = setInterval(saveState, 30000);
-    window.addEventListener('beforeunload', saveState);
+    const interval = setInterval(() => {
+      // For auto-saving, you'd pass current tokens here
+      // e.g.: saveState(currentTokens);
+    }, 30000);
 
-    return () => {
-      clearInterval(saveInterval);
-      window.removeEventListener('beforeunload', saveState);
-    };
+    return () => clearInterval(interval);
   }, [saveState]);
 
-  // Return memoized manager object
+  // Return these so your component can call them
   return useMemo(() => ({
     saveState,
-    loadState,
-    getTokenStats,
-    updateTokenStats
-  }), [saveState, loadState, getTokenStats, updateTokenStats]);
+    loadState
+  }), [saveState, loadState]);
 }
