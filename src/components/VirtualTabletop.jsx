@@ -250,11 +250,14 @@ export default function VirtualTabletop() {
             height: '100%'
           }}
         >
-          <Grid
-            isHexGrid={isHexGrid}
-            {...gridConfig}
-            {...dimensions}
-          />
+            <Grid
+              isHexGrid={isHexGrid}
+              squareSize={gridConfig.squareSize}
+              hexSize={gridConfig.hexSize}
+              hexWidth={gridConfig.hexWidth}
+              hexHeight={gridConfig.hexHeight}
+              {...dimensions}
+            />
 
           {/* Render tokens */}
           {tokens.map(token => (
