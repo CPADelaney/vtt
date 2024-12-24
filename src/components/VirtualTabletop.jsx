@@ -194,6 +194,7 @@ export default function VirtualTabletop() {
   }, [handleWheel]);
 
   // Updated wheel handler
+  // Updated wheel handler - defined before the effect that uses it
   const handleWheel = useCallback((e) => {
     e.preventDefault();
     
@@ -206,15 +207,40 @@ export default function VirtualTabletop() {
     const worldX = (e.clientX - position.x) / scale;
     const worldY = (e.clientY - position.y) / scale;
     
-    // Update scale first
+    // Update scale and position together
     setScale(newScale);
-    
-    // Then update position to maintain the point under the mouse
     setPosition({
       x: e.clientX - (worldX * newScale),
       y: e.clientY - (worldY * newScale)
     });
   }, [position, scale]);
+
+  // Button zoom handler
+  const handleZoom = useCallback((direction) => {
+    const container = document.getElementById('tabletop-container');
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+
+    // Simulate a wheel event at the center of the container
+    handleWheel({
+      preventDefault: () => {},
+      clientX: centerX,
+      clientY: centerY,
+      deltaY: direction === 1.1 ? -100 : 100
+    });
+  }, [handleWheel]);
+
+  // Wheel event handler effect
+  useEffect(() => {
+    const container = document.getElementById('tabletop-container');
+    if (!container) return;
+    
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheel);
+  }, [handleWheel]);
 
   // Mouse handlers
   const handleMouseDown = useCallback(
