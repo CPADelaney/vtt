@@ -13,10 +13,8 @@ import { useCampaignManager } from '../hooks/useCampaignManager';
 import { Grid } from './Grid';
 import { Token } from './Token';
 import { Controls } from './Controls';
-
-// If you also use these, keep them:
-import { Sidebar } from './Sidebar';
-import { ChatBox } from './ChatBox';
+import { Sidebar } from './Sidebar';     // If used
+import { ChatBox } from './ChatBox';     // If used
 
 export default function VirtualTabletop() {
   // Core React state
@@ -26,7 +24,7 @@ export default function VirtualTabletop() {
   const [dimensions, setDimensions] = useState({ rows: 0, cols: 0 });
   const [tokens, setTokens] = useState([]);
 
-  // Grid configuration
+  // Grid config
   const gridConfig = {
     squareSize: 50,
     hexSize: 30,
@@ -34,7 +32,7 @@ export default function VirtualTabletop() {
     hexHeight: 60
   };
 
-  // Hook for snapping positions
+  // Snapping
   const { getSnappedPosition } = useGridSnapping({
     isHexGrid,
     gridSize: gridConfig.squareSize,
@@ -42,42 +40,54 @@ export default function VirtualTabletop() {
     hexHeight: gridConfig.hexHeight
   });
 
-  // Hook for panning (right-click + drag)
+  // Panning (right-click drag)
   const { isPanning, startPanning } = usePanning({
     currentX: position.x,
     currentY: position.y,
     updatePosition: (x, y) => setPosition({ x, y })
   });
 
-  // Hook for token dragging
+  // Token dragging
   const { startDrag } = useTokenDrag({
     scale,
     getSnappedPosition,
-    onDragEnd: (tokenEl, newPos) => {
-      const tokenId = tokenEl.id;
+    /** 
+     * If you want live updates while dragging, you can do onDragMove: 
+     *   (tokenId, newPos) => {
+     *     setTokens(prev => prev.map(t => t.id===tokenId ? { ...t, position:newPos} : t));
+     *   }
+     * 
+     * Below we do final updates in onDragEnd only, 
+     * but you can do real-time updates in onDragMove if you want "live" dragging.
+     */
+    onDragMove: (tokenId, newPos) => {
+      // For a live preview of the drag:
       setTokens(prev =>
         prev.map(t => (t.id === tokenId ? { ...t, position: newPos } : t))
       );
+    },
+    onDragEnd: (tokenId) => {
+      // Maybe do something after the drag ends
+      // e.g., campaign.saveState(tokens);
     }
   });
 
-  // Hook for token selection
+  // Token selection
   const {
-    selectedTokens,
-    selectToken,
-    startMarquee,
-    clearSelection
+    selectedTokenIds,
+    selectTokenId,
+    clearSelection,
+    startMarquee
   } = useTokenSelection();
 
-  // Context menu logic (right-click with no drag)
+  // Right-click context menu
   const { showMenu } = useContextMenu({
     onAddToken: e => {
-      // On "Add Token" context menu
+      // Add a new token at the snapped position
       const x = (e.clientX - position.x) / scale;
       const y = (e.clientY - position.y) / scale;
       const snappedPos = getSnappedPosition(x, y);
 
-      // Add a new token to React state
       setTokens(prev => [
         ...prev,
         {
@@ -88,33 +98,25 @@ export default function VirtualTabletop() {
       ]);
     },
     onDeleteTokens: () => {
-      // Remove selected tokens from our React state
-      setTokens(prev =>
-        prev.filter(t => {
-          const el = document.getElementById(t.id);
-          return !selectedTokens.has(el);
-        })
-      );
+      // Delete any tokens whose IDs are in selectedTokenIds
+      setTokens(prev => prev.filter(t => ![...selectedTokenIds].some(el => el === t.id)));
       clearSelection();
     }
   });
 
-  /**
-   * We create a minimal vtt-like object to pass to our campaign manager hook.
-   * We'll let the hook read `isHexGrid`, scale, x/y, etc.
-   * We'll also let it call `toggleGridType` if needed.
-   */
+  // Set up your VTT-like object
   const vttObject = {
     isHexGrid,
     scale,
     currentX: position.x,
     currentY: position.y,
-    toggleGridType: () => setIsHexGrid(prev => !prev)
+    toggleGridType: () => setIsHexGrid(h => !h)
   };
 
+  // Use campaign manager
   const { saveState, loadState } = useCampaignManager(vttObject, 'default-campaign');
 
-  // Recompute grid dimension on window resize
+  // Recompute grid dimensions
   useEffect(() => {
     function updateGridDimensions() {
       const viewportWidth = window.innerWidth;
@@ -127,10 +129,9 @@ export default function VirtualTabletop() {
           cols: Math.ceil(viewportWidth / gridConfig.hexWidth) + 2
         });
       } else {
-        const size = gridConfig.squareSize;
         setDimensions({
-          rows: Math.ceil(viewportHeight / size) + 2,
-          cols: Math.ceil(viewportWidth / size) + 2
+          rows: Math.ceil(viewportHeight / gridConfig.squareSize) + 2,
+          cols: Math.ceil(viewportWidth / gridConfig.squareSize) + 2
         });
       }
     }
@@ -140,7 +141,7 @@ export default function VirtualTabletop() {
     return () => window.removeEventListener('resize', updateGridDimensions);
   }, [isHexGrid, gridConfig]);
 
-  // Zoom logic
+  // Zoom
   const handleZoom = useCallback(
     factor => {
       const container = document.getElementById('tabletop-container');
@@ -174,21 +175,31 @@ export default function VirtualTabletop() {
         // Right-click => pan
         startPanning(e);
       } else if (e.button === 0) {
-        // Left-click => token drag or marquee
+        // Left-click => maybe drag token or marquee
         const tokenEl = e.target.closest('.token');
         if (tokenEl) {
-          // If we didn't hold SHIFT, clear old selection
+          // The token's ID
+          const tokenId = tokenEl.id;
+
+          // If SHIFT not held, clear old selection
           if (!e.shiftKey) clearSelection();
-          selectToken(tokenEl);
-          startDrag(tokenEl, e);
+
+          // Add this token to selection
+          selectTokenId(tokenId, e.shiftKey);
+
+          // Start the drag in our useTokenDrag
+          const tokenObj = tokens.find(t => t.id === tokenId);
+          if (tokenObj) {
+            startDrag(tokenObj, e);
+          }
         } else {
-          // Start marquee
+          // Start marquee selection
           if (!e.shiftKey) clearSelection();
           startMarquee(e);
         }
       }
     },
-    [startPanning, clearSelection, selectToken, startDrag, startMarquee]
+    [startPanning, clearSelection, selectTokenId, tokens, startDrag, startMarquee]
   );
 
   // Right-click context menu
@@ -203,14 +214,12 @@ export default function VirtualTabletop() {
     [isPanning, showMenu]
   );
 
-  // On mount, load state or place default token
+  // Load state or place default token
   useEffect(() => {
     const loaded = loadState();
     if (!loaded) {
-      // No campaign => place default
-      const idStr = `token-${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2, 9)}`;
+      // No saved campaign => create a default token
+      const idStr = `token-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
       setTokens([{
         id: idStr,
         position: {
@@ -220,20 +229,18 @@ export default function VirtualTabletop() {
         stats: { hp: 100, maxHp: 100, name: 'New Token' }
       }]);
     } else {
-      // Apply loaded tokens
+      // Apply loaded tokens and grid
       setTokens(loaded.tokens);
-
-      // Apply loaded grid
       setPosition({ x: loaded.grid.x, y: loaded.grid.y });
       setScale(loaded.grid.scale);
       setIsHexGrid(loaded.grid.isHexGrid);
     }
   }, [loadState]);
 
-  // Example: if you want to save automatically sometimes, do:
+  // Optionally autosave tokens whenever they change:
   // useEffect(() => {
-  //   campaign.saveState(tokens);
-  // }, [tokens, campaign]);
+  //   saveState(tokens);
+  // }, [tokens, saveState]);
 
   return (
     <>
@@ -272,18 +279,18 @@ export default function VirtualTabletop() {
             <Token
               key={token.id}
               {...token}
-              isSelected={
-                !![...selectedTokens].find(el => el?.id === token.id)
-              }
-              onClick={e => {
-                e.stopPropagation(); // don't let it bubble up
-                if (!e.shiftKey) clearSelection();
-                selectToken(e.currentTarget);
-              }}
+              // isSelected if token.id is in selectedTokenIds
+              isSelected={selectedTokenIds.has(token.id)}
+              // We let the parent handle clicks, so we pass an onClick that does nothing
+              onClick={e => e.stopPropagation()}
             />
           ))}
         </div>
       </div>
+
+      {/* If you have a sidebar or chat, render them as well */}
+      {/* <Sidebar ... /> */}
+      {/* <ChatBox ... /> */}
     </>
   );
 }
