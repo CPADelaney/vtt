@@ -210,26 +210,6 @@ export default function VirtualTabletop() {
     };
   }, [updateGridDimensions]);
 
-  // Button zoom handler
-  const handleZoom = useCallback((direction) => {
-    const container = document.getElementById('tabletop-container');
-    if (!container) return;
-
-    const rect = container.getBoundingClientRect();
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-
-    // Simulate a wheel event at the center of the container
-    const simulatedEvent = {
-      preventDefault: () => {},
-      clientX: centerX,
-      clientY: centerY,
-      deltaY: direction === 1.1 ? -100 : 100
-    };
-
-    handleWheel(simulatedEvent);
-  }, [handleWheel]);
-
   // Mouse handlers
   const handleMouseDown = useCallback(
     e => {
