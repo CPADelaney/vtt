@@ -200,26 +200,31 @@ export default function VirtualTabletop() {
     (e) => {
       e.preventDefault();
       
+      // Get container and mouse position
+      const container = e.currentTarget;
+      const rect = container.getBoundingClientRect();
+      
+      // Mouse position relative to container
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      
+      // Calculate zoom
       const delta = -Math.sign(e.deltaY);
       const factor = 1 + (delta * ZOOM_FACTOR);
-      
-      // Get mouse position relative to page
-      const mouseX = e.pageX;
-      const mouseY = e.pageY;
-      
-      // Calculate new scale
       const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
       
-      // Calculate how far the mouse is from the transformation origin in scaled coordinates
-      const distX = (mouseX - position.x) / scale;
-      const distY = (mouseY - position.y) / scale;
+      // Calculate position before and after zoom
+      const beforeZoomX = mouseX / scale;
+      const beforeZoomY = mouseY / scale;
+      const afterZoomX = mouseX / newScale;
+      const afterZoomY = mouseY / newScale;
       
-      // Calculate new position based on zoom around mouse
-      const newX = mouseX - (distX * newScale);
-      const newY = mouseY - (distY * newScale);
-      
+      // Update position and scale
       setScale(newScale);
-      setPosition({ x: newX, y: newY });
+      setPosition({
+        x: position.x + (afterZoomX - beforeZoomX) * newScale,
+        y: position.y + (afterZoomY - beforeZoomY) * newScale
+      });
     },
     [position, scale]
   );
