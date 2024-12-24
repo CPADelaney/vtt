@@ -71,7 +71,7 @@ export function useCampaignManager(vtt, campaignId = 'default-campaign') {
             
                 // Remove old tokens from DOM, but in a React system
                 // we typically track tokens in React state, so let's skip DOM removal:
-                document.querySelectorAll('.token').forEach(token => token.remove());
+                setTokens([]);
             
                 // Instead of calling vtt.addToken, let's just return these tokens
             +   const loadedTokens = state.tokens.map(tokenData => ({
