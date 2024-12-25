@@ -2,44 +2,41 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, Swords } from 'lucide-react';
 
+
 export const Sidebar = () => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [inCombat, setInCombat] = useState(false);
 
-  // If you're not toggling real combat, you can remove inCombat or manually set it
-  // If you want the toggle for show, do something like:
-  const handleCombatToggle = () => {
-    setInCombat(!inCombat);
-  };
-
   return (
-    <div 
-      className={`fixed top-0 right-0 h-full bg-white shadow-lg transition-all duration-300 flex ${
+    <div
+      // remove "fixed top-0 right-0 h-full"
+      className={`shadow-lg bg-white transition-all duration-300 flex ${
         isExpanded ? 'w-64' : 'w-12'
       }`}
+      style={{ borderBottom: '1px solid #ccc' }} // or any styling you want
     >
-      {/* Collapse/Expand Toggle */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="absolute left-0 top-1/2 -translate-x-full transform bg-white p-2 rounded-l-lg shadow-lg"
+        // remove absolute positioning
+        style={{ background: 'white', border: '1px solid #ccc' }}
       >
         {isExpanded ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
       </button>
 
-      {/* Main Sidebar Content */}
-      <div className="w-full flex flex-col">
+      <div className="flex flex-col w-full">
         <div className="p-4 border-b">
           <h2 className="font-bold text-lg flex items-center">
-            <Swords size={20} className="mr-2" /> DM Controls
+            <Swords size={20} className="mr-2" />
+            DM Controls
           </h2>
         </div>
 
         <div className="p-4 space-y-4">
-          <button 
-            onClick={handleCombatToggle}
+          <button
+            onClick={() => setInCombat(!inCombat)}
             className={`w-full font-bold py-2 px-4 rounded transition-colors ${
-              inCombat 
-                ? 'bg-red-600 hover:bg-red-700 text-white' 
+              inCombat
+                ? 'bg-red-600 hover:bg-red-700 text-white'
                 : 'bg-green-600 hover:bg-green-700 text-white'
             }`}
           >
