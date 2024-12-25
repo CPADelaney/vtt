@@ -259,45 +259,42 @@ export default function VirtualTabletop() {
     }));
   };
 
-  // Debug each render
-  console.log('----DEBUG RENDER----', {
-    isHexGrid,
-    rows: dimensions.rows,
-    cols: dimensions.cols,
-    scale,
-    position,
-  });
+  const [dimensions, setDimensions] = useState({ rows: 0, cols: 0 });
 
-  // Dimensions update for the grid
-  const updateGridDimensions = useMemo(
-    () =>
-      _.debounce(() => {
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
-        if (isHexGrid) {
-          const effHeight = gridConfig.hexHeight * 0.75;
-          setDimensions({
-            rows: Math.ceil(vh / effHeight) + 2,
-            cols: Math.ceil(vw / gridConfig.hexWidth) + 2,
-          });
-        } else {
-          setDimensions({
-            rows: Math.ceil(vh / gridConfig.squareSize) + 2,
-            cols: Math.ceil(vw / gridConfig.squareSize) + 2,
-          });
-        }
-      }, 100),
-    [isHexGrid, gridConfig]
-  );
+  
 
-  useEffect(() => {
-    updateGridDimensions();
-    window.addEventListener('resize', updateGridDimensions);
-    return () => {
-      updateGridDimensions.cancel();
-      window.removeEventListener('resize', updateGridDimensions);
-    };
-  }, [updateGridDimensions]);
+const updateGridDimensions = useMemo(
+  () =>
+    _.debounce(() => {
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      // Possibly different logic for hex vs square:
+      if (isHexGrid) {
+        // e.g.: 
+        const effHeight = gridConfig.hexHeight * 0.75;
+        setDimensions({
+          rows: Math.ceil(viewportHeight / effHeight) + 2,
+          cols: Math.ceil(viewportWidth / gridConfig.hexWidth) + 2,
+        });
+      } else {
+        setDimensions({
+          rows: Math.ceil(viewportHeight / gridConfig.squareSize) + 2,
+          cols: Math.ceil(viewportWidth / gridConfig.squareSize) + 2,
+        });
+      }
+    }, 100),
+  [isHexGrid, gridConfig]
+);
+
+useEffect(() => {
+  updateGridDimensions();
+  window.addEventListener('resize', updateGridDimensions);
+  return () => {
+    updateGridDimensions.cancel();
+    window.removeEventListener('resize', updateGridDimensions);
+  };
+}, [updateGridDimensions]);
 
   // Prevent default wheel scroll
   useEffect(() => {
