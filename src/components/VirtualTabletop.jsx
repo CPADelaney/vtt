@@ -66,7 +66,7 @@ export default function VirtualTabletop() {
 
   // Token drag logic
   const { startDrag } = useTokenDrag({
-    scale: 1, // or wire up scale from ZoomableContainer
+    scale: 1,
     getSnappedPosition,
     onDragMove: (tokenId, newPos) => {
       console.log('[DEBUG] onDragMove triggered', { tokenId, newPos });
@@ -116,6 +116,8 @@ export default function VirtualTabletop() {
       scale: outerScale,
       currentX: position.x,
       currentY: position.y,
+      // This might trigger a state change if it differs from loaded state,
+      // which can cause repeated saves. Consider removing or using carefully.
       toggleGridType: () => setIsHexGrid(prev => !prev)
     }),
     [isHexGrid, outerScale, position]
@@ -178,16 +180,20 @@ export default function VirtualTabletop() {
       console.log('Tokens changed, scheduling save...');
       debouncedSave(tokens);
     }
-    
     return () => {
       debouncedSave.cancel();
     };
   }, [tokens, debouncedSave]);
 
-  // Load initial state
+  /**
+   * Load initial state **once** on mount
+   * (Remove loadState from the dependency array!)
+   */
   useEffect(() => {
+    console.log('[DEBUG] Attempting to load state...');
     const loaded = loadState();
     if (!loaded) {
+      console.log('[DEBUG] No saved state found, creating initial token...');
       const idStr = `token-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
       setTokens([
         {
@@ -197,15 +203,17 @@ export default function VirtualTabletop() {
         },
       ]);
     } else {
+      console.log('[DEBUG] Loaded state:', loaded);
       setTokens(loaded.tokens);
       setIsHexGrid(loaded.grid.isHexGrid);
       setOuterScale(loaded.grid.scale || 1);
       setPosition({
         x: loaded.grid.x || 0,
-        y: loaded.grid.y || 0
+        y: loaded.grid.y || 0,
       });
     }
-  }, [loadState]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // <--- No dependencies => runs ONLY on mount.
 
   // MouseDown & ContextMenu
   const handleMouseDown = useCallback(
@@ -257,7 +265,7 @@ export default function VirtualTabletop() {
     setIsHexGrid(prev => !prev);
   };
 
-  // Debug
+  // Debug: see dimension + grid info each render
   console.log('----DEBUG HEX----', {
     rows: dimensions.rows,
     cols: dimensions.cols,
