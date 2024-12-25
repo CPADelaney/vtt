@@ -169,94 +169,69 @@ export default function VirtualTabletop() {
   }, [loadState]);
 
   // Mouse down / context menu handlers
-  const handleMouseDown = useCallback(
-    (e) => {
-      if (e.button === 2) {
-        // right-click => panning
-        startPanning(e);
-      } else if (e.button === 0) {
-        const tokenEl = e.target.closest('.token');
-        if (tokenEl) {
-          const tokenId = tokenEl.id;
-          if (!e.shiftKey) clearSelection();
-          selectTokenId(tokenId, e.shiftKey);
+const handleMouseDown = useCallback((e) => {
+  if (e.button === 0) {
+    const tokenEl = e.target.closest('.token');
+    if (tokenEl) {
+      if (!e.shiftKey) clearSelection();
+      selectTokenId(tokenEl.id, e.shiftKey);
 
-          const tokenObj = tokens.find((t) => t.id === tokenId);
-          if (tokenObj) {
-            startDrag(tokenObj, e);
-          }
-        } else {
-          if (!e.shiftKey) clearSelection();
-          startMarquee(e);
-        }
+      const tokenObj = tokens.find((t) => t.id === tokenEl.id);
+      if (tokenObj) {
+        startDrag(tokenObj, e);
       }
-    },
-    [startPanning, clearSelection, selectTokenId, tokens, startDrag, startMarquee]
-  );
+    } else {
+      if (!e.shiftKey) clearSelection();
+      startMarquee(e);
+    }
+  }
+}, [clearSelection, selectTokenId, tokens, startDrag, startMarquee]);
 
-  const handleContextMenu = useCallback(
-    (e) => {
-      e.preventDefault();
-      if (!isPanning) {
-        const tokenEl = e.target.closest('.token');
-        showMenu(e, { type: tokenEl ? 'token' : 'grid' });
-      }
-    },
-    [isPanning, showMenu]
-  );
+const handleContextMenu = useCallback((e) => {
+  e.preventDefault();
+  const tokenEl = e.target.closest('.token');
+  showMenu(e, { type: tokenEl ? 'token' : 'grid' });
+}, [showMenu]);
 
-  return (
-    <>
-      <Controls
-        isHexGrid={isHexGrid}
-        // If you want the zoom in/out buttons from here to call ZoomableContainer:
-        onZoomIn={() => /* trigger ZoomableContainer handleZoomButtons(1.1) somehow */ {}}
-        onZoomOut={() => /* trigger ZoomableContainer handleZoomButtons(0.9) somehow */ {}}
-        onToggleGrid={() => setIsHexGrid(!isHexGrid)}
-      />
+return (
+  <>
+    <Controls
+      isHexGrid={isHexGrid}
+      onToggleGrid={() => setIsHexGrid(!isHexGrid)}
+      // Optional: wire up controls to ZoomableContainer’s handleZoomButtons...
+      onZoomIn={() => {}}
+      onZoomOut={() => {}}
+    />
 
-      {/* Wrap your entire grid + tokens in ZoomableContainer */}
-      <ZoomableContainer
-        containerId="tabletop-container"
-        initialPosition={{ x: 0, y: 0 }}
-        initialScale={1}
-        minScale={MIN_SCALE}
-        maxScale={MAX_SCALE}
-        zoomFactor={ZOOM_FACTOR}
+    <ZoomableContainer
+      containerId="tabletop-container"
+      initialPosition={{ x: 0, y: 0 }}
+      initialScale={1}
+      minScale={MIN_SCALE}
+      maxScale={MAX_SCALE}
+      zoomFactor={ZOOM_FACTOR}
+    >
+      <div
+        id="tabletop"
+        className={isHexGrid ? 'hex-grid' : 'square-grid'}
+        onMouseDown={handleMouseDown}
+        onContextMenu={handleContextMenu}
+        style={{ width: '100%', height: '100%', position: 'relative' }}
       >
-        <div
-          id="tabletop"
-          className={isHexGrid ? 'hex-grid' : 'square-grid'}
-          onMouseDown={handleMouseDown}
-          onContextMenu={handleContextMenu}
-          style={{
-            width: '100%',
-            height: '100%',
-            position: 'relative', // no need for transform here, ZoomableContainer does it
-          }}
-        >
-          <Grid
-            isHexGrid={isHexGrid}
-            squareSize={gridConfig.squareSize}
-            hexSize={gridConfig.hexSize}
-            hexWidth={gridConfig.hexWidth}
-            hexHeight={gridConfig.hexHeight}
-            {...dimensions}
+        <Grid /* ... */ />
+
+        {tokens.map(token => (
+          <Token
+            key={token.id}
+            {...token}
+            isSelected={selectedTokenIds.has(token.id)}
+            onClick={e => e.stopPropagation()}
           />
+        ))}
+      </div>
+    </ZoomableContainer>
 
-          {tokens.map((token) => (
-            <Token
-              key={token.id}
-              {...token}
-              isSelected={selectedTokenIds.has(token.id)}
-              onClick={(e) => e.stopPropagation()}
-            />
-          ))}
-        </div>
-      </ZoomableContainer>
-
-      <Sidebar />
-      <ChatBox />
-    </>
-  );
-}
+    <Sidebar />
+    <ChatBox />
+  </>
+);
