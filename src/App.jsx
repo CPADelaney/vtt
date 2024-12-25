@@ -1,34 +1,26 @@
 // src/App.jsx
-
-import React, { useState } from 'react';
+import React from 'react';
 import VirtualTabletop from './components/VirtualTabletop';
-import Sidebar from './components/Sidebar';   // a separate left sidebar
-import ChatBox from './components/ChatBox';   // or a DMTools component
-import '../css/styles.css'; // The CSS shown above
+import ToolsBar from './components/ToolsBar';     // We'll create ToolsBar.jsx
+import Sidebar from './components/Sidebar';       // or Chat/DM tools
+import './styles.css';
 
 export default function App() {
-  const [collapsed, setCollapsed] = useState(false);
-
   return (
     <div className="app-layout">
-      {/* LEFT SIDEBAR */}
-      <div className={`left-sidebar ${collapsed ? 'collapsed' : ''}`}>
-        <button onClick={() => setCollapsed(!collapsed)}>
-          {collapsed ? 'Expand' : 'Collapse'}
-        </button>
-        {/* Render whatever is in Sidebar.jsx */}
-        <Sidebar />
+      {/* LEFT COLUMN (tools): 60px wide */}
+      <div className="tools-bar">
+        <ToolsBar />
       </div>
 
-      {/* MAIN CONTENT (middle) */}
+      {/* MIDDLE COLUMN (game area): flexible */}
       <div className="main-content">
         <VirtualTabletop />
       </div>
 
-      {/* RIGHT AREA (for chat, DM Tools, etc.) */}
-      <div className="right-area">
-        <ChatBox />
-        {/* or <DMTools /> or both */}
+      {/* RIGHT COLUMN (chat, DM Tools): 350px wide */}
+      <div className="right-sidebar">
+        <Sidebar />
       </div>
     </div>
   );
