@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 
 export function useZoomToMouse({
-  containerId = 'tabletop-container', // the DOM ID for the parent container
+  containerId = 'tabletop-container',
   initialPosition = { x: 0, y: 0 },
   initialScale = 1,
   minScale = 0.5,
@@ -14,63 +14,90 @@ export function useZoomToMouse({
   const handleWheel = useCallback(
     (e) => {
       e.preventDefault();
-
-      // Grab container + bounding rect so we can do container-relative coords
+      
+      // Get container and its position
       const container = document.getElementById(containerId);
       if (!container) return;
-
       const rect = container.getBoundingClientRect();
-      const localX = e.clientX - rect.left;
-      const localY = e.clientY - rect.top;
 
-      // Decide how much to zoom (in or out)
+      // Convert mouse position to container coordinates
+      const containerX = e.clientX - rect.left;
+      const containerY = e.clientY - rect.top;
+
+      console.log('=== ZOOM EVENT ===');
+      console.log('Container rect:', rect);
+      console.log('Mouse position:', { 
+        client: { x: e.clientX, y: e.clientY },
+        container: { x: containerX, y: containerY }
+      });
+      console.log('Current state:', {
+        position,
+        scale
+      });
+
+      // Calculate the scale change
       const delta = -Math.sign(e.deltaY);
       const factor = 1 + delta * zoomFactor;
       const newScale = Math.min(Math.max(scale * factor, minScale), maxScale);
+      
+      // Convert current mouse point to world coordinates
+      const worldX = (containerX - position.x) / scale;
+      const worldY = (containerY - position.y) / scale;
 
-      // Convert the current mouse position to "world" coords
-      const worldX = (localX - position.x) / scale;
-      const worldY = (localY - position.y) / scale;
-
-      // Update scale
-      setScale(newScale);
-
-      // Where does that same world point land on-screen after we scale?
-      const newScreenX = worldX * newScale + position.x;
-      const newScreenY = worldY * newScale + position.y;
-
-      // Shift so that point stays under the mouse
-      setPosition({
-        x: position.x + (localX - newScreenX),
-        y: position.y + (localY - newScreenY),
+      console.log('Calculations:', {
+        worldPoint: { x: worldX, y: worldY },
+        scaleFactor: factor,
+        newScale
       });
+
+      // Calculate where this world point would end up after scaling
+      const scaledX = worldX * newScale;
+      const scaledY = worldY * newScale;
+
+      // Calculate the offset needed to keep this point under the mouse
+      const newPosition = {
+        x: containerX - scaledX,
+        y: containerY - scaledY
+      };
+
+      console.log('Results:', {
+        scaledPoint: { x: scaledX, y: scaledY },
+        newPosition,
+        // Verification: converting back to world coordinates
+        resultingWorldPoint: {
+          x: (containerX - newPosition.x) / newScale,
+          y: (containerY - newPosition.y) / newScale
+        }
+      });
+      console.log('========================');
+
+      setScale(newScale);
+      setPosition(newPosition);
     },
     [containerId, position, scale, zoomFactor, minScale, maxScale]
   );
 
-  // Optional: If you have button-based zoom, you can add them here, too.
   const handleZoomButtons = useCallback(
     (factor) => {
       const container = document.getElementById(containerId);
       if (!container) return;
       const rect = container.getBoundingClientRect();
-
-      // Zoom relative to the center of the container, for example
+      
+      // Use center of container for button zooms
       const centerX = rect.width / 2;
       const centerY = rect.height / 2;
-
+      
       const worldX = (centerX - position.x) / scale;
       const worldY = (centerY - position.y) / scale;
-
+      
       const newScale = Math.min(Math.max(scale * factor, minScale), maxScale);
-
-      const newScreenX = worldX * newScale + position.x;
-      const newScreenY = worldY * newScale + position.y;
-
+      const scaledX = worldX * newScale;
+      const scaledY = worldY * newScale;
+      
       setScale(newScale);
       setPosition({
-        x: position.x + (centerX - newScreenX),
-        y: position.y + (centerY - newScreenY),
+        x: centerX - scaledX,
+        y: centerY - scaledY
       });
     },
     [containerId, position, scale, minScale, maxScale]
