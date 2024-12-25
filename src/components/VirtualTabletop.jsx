@@ -4,7 +4,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import _ from 'lodash';
 
 // Hooks
-import { usePanning } from '../hooks/usePanning';
 import { useTokenDrag } from '../hooks/useTokenDrag';
 import { useTokenSelection } from '../hooks/useTokenSelection';
 import { useContextMenu } from '../hooks/useContextMenu';
