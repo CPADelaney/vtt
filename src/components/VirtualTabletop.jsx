@@ -7,7 +7,7 @@ import { useTokenSelection } from '../hooks/useTokenSelection';
 import { useContextMenu } from '../hooks/useContextMenu';
 import { useGridSnapping } from '../hooks/useGridSnapping';
 import { useCampaignManager } from '../hooks/useCampaignManager';
-import { useAutoSave } from '../hooks/useAutoSave'; // <--- new hook
+import { useAutoSave } from '../hooks/useAutoSave';
 
 // Custom
 import { ZoomableContainer } from './ZoomableContainer';
@@ -27,24 +27,50 @@ const DEFAULT_SQUARE_SIZE = 50;
 const DEFAULT_HEX_SIZE = 30;
 
 export default function VirtualTabletop() {
-  // 1) Consolidated gameState
-  //    (You can store chat, HP, etc. all in here as well.)
-  
+  // -------------------------------------------------
+  // 1) Single Source of Truth: gameState
+  // -------------------------------------------------
   const [gameState, setGameState] = useState({
     isHexGrid: false,
     tokens: [],
     scale: 1,
     position: { x: 0, y: 0 },
-    // chatLog: [],
-    // any other fields...
+    // chatLog, HP, etc. can go here as well
   });
 
-  // Shortcuts for easier usage
   const { isHexGrid, tokens, scale, position } = gameState;
 
-  // Debug watchers (optional)
+  // -------------------------------------------------
+  // 2) Load & Save with campaignManager
+  // -------------------------------------------------
+  const { saveState, loadState } = useCampaignManager('default-campaign');
+
+  // On mount, load entire state (only once)
+  useEffect(() => {
+    console.log('[DEBUG] Loading campaign state on mount...');
+    const loaded = loadState();
+    if (loaded) {
+      console.log('[DEBUG] Loaded fullState:', loaded);
+      setGameState(loaded);
+    } else {
+      console.log('[DEBUG] No saved state found. Using defaults...');
+    }
+  }, [loadState]);
+
+  // Debounced auto-save for entire gameState
+  const persistGameState = useCallback((fullState) => {
+    saveState({
+      ...fullState,
+      timestamp: Date.now(), // For logs
+    });
+  }, [saveState]);
+
+  useAutoSave(gameState, persistGameState, 2000);
+
+  // -------------------------------------------------
+  // 3) Debug watchers (optional)
+  // -------------------------------------------------
   const prevTokensRef = useRef(tokens);
-  
   useEffect(() => {
     if (prevTokensRef.current !== tokens) {
       console.log('[DEBUG] Tokens changed from', prevTokensRef.current, 'to', tokens);
@@ -56,41 +82,16 @@ export default function VirtualTabletop() {
     console.log('[DEBUG] outerScale is now', scale);
   }, [scale]);
 
-  // 2) Save & load with campaignManager
-  const { saveState, loadState } = useCampaignManager('default-campaign');
+  // -------------------------------------------------
+  // 4) Grid Config & Dimensions
+  // -------------------------------------------------
+  const gridConfig = useMemo(() => ({
+    squareSize: DEFAULT_SQUARE_SIZE,
+    hexSize: DEFAULT_HEX_SIZE,
+    hexWidth: Math.sqrt(3) * DEFAULT_HEX_SIZE,
+    hexHeight: DEFAULT_HEX_SIZE * 2,
+  }), []);
 
-  // On mount, load the entire object
-  useEffect(() => {
-    const loaded = loadState();
-    if (loaded) {
-      setGameState(loaded); // restore entire state
-    } else {
-      // set defaults if needed
-    }
-  }, [loadState]);
-  
-  const persistGameState = useCallback((fullState) => {
-    saveState({
-      ...fullState,
-      timestamp: Date.now(), // for logs
-    });
-  }, [saveState]);
-
-  // 4) Auto-save effect (for entire gameState) with a 2s debounce
-  useAutoSave(gameState, persistGameState, 2000);
-
-  // Grid config
-  const gridConfig = useMemo(
-    () => ({
-      squareSize: DEFAULT_SQUARE_SIZE,
-      hexSize: DEFAULT_HEX_SIZE,
-      hexWidth: Math.sqrt(3) * DEFAULT_HEX_SIZE,
-      hexHeight: DEFAULT_HEX_SIZE * 2,
-    }),
-    []
-  );
-
-  // Snapping logic
   const { getSnappedPosition } = useGridSnapping({
     isHexGrid,
     gridSize: gridConfig.squareSize,
@@ -98,9 +99,44 @@ export default function VirtualTabletop() {
     hexHeight: gridConfig.hexHeight,
   });
 
-  // Token drag logic
+  const [dimensions, setDimensions] = useState({ rows: 0, cols: 0 });
+
+  const updateGridDimensions = useMemo(
+    () =>
+      _.debounce(() => {
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        if (isHexGrid) {
+          const effHeight = gridConfig.hexHeight * 0.75;
+          setDimensions({
+            rows: Math.ceil(vh / effHeight) + 2,
+            cols: Math.ceil(vw / gridConfig.hexWidth) + 2,
+          });
+        } else {
+          setDimensions({
+            rows: Math.ceil(vh / gridConfig.squareSize) + 2,
+            cols: Math.ceil(vw / gridConfig.squareSize) + 2,
+          });
+        }
+      }, 100),
+    [isHexGrid, gridConfig]
+  );
+
+  useEffect(() => {
+    updateGridDimensions();
+    window.addEventListener('resize', updateGridDimensions);
+    return () => {
+      updateGridDimensions.cancel();
+      window.removeEventListener('resize', updateGridDimensions);
+    };
+  }, [updateGridDimensions]);
+
+  // -------------------------------------------------
+  // 5) Token Drag & Selection
+  // -------------------------------------------------
   const { startDrag } = useTokenDrag({
-    scale: 1, // or scale: gameState.scale if you want
+    // Use the actual scale from gameState for correct drag coords
+    scale: gameState.scale,
     getSnappedPosition,
     onDragMove: (tokenId, newPos) => {
       console.log('[DEBUG] onDragMove triggered for', tokenId, '=>', newPos);
@@ -114,32 +150,30 @@ export default function VirtualTabletop() {
     onDragEnd: _.noop,
   });
 
-  // Token selection
   const { selectedTokenIds, selectTokenId, clearSelection, startMarquee } =
     useTokenSelection();
 
-  // 5) Example token handlers that update gameState tokens
-  const handleAddToken = useCallback(
-    (e) => {
-      const x = e.clientX;
-      const y = e.clientY;
-      const snappedPos = getSnappedPosition(x, y);
-      console.log('[DEBUG] Adding token at', snappedPos);
+  // -------------------------------------------------
+  // 6) Token Handlers
+  // -------------------------------------------------
+  const handleAddToken = useCallback((e) => {
+    const x = e.clientX;
+    const y = e.clientY;
+    const snappedPos = getSnappedPosition(x, y);
+    console.log('[DEBUG] Adding token at', snappedPos);
 
-      setGameState((prev) => ({
-        ...prev,
-        tokens: [
-          ...prev.tokens,
-          {
-            id: `token-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-            position: snappedPos,
-            stats: { hp: 100, maxHp: 100, name: 'New Token' },
-          },
-        ],
-      }));
-    },
-    [getSnappedPosition]
-  );
+    setGameState((prev) => ({
+      ...prev,
+      tokens: [
+        ...prev.tokens,
+        {
+          id: `token-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          position: snappedPos,
+          stats: { hp: 100, maxHp: 100, name: 'New Token' },
+        },
+      ],
+    }));
+  }, [getSnappedPosition]);
 
   const handleDeleteTokens = useCallback(() => {
     console.log('[DEBUG] Deleting tokens', Array.from(selectedTokenIds));
@@ -150,27 +184,14 @@ export default function VirtualTabletop() {
     clearSelection();
   }, [selectedTokenIds, clearSelection]);
 
-  // Context menu
   const { showMenu } = useContextMenu({
     onAddToken: handleAddToken,
     onDeleteTokens: handleDeleteTokens,
   });
 
-  // 6) Load initial state
-  useEffect(() => {
-    console.log('[DEBUG] Loading campaign state on mount...');
-    const loaded = loadState();
-    if (loaded) {
-      console.log('[DEBUG] Loaded entire fullState:', loaded);
-      // Overwrite everything in gameState with the loaded object
-      setGameState(loaded);
-    } else {
-      console.log('[DEBUG] No saved state found...');
-      // set a default if needed
-    }
-  }, [loadState]);
-
-  // Zoom in/out
+  // -------------------------------------------------
+  // 7) Zoom & Mouse Logic
+  // -------------------------------------------------
   const onZoomIn = () => {
     console.log('[DEBUG] onZoomIn called');
     setGameState((prev) => ({
@@ -187,7 +208,6 @@ export default function VirtualTabletop() {
     }));
   };
 
-  // MouseDown & context menu
   const handleMouseDown = useCallback(
     (e) => {
       if (e.button === 0) {
@@ -228,50 +248,18 @@ export default function VirtualTabletop() {
     }));
   };
 
-  const [dimensions, setDimensions] = useState({ rows: 0, cols: 0 });
-
-  
-
-const updateGridDimensions = useMemo(
-  () =>
-    _.debounce(() => {
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-
-      // Possibly different logic for hex vs square:
-      if (isHexGrid) {
-        // e.g.: 
-        const effHeight = gridConfig.hexHeight * 0.75;
-        setDimensions({
-          rows: Math.ceil(viewportHeight / effHeight) + 2,
-          cols: Math.ceil(viewportWidth / gridConfig.hexWidth) + 2,
-        });
-      } else {
-        setDimensions({
-          rows: Math.ceil(viewportHeight / gridConfig.squareSize) + 2,
-          cols: Math.ceil(viewportWidth / gridConfig.squareSize) + 2,
-        });
-      }
-    }, 100),
-  [isHexGrid, gridConfig]
-);
-
-useEffect(() => {
-  updateGridDimensions();
-  window.addEventListener('resize', updateGridDimensions);
-  return () => {
-    updateGridDimensions.cancel();
-    window.removeEventListener('resize', updateGridDimensions);
-  };
-}, [updateGridDimensions]);
-
-  // Prevent default wheel scroll
+  // -------------------------------------------------
+  // 8) Misc Setup (Prevent wheel scrolling)
+  // -------------------------------------------------
   useEffect(() => {
     const preventDefault = (e) => e.preventDefault();
     document.addEventListener('wheel', preventDefault, { passive: false });
     return () => document.removeEventListener('wheel', preventDefault);
   }, []);
 
+  // -------------------------------------------------
+  // 9) Render
+  // -------------------------------------------------
   return (
     <>
       <Controls onZoomIn={onZoomIn} onZoomOut={onZoomOut} />
@@ -295,17 +283,10 @@ useEffect(() => {
         minScale={MIN_SCALE}
         maxScale={MAX_SCALE}
         zoomFactor={ZOOM_FACTOR}
-        
-        // If you REALLY want manual saves on zoom/pan end, keep these:
-        // But if you're auto-saving everything in gameState, these might be redundant:
-        onZoomEnd={() => {
-          console.log('[DEBUG] Zoom ended => manual save if you want');
-          // saveState(tokens); // <-- might comment this out to avoid duplicates
-        }}
-        onPanEnd={() => {
-          console.log('[DEBUG] Pan ended => manual save if you want');
-          // saveState(tokens); // <-- might comment this out to avoid duplicates
-        }}
+
+        // Removed the manual onZoomEnd/onPanEnd saves for simplicity 
+        // (auto-save is already handling it)
+
       >
         <div
           id="tabletop"
