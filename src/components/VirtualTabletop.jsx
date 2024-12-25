@@ -253,7 +253,14 @@ return (
     </ZoomableContainer>
 
 
-    <Sidebar />
+    // snippet example
+    <Controls onZoomIn={onZoomIn} onZoomOut={onZoomOut} />
+    
+    <Sidebar 
+      isHexGrid={isHexGrid}
+      onToggleGrid={onToggleGrid}
+    />
+
     <ChatBox />
   </>
 );
