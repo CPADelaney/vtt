@@ -145,9 +145,9 @@ body {
   ----------------------------------------
    3-COLUMN GRID LAYOUT FOR THE ENTIRE APP
   ----------------------------------------
-   - Left sidebar (collapsible)
-   - Main content
-   - Right area (chat, DM panels, etc.)
+   - Left sidebar (collapsible or static)
+   - Main content (tabletop)
+   - Right area (DM Tools, Chat, etc.)
 */
 .app-layout {
   display: grid;
@@ -167,12 +167,15 @@ body {
   background-color: #eee;
   border-right: 1px solid #ccc;
   overflow-y: auto;
-  transition: width 0.3s ease; /* Smooth collapse/expand animation */
+  transition: width 0.3s ease; /* Smooth collapse/expand if you want */
 }
 
 /* 
   .collapsed class can be toggled in React to shrink the sidebar.
-  Example: .left-sidebar.collapsed { width: 0 !important; }
+  Example usage:
+    .left-sidebar.collapsed {
+      width: 0 !important;
+    }
 */
 .left-sidebar.collapsed {
   width: 0 !important;
