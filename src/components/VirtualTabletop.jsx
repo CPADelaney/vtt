@@ -29,6 +29,7 @@ const DEFAULT_HEX_SIZE = 30;
 export default function VirtualTabletop() {
   // 1) Consolidated gameState
   //    (You can store chat, HP, etc. all in here as well.)
+  
   const [gameState, setGameState] = useState({
     isHexGrid: false,
     tokens: [],
@@ -43,6 +44,7 @@ export default function VirtualTabletop() {
 
   // Debug watchers (optional)
   const prevTokensRef = useRef(tokens);
+  
   useEffect(() => {
     if (prevTokensRef.current !== tokens) {
       console.log('[DEBUG] Tokens changed from', prevTokensRef.current, 'to', tokens);
@@ -55,33 +57,24 @@ export default function VirtualTabletop() {
   }, [scale]);
 
   // 2) Save & load with campaignManager
-  const { saveState, loadState } = useCampaignManager(
-    {
-      isHexGrid: gameState.isHexGrid,
-      scale: gameState.scale,
-      currentX: gameState.position.x,
-      currentY: gameState.position.y,
-      toggleGridType: () => {
-        setGameState((prev) => ({
-          ...prev,
-          isHexGrid: !prev.isHexGrid,
-        }));
-      },
-    },
-    'default-campaign'
-  );
+  const { saveState, loadState } = useCampaignManager('default-campaign');
 
-  // 3) One function to actually "persist" the entire gameState
-  const persistGameState = useCallback(
-    (fullState) => {
-      // If your old code uses "tokens" only, adapt to store everything.
-      // You might keep calling saveState(...) for tokens, 
-      // but eventually move to storing scale, position, chat, etc.
-      // For now, we do something like:
-      const { tokens, isHexGrid, scale, position } = fullState;
-      // Save tokens + grid data
-      saveState(fullState); // <-- pass the entire object, not just tokens
-    }, [saveState]);
+  // On mount, load the entire object
+  useEffect(() => {
+    const loaded = loadState();
+    if (loaded) {
+      setGameState(loaded); // restore entire state
+    } else {
+      // set defaults if needed
+    }
+  }, [loadState]);
+  
+  const persistGameState = useCallback((fullState) => {
+    saveState({
+      ...fullState,
+      timestamp: Date.now(), // for logs
+    });
+  }, [saveState]);
 
   // 4) Auto-save effect (for entire gameState) with a 2s debounce
   useAutoSave(gameState, persistGameState, 2000);
