@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import VirtualTabletop from './components/VirtualTabletop.jsx';
 import { Sidebar } from './components/Sidebar.jsx';
 import { ChatBox } from './components/ChatBox.jsx';
-import './styles.css'; // Where .app-layout, .left-sidebar, etc. are
+import '../css/styles.css'; // Where .app-layout, .left-sidebar, etc. are
 
 export default function App() {
   const [collapsed, setCollapsed] = useState(false);
