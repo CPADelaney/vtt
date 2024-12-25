@@ -3,6 +3,7 @@ import { useZoomToMouse } from '../hooks/useZoomToMouse';
 
 export function ZoomableContainer({
   containerId = 'tabletop-container',
+  onScaleChange,
   children,
   ...options
 }) {
@@ -10,9 +11,16 @@ export function ZoomableContainer({
     position,
     setPosition,
     scale,
+    setScale,
     handleWheel,
     handleZoomButtons,
   } = useZoomToMouse({ containerId, ...options });
+
+    useEffect(() => {
+    if (onScaleChange) {
+      onScaleChange(scale);
+    }
+  }, [scale, onScaleChange]);
 
   // ---------- Right-click Panning State ----------
   const [isPanning, setIsPanning] = useState(false);
