@@ -258,24 +258,18 @@ export default function VirtualTabletop() {
         onZoomOut={onZoomOut}
       />
 
-      <ZoomableContainer
-        // Pass the parent's scale & position as the single source of truth
-        scale={outerScale}
-        position={position}
-        setScale={setOuterScale}
-        setPosition={setPosition}
-        minScale={MIN_SCALE}
-        maxScale={MAX_SCALE}
-        zoomFactor={ZOOM_FACTOR}
-        onZoomEnd={() => {
-          console.log('[DEBUG] zoom ended => save');
-          saveState(tokens);
-        }}
-        onPanEnd={() => {
-          console.log('[DEBUG] pan ended => save');
-          saveState(tokens);
-        }}
-      >
+    <ZoomableContainer
+      containerId="tabletop-container"
+      scale={outerScale}
+      position={position}
+      setScale={setOuterScale}
+      setPosition={setPosition}
+      minScale={MIN_SCALE}
+      maxScale={MAX_SCALE}
+      zoomFactor={ZOOM_FACTOR}
+      onZoomEnd={() => saveState(tokens)}
+      onPanEnd={() => saveState(tokens)}
+    >
         <div
           id="tabletop"
           className={isHexGrid ? 'hex-grid' : 'square-grid'}
