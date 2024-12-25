@@ -30,13 +30,13 @@ export default function VirtualTabletop() {
   const [isHexGrid, setIsHexGrid] = useState(false);
   const [tokens, setTokens] = useState([]);
   const [dimensions, setDimensions] = useState({ rows: 0, cols: 0 });
-  const [outerScale, setOuterScale] = useState(1); 
+  const [outerScale, setOuterScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
 
   // A ref to store previous tokens array for debug comparison
   const prevTokensRef = useRef(tokens);
 
-  // Debug effect that checks if tokens is actually changing
+  // Debug effect to check if `tokens` is actually changing
   useEffect(() => {
     if (prevTokensRef.current !== tokens) {
       console.log('[DEBUG] Tokens array reference CHANGED');
@@ -66,7 +66,7 @@ export default function VirtualTabletop() {
 
   // Token drag logic
   const { startDrag } = useTokenDrag({
-    scale: 1,
+    scale: 1, // or wire up scale from ZoomableContainer if needed
     getSnappedPosition,
     onDragMove: (tokenId, newPos) => {
       console.log('[DEBUG] onDragMove triggered', { tokenId, newPos });
@@ -110,44 +110,40 @@ export default function VirtualTabletop() {
     onDeleteTokens: handleDeleteTokens,
   });
 
-  const vttObject = useMemo(
-    () => ({
-      isHexGrid,
-      scale: outerScale,
-      currentX: position.x,
-      currentY: position.y,
-      // This might trigger a state change if it differs from loaded state,
-      // which can cause repeated saves. Consider removing or using carefully.
-      toggleGridType: () => setIsHexGrid(prev => !prev)
-    }),
-    [isHexGrid, outerScale, position]
-  );
+  // This object is what the campaign manager uses to read scale/position/etc.
+  const vttObject = useMemo(() => ({
+    isHexGrid,
+    scale: outerScale, // important! must match your current scale state
+    currentX: position.x,
+    currentY: position.y,
+    // If toggling the grid from loaded state triggers a loop,
+    // you can remove or conditionally call toggleGridType.
+    toggleGridType: () => setIsHexGrid(prev => !prev)
+  }), [isHexGrid, outerScale, position]);
 
   // Campaign manager
   const { saveState, loadState } = useCampaignManager(vttObject, 'default-campaign');
 
   // Grid dimension update
-  const updateGridDimensions = useMemo(
-    () =>
-      _.debounce(() => {
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
+  const updateGridDimensions = useMemo(() =>
+    _.debounce(() => {
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
 
-        if (isHexGrid) {
-          const effectiveHeight = gridConfig.hexHeight * 0.75;
-          setDimensions({
-            rows: Math.ceil(viewportHeight / effectiveHeight) + 2,
-            cols: Math.ceil(viewportWidth / gridConfig.hexWidth) + 2,
-          });
-        } else {
-          setDimensions({
-            rows: Math.ceil(viewportHeight / gridConfig.squareSize) + 2,
-            cols: Math.ceil(viewportWidth / gridConfig.squareSize) + 2,
-          });
-        }
-      }, 100),
-    [isHexGrid, gridConfig]
-  );
+      if (isHexGrid) {
+        const effectiveHeight = gridConfig.hexHeight * 0.75;
+        setDimensions({
+          rows: Math.ceil(viewportHeight / effectiveHeight) + 2,
+          cols: Math.ceil(viewportWidth / gridConfig.hexWidth) + 2,
+        });
+      } else {
+        setDimensions({
+          rows: Math.ceil(viewportHeight / gridConfig.squareSize) + 2,
+          cols: Math.ceil(viewportWidth / gridConfig.squareSize) + 2,
+        });
+      }
+    }, 100),
+  [isHexGrid, gridConfig]);
 
   // Resize listener
   useEffect(() => {
@@ -166,18 +162,18 @@ export default function VirtualTabletop() {
     return () => document.removeEventListener('wheel', preventDefault);
   }, []);
 
-  // Create the debounced save function
+  // Create a debounced save function
   const debouncedSave = useMemo(() => {
     return _.debounce((currentTokens) => {
-      console.log('Attempting save...');
+      console.log('[DEBUG] Attempting save...');
       saveState(currentTokens);
     }, 1000);
   }, [saveState]);
 
-  // Only watch token changes for auto-save
+  // Auto-save effect: only triggers when tokens change
   useEffect(() => {
     if (tokens.length > 0) {
-      console.log('Tokens changed, scheduling save...');
+      console.log('[DEBUG] Tokens changed, scheduling save...');
       debouncedSave(tokens);
     }
     return () => {
@@ -185,37 +181,32 @@ export default function VirtualTabletop() {
     };
   }, [tokens, debouncedSave]);
 
-  /**
-   * Load initial state **once** on mount
-   * (Remove loadState from the dependency array!)
-   */
-  
-    useEffect(() => {
-      const loaded = loadState();
-      if (!loaded) {
-        // If no saved state, create a default token, etc.
-        const idStr = `token-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-        setTokens([
-          {
-            id: idStr,
-            position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
-            stats: { hp: 100, maxHp: 100, name: 'New Token' },
-          },
-        ]);
-      } else {
-        // Load tokens
-        setTokens(loaded.tokens);
-        // Load grid type
-        setIsHexGrid(loaded.grid.isHexGrid);
-        // Restore zoom & pan
-        setOuterScale(loaded.grid.scale || 1);
-        setPosition({
-          x: loaded.grid.x || 0,
-          y: loaded.grid.y || 0
-        });
-      }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+  // Load initial state (only once on mount)
+  useEffect(() => {
+    console.log('[DEBUG] Loading state on mount...');
+    const loaded = loadState();
+    if (!loaded) {
+      console.log('[DEBUG] No saved state found, creating initial token...');
+      const idStr = `token-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      setTokens([
+        {
+          id: idStr,
+          position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
+          stats: { hp: 100, maxHp: 100, name: 'New Token' },
+        },
+      ]);
+    } else {
+      console.log('[DEBUG] Loaded state:', loaded);
+      setTokens(loaded.tokens);
+      setIsHexGrid(loaded.grid.isHexGrid);
+      setOuterScale(loaded.grid.scale || 1);
+      setPosition({
+        x: loaded.grid.x || 0,
+        y: loaded.grid.y || 0
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // MouseDown & ContextMenu
   const handleMouseDown = useCallback(
@@ -250,10 +241,6 @@ export default function VirtualTabletop() {
     [showMenu]
   );
 
-  // --------------------------
-  // >>> ZOOM & GRID TOGGLES <<<
-  // --------------------------
-
   // Zoom logic
   const onZoomIn = () => {
     setOuterScale(prev => Math.min(prev * 1.1, MAX_SCALE));
@@ -276,6 +263,8 @@ export default function VirtualTabletop() {
     hexWidth: gridConfig.hexWidth,
     hexHeight: gridConfig.hexHeight,
     effectiveHeight: gridConfig.hexHeight * 0.75,
+    outerScale,
+    position,
   });
 
   return (
@@ -289,8 +278,15 @@ export default function VirtualTabletop() {
         containerId="tabletop-container"
         onScaleChange={setOuterScale}
         onPositionChange={setPosition}
-        onZoomEnd={() => saveState(tokens)}         // or debouncedSave if you prefer
-        onPanEnd={() => saveState(tokens)}          // just once, after the user stops
+        // Try logging here to confirm it fires:
+        onZoomEnd={() => {
+          console.log('[DEBUG] Zoom ended, saving...');
+          saveState(tokens);
+        }}
+        onPanEnd={() => {
+          console.log('[DEBUG] Pan ended, saving...');
+          saveState(tokens);
+        }}
         initialPosition={position}
         initialScale={outerScale}
         minScale={MIN_SCALE}
