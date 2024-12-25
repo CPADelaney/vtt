@@ -218,8 +218,16 @@ return (
         onContextMenu={handleContextMenu}
         style={{ width: '100%', height: '100%', position: 'relative' }}
       >
-        <Grid /* ... */ />
-
+        <Grid
+          isHexGrid={isHexGrid}
+          rows={dimensions.rows}
+          cols={dimensions.cols}
+          squareSize={gridConfig.squareSize}
+          hexSize={gridConfig.hexSize}
+          hexWidth={gridConfig.hexWidth}
+          hexHeight={gridConfig.hexHeight}
+        />
+    
         {tokens.map(token => (
           <Token
             key={token.id}
@@ -230,6 +238,7 @@ return (
         ))}
       </div>
     </ZoomableContainer>
+
 
     <Sidebar />
     <ChatBox />
