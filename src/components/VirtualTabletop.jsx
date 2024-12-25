@@ -51,21 +51,6 @@ export default function VirtualTabletop() {
     hexHeight: gridConfig.hexHeight,
   });
 
-  // Panning logic (optional, if you still want right-click drag to move the map)
-  // Note: This is a bit trickier now, because ZoomableContainer also tracks position.
-  // You could merge them, or pass the setPosition callback down.
-  const { isPanning, startPanning } = usePanning({
-    currentX: 0, // We'll pass in 0,0 if we don't rely on this hook for the actual position
-    currentY: 0,
-    updatePosition: (x, y) => {
-      // If you still want to combine with ZoomableContainer's position, 
-      // you'd do something like get the 'setPosition' from useZoomToMouse 
-      // and combine the offsets. 
-      // For brevity, we'll skip it here.
-    },
-    scale: 1,
-  });
-
   // Token drag logic
   const { startDrag } = useTokenDrag({
     scale: 1, // or wire up the "scale" from ZoomableContainer if needed
