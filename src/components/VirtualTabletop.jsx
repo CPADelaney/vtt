@@ -36,7 +36,7 @@ export default function VirtualTabletop() {
   // A ref to store previous tokens array for debug comparison
   const prevTokensRef = useRef(tokens);
 
-  // Debug effect to check if `tokens` is actually changing
+  // Debug effect to check if `tokens` actually changes
   useEffect(() => {
     if (prevTokensRef.current !== tokens) {
       console.log('[DEBUG] Tokens array reference CHANGED');
@@ -47,6 +47,12 @@ export default function VirtualTabletop() {
     }
     prevTokensRef.current = tokens;
   }, [tokens]);
+
+  // === Debug watcher for outerScale changes ===
+  useEffect(() => {
+    console.log('[DEBUG] outerScale changed to', outerScale);
+  }, [outerScale]);
+  // ============================================
 
   // Memoized grid configuration
   const gridConfig = useMemo(() => ({
@@ -66,7 +72,7 @@ export default function VirtualTabletop() {
 
   // Token drag logic
   const { startDrag } = useTokenDrag({
-    scale: 1, 
+    scale: 1,
     getSnappedPosition,
     onDragMove: (tokenId, newPos) => {
       console.log('[DEBUG] onDragMove triggered', { tokenId, newPos });
@@ -110,38 +116,40 @@ export default function VirtualTabletop() {
     onDeleteTokens: handleDeleteTokens,
   });
 
-  // This object is what the campaign manager uses to read scale/position/etc.
+  // VTT object for the campaign manager
   const vttObject = useMemo(() => ({
     isHexGrid,
-    scale: outerScale,    // must match React outerScale
-    currentX: position.x, // must match React position.x
+    scale: outerScale,
+    currentX: position.x,
     currentY: position.y,
-    toggleGridType: () => setIsHexGrid(prev => !prev)
+    toggleGridType: () => setIsHexGrid(prev => !prev),
   }), [isHexGrid, outerScale, position]);
 
   // Campaign manager
   const { saveState, loadState } = useCampaignManager(vttObject, 'default-campaign');
 
   // Grid dimension update
-  const updateGridDimensions = useMemo(() =>
-    _.debounce(() => {
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
+  const updateGridDimensions = useMemo(
+    () =>
+      _.debounce(() => {
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
 
-      if (isHexGrid) {
-        const effectiveHeight = gridConfig.hexHeight * 0.75;
-        setDimensions({
-          rows: Math.ceil(viewportHeight / effectiveHeight) + 2,
-          cols: Math.ceil(viewportWidth / gridConfig.hexWidth) + 2,
-        });
-      } else {
-        setDimensions({
-          rows: Math.ceil(viewportHeight / gridConfig.squareSize) + 2,
-          cols: Math.ceil(viewportWidth / gridConfig.squareSize) + 2,
-        });
-      }
-    }, 100),
-  [isHexGrid, gridConfig]);
+        if (isHexGrid) {
+          const effectiveHeight = gridConfig.hexHeight * 0.75;
+          setDimensions({
+            rows: Math.ceil(viewportHeight / effectiveHeight) + 2,
+            cols: Math.ceil(viewportWidth / gridConfig.hexWidth) + 2,
+          });
+        } else {
+          setDimensions({
+            rows: Math.ceil(viewportHeight / gridConfig.squareSize) + 2,
+            cols: Math.ceil(viewportWidth / gridConfig.squareSize) + 2,
+          });
+        }
+      }, 100),
+    [isHexGrid, gridConfig]
+  );
 
   // Resize listener
   useEffect(() => {
@@ -162,17 +170,9 @@ export default function VirtualTabletop() {
 
   // Create a debounced save function
   const debouncedSave = useMemo(() => {
-    return _.debounce((currentTokens, scaleVal, posVal) => {
+    return _.debounce((currentTokens) => {
       console.log('[DEBUG] Attempting save...');
-      console.log(`[DEBUG] Saving with scale=${scaleVal}, position=(${posVal?.x}, ${posVal?.y})`);
-      
-      // Just to see what localStorage has right now, before we overwrite:
-      console.log('[DEBUG] localStorage BEFORE save:', localStorage.getItem('vtt-state-default-campaign'));
-      
       saveState(currentTokens);
-      
-      // And after saving:
-      console.log('[DEBUG] localStorage AFTER save:', localStorage.getItem('vtt-state-default-campaign'));
     }, 1000);
   }, [saveState]);
 
@@ -180,16 +180,16 @@ export default function VirtualTabletop() {
   useEffect(() => {
     if (tokens.length > 0) {
       console.log('[DEBUG] Tokens changed, scheduling save...');
-      debouncedSave(tokens, outerScale, position);
+      debouncedSave(tokens);
     }
     return () => {
       debouncedSave.cancel();
     };
-  }, [tokens, outerScale, position, debouncedSave]);
+  }, [tokens, debouncedSave]);
 
-  // Load initial state (only once on mount)
+  // Load initial state ONCE on mount
   useEffect(() => {
-    console.log('[DEBUG] Loading state on mount...');
+    console.log('[DEBUG] Attempting to load state ONCE (mount) ...');
     const loaded = loadState();
     if (!loaded) {
       console.log('[DEBUG] No saved state found, creating initial token...');
@@ -205,8 +205,9 @@ export default function VirtualTabletop() {
       console.log('[DEBUG] Loaded state:', loaded);
       setTokens(loaded.tokens);
       setIsHexGrid(loaded.grid.isHexGrid);
-      // Restore zoom & pan
+      console.log('[DEBUG] Restoring scale from loaded:', loaded.grid.scale);
       setOuterScale(loaded.grid.scale || 1);
+      console.log('[DEBUG] Restoring position from loaded:', loaded.grid.x, loaded.grid.y);
       setPosition({
         x: loaded.grid.x || 0,
         y: loaded.grid.y || 0
@@ -214,6 +215,16 @@ export default function VirtualTabletop() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Zoom logic
+  const onZoomIn = () => {
+    console.log('[DEBUG] onZoomIn called');
+    setOuterScale(prev => Math.min(prev * 1.1, MAX_SCALE));
+  };
+  const onZoomOut = () => {
+    console.log('[DEBUG] onZoomOut called');
+    setOuterScale(prev => Math.max(prev * 0.9, MIN_SCALE));
+  };
 
   // MouseDown & ContextMenu
   const handleMouseDown = useCallback(
@@ -247,14 +258,6 @@ export default function VirtualTabletop() {
     },
     [showMenu]
   );
-
-  // Zoom logic
-  const onZoomIn = () => {
-    setOuterScale(prev => Math.min(prev * 1.1, MAX_SCALE));
-  };
-  const onZoomOut = () => {
-    setOuterScale(prev => Math.max(prev * 0.9, MIN_SCALE));
-  };
 
   // Toggle Grid
   const onToggleGrid = () => {
