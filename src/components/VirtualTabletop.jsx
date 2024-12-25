@@ -32,6 +32,7 @@ export default function VirtualTabletop() {
   const [dimensions, setDimensions] = useState({ rows: 0, cols: 0 });
   const [outerScale, setOuterScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [gameState, setGameState] = useState(/* { tokens, zoom, chat, etc. } */);
 
   // Debug: watch token changes
   const prevTokensRef = useRef(tokens);
@@ -46,6 +47,13 @@ export default function VirtualTabletop() {
   useEffect(() => {
     console.log('[DEBUG] outerScale is now', outerScale);
   }, [outerScale]);
+
+  const saveGameState = useCallback((state) => {
+    console.log('[DEBUG] saving entire state...');
+    localStorage.setItem('my-game-state', JSON.stringify(state));
+  }, []);
+
+    useAutoSave(gameState, saveGameState, 2000); // auto-save every 2s of no further changes
 
   // Grid configuration
   const gridConfig = useMemo(() => ({
