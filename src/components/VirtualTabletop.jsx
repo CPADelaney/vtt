@@ -146,8 +146,24 @@ export default function VirtualTabletop() {
     return () => document.removeEventListener('wheel', preventDefault);
   }, []);
 
-// Create the debounced save function
-const debouncedSave = useMemo(() => createDebouncedSave(), [createDebouncedSave]);
+  // Create the debounced save function
+const debouncedSave = useMemo(() => {
+  return _.debounce((currentTokens) => {
+    console.log('Attempting save...');
+    saveState(currentTokens);
+  }, 1000);
+}, [saveState]);
+
+useEffect(() => {
+  if (tokens.length > 0) {
+    console.log('Tokens changed, scheduling save...');
+    debouncedSave(tokens);
+  }
+  
+  return () => {
+    debouncedSave.cancel();
+  };
+}, [tokens, debouncedSave]);
 
 // Only watch token changes here
 useEffect(() => {
