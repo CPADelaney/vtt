@@ -146,6 +146,56 @@ body {
   z-index: 1000;
 }
 
+/* 
+  ----------------------------------------
+   GRID-BASED LAYOUT FOR THE ENTIRE APP
+  ----------------------------------------
+  We'll define a 2-column grid:
+    - Left sidebar (collapsible)
+    - Main content
+*/
+.app-layout {
+  display: grid;
+  /* Two columns: left sidebar + main content */
+  grid-template-columns: 300px 1fr;
+  grid-template-rows: 100%; /* single row filling the viewport */
+  grid-template-areas: "left-sidebar main-content";
+
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden; /* no scrollbars on the root layout */
+}
+
+/* Left sidebar area */
+.left-sidebar {
+  grid-area: left-sidebar;
+  background-color: #eee;
+  border-right: 1px solid #ccc;
+  overflow-y: auto;
+  transition: width 0.3s ease; /* Smooth collapse/expand animation */
+
+  /* 
+    By default, it's 300px wide (as defined by grid-template-columns).
+    We can also override that with inline styles if we want to do
+    partial collapses, etc.
+  */
+}
+
+/* 
+  .collapsed class can be toggled by React or JS
+  to shrink the sidebar. 
+  Here, we set width: 0; but you could do 50px, etc.
+*/
+.left-sidebar.collapsed {
+  width: 0 !important;
+}
+
+/* Main content area */
+.main-content {
+  grid-area: main-content;
+  position: relative; /* or whatever your tabletop needs */
+  overflow: hidden;
+}
 .chatbox {
   z-index: 900;
 }
