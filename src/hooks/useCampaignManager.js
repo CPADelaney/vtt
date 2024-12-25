@@ -9,14 +9,12 @@ export function useCampaignManager(vtt, campaignId = 'default-campaign') {
       y: vtt.currentY,
     },
   }), [vtt]);
+  
+  const saveState = useCallback((fullState) => {
+    localStorage.setItem(`vtt-state-${campaignId}`, JSON.stringify(fullState));
+    console.log(`Campaign '${campaignId}' saved at`, new Date().toLocaleTimeString());
+  }, [campaignId]);
 
-  const saveState = useCallback((tokens) => {
-    const state = {
-      campaignId,
-      gridState: getGridState(),
-      tokens: tokens || [],
-      timestamp: Date.now()
-    };
 
     try {
       localStorage.setItem(`vtt-state-${campaignId}`, JSON.stringify(state));
@@ -30,16 +28,15 @@ export function useCampaignManager(vtt, campaignId = 'default-campaign') {
   }, [campaignId, getGridState]);
 
   const loadState = useCallback(() => {
-    try {
-      const savedState = localStorage.getItem(`vtt-state-${campaignId}`);
-      if (!savedState) return null;
+    const savedJSON = localStorage.getItem(`vtt-state-${campaignId}`);
+    if (!savedJSON) return null;
+  
+    const savedState = JSON.parse(savedJSON);
+    console.log(`Campaign '${campaignId}' loaded at`, new Date(savedState.timestamp).toLocaleTimeString());
+    
+    return savedState;  // the entire object
+  }, [campaignId]);
 
-      const state = JSON.parse(savedState);
-
-      // If you have toggling issues or loops, comment out:
-      // if (state.gridState.isHexGrid !== vtt.isHexGrid) {
-      //   vtt.toggleGridType?.();
-      // }
 
       console.log(
         `Campaign '${campaignId}' loaded at`,
