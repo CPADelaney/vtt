@@ -1,7 +1,7 @@
 // src/components/Sidebar.jsx
+
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, Swords } from 'lucide-react';
-
 
 export const Sidebar = () => {
   const [isExpanded, setIsExpanded] = useState(true);
@@ -9,15 +9,13 @@ export const Sidebar = () => {
 
   return (
     <div
-      // remove "fixed top-0 right-0 h-full"
       className={`shadow-lg bg-white transition-all duration-300 flex ${
         isExpanded ? 'w-64' : 'w-12'
       }`}
-      style={{ borderBottom: '1px solid #ccc' }} // or any styling you want
+      style={{ borderBottom: '1px solid #ccc' }}
     >
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        // remove absolute positioning
         style={{ background: 'white', border: '1px solid #ccc' }}
       >
         {isExpanded ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
