@@ -254,6 +254,8 @@ useEffect(() => {
         containerId="tabletop-container"
         onScaleChange={setOuterScale}
         onPositionChange={setPosition}
+        onZoomEnd={() => saveState(tokens)}         // or debouncedSave if you prefer
+        onPanEnd={() => saveState(tokens)}          // just once, after the user stops
         initialPosition={position}
         initialScale={outerScale}
         minScale={MIN_SCALE}
