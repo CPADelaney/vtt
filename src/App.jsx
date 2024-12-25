@@ -1,7 +1,7 @@
 // App.jsx
 import React, { useState } from 'react';
 import VirtualTabletop from './components/VirtualTabletop.jsx';
-import './styles.css'; // Where your .app-layout, .left-sidebar, etc., live
+import '../css/styles.css'; // Where your .app-layout, .left-sidebar, etc., live
 
 export default function App() {
   const [collapsed, setCollapsed] = useState(false);
