@@ -1,9 +1,12 @@
+// ZoomableContainer.jsx
 import React, { useState, useCallback, useEffect } from 'react';
 import { useZoomToMouse } from '../hooks/useZoomToMouse';
 
 export function ZoomableContainer({
   containerId = 'tabletop-container',
   onScaleChange,
+  onPositionChange,
+  initialPosition = { x: 0, y: 0 },
   children,
   ...options
 }) {
@@ -14,54 +17,58 @@ export function ZoomableContainer({
     setScale,
     handleWheel,
     handleZoomButtons,
-  } = useZoomToMouse({ containerId, ...options });
+  } = useZoomToMouse({ 
+    containerId, 
+    initialPosition,
+    ...options 
+  });
 
-    useEffect(() => {
+  // Report scale changes
+  useEffect(() => {
     if (onScaleChange) {
       onScaleChange(scale);
     }
   }, [scale, onScaleChange]);
 
-  // ---------- Right-click Panning State ----------
+  // Report position changes
+  useEffect(() => {
+    if (onPositionChange) {
+      onPositionChange(position);
+    }
+  }, [position, onPositionChange]);
+
+  // Right-click panning state
   const [isPanning, setIsPanning] = useState(false);
   const [lastPosition, setLastPosition] = useState({ x: 0, y: 0 });
 
-  // Start panning on right-click
   const startPanning = useCallback((e) => {
-    if (e.button !== 2) return; // Right-click
-    e.preventDefault();         // Prevent browser context menu on mousedown
+    if (e.button !== 2) return;
+    e.preventDefault();
     setIsPanning(true);
     setLastPosition({ x: e.clientX, y: e.clientY });
     document.body.style.cursor = 'grabbing';
   }, []);
 
-  // Handle mouse moves while panning
   const handleMouseMove = useCallback((e) => {
     if (!isPanning) return;
     e.preventDefault();
-
     const deltaX = e.clientX - lastPosition.x;
     const deltaY = e.clientY - lastPosition.y;
-
-    // Update the same position that the zoom logic uses
     setPosition((prev) => ({
       x: prev.x + deltaX,
       y: prev.y + deltaY
     }));
-
     setLastPosition({ x: e.clientX, y: e.clientY });
   }, [isPanning, lastPosition, setPosition]);
 
-  // Stop panning on mouse up
   const stopPanning = useCallback(() => {
     setIsPanning(false);
     document.body.style.cursor = '';
   }, []);
 
-  // Attach / remove listeners while panning
   useEffect(() => {
     if (!isPanning) return;
-
+    
     const onMouseMove = (e) => handleMouseMove(e);
     const onMouseUp = () => stopPanning();
     const onKeyDown = (e) => {
@@ -79,7 +86,6 @@ export function ZoomableContainer({
     };
   }, [isPanning, handleMouseMove, stopPanning]);
 
-  // ---------- Styles ----------
   const containerStyle = {
     width: '100vw',
     height: '100vh',
@@ -102,29 +108,12 @@ export function ZoomableContainer({
       id={containerId}
       style={containerStyle}
       onWheel={handleWheel}
-
-      // Right-click => start panning
       onMouseDown={startPanning}
-      // Prevent the default context menu from appearing on right-click
       onContextMenu={(e) => e.preventDefault()}
     >
       <div style={contentStyle}>
         {children}
       </div>
-
-      {/* Example Zoom Buttons */}
-      <button
-        onClick={() => handleZoomButtons(1.1)}
-        style={{ position: 'absolute', top: 10, left: 10 }}
-      >
-        Zoom In
-      </button>
-      <button
-        onClick={() => handleZoomButtons(0.9)}
-        style={{ position: 'absolute', top: 40, left: 10 }}
-      >
-        Zoom Out
-      </button>
     </div>
   );
 }
