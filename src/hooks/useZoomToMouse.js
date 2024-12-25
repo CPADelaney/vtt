@@ -1,21 +1,28 @@
-import { useState, useCallback } from 'react';
+// useZoomToMouse.js
+import { useCallback } from 'react';
 
+/**
+ * Hook to compute "zoom to mouse" logic, 
+ * but does NOT store its own scale/position. 
+ * Instead, it uses the parent's scale, position, setScale, setPosition.
+ */
 export function useZoomToMouse({
   containerId = 'tabletop-container',
-  initialPosition = { x: 0, y: 0 },
-  initialScale = 1,
+  scale,
+  position,
+  setScale,
+  setPosition,
   minScale = 0.5,
   maxScale = 4,
-  zoomFactor = 0.1,
-} = {}) {
-  const [position, setPosition] = useState(initialPosition);
-  const [scale, setScale] = useState(initialScale);
-
+  zoomFactor = 0.1
+}) {
+  /**
+   * handleWheel: Zoom in/out around the mouse pointer
+   */
   const handleWheel = useCallback(
     (e) => {
       e.preventDefault();
       
-      // Get container and its position
       const container = document.getElementById(containerId);
       if (!container) return;
       const rect = container.getBoundingClientRect();
@@ -30,16 +37,13 @@ export function useZoomToMouse({
         client: { x: e.clientX, y: e.clientY },
         container: { x: containerX, y: containerY }
       });
-      console.log('Current state:', {
-        position,
-        scale
-      });
+      console.log('Current state:', { position, scale });
 
       // Calculate the scale change
       const delta = -Math.sign(e.deltaY);
       const factor = 1 + delta * zoomFactor;
       const newScale = Math.min(Math.max(scale * factor, minScale), maxScale);
-      
+
       // Convert current mouse point to world coordinates
       const worldX = (containerX - position.x) / scale;
       const worldY = (containerY - position.y) / scale;
@@ -54,7 +58,7 @@ export function useZoomToMouse({
       const scaledX = worldX * newScale;
       const scaledY = worldY * newScale;
 
-      // Calculate the offset needed to keep this point under the mouse
+      // Offset needed so the mouse stays at the same world point
       const newPosition = {
         x: containerX - scaledX,
         y: containerY - scaledY
@@ -63,7 +67,6 @@ export function useZoomToMouse({
       console.log('Results:', {
         scaledPoint: { x: scaledX, y: scaledY },
         newPosition,
-        // Verification: converting back to world coordinates
         resultingWorldPoint: {
           x: (containerX - newPosition.x) / newScale,
           y: (containerY - newPosition.y) / newScale
@@ -71,19 +74,23 @@ export function useZoomToMouse({
       });
       console.log('========================');
 
+      // Update parent's states
       setScale(newScale);
       setPosition(newPosition);
     },
-    [containerId, position, scale, zoomFactor, minScale, maxScale]
+    [containerId, scale, position, setScale, setPosition, zoomFactor, minScale, maxScale]
   );
 
+  /**
+   * handleZoomButtons: e.g. if you have +/- buttons 
+   * to zoom in around the container center
+   */
   const handleZoomButtons = useCallback(
     (factor) => {
       const container = document.getElementById(containerId);
       if (!container) return;
       const rect = container.getBoundingClientRect();
       
-      // Use center of container for button zooms
       const centerX = rect.width / 2;
       const centerY = rect.height / 2;
       
@@ -100,15 +107,12 @@ export function useZoomToMouse({
         y: centerY - scaledY
       });
     },
-    [containerId, position, scale, minScale, maxScale]
+    [containerId, position, scale, setScale, setPosition, minScale, maxScale]
   );
 
+  // Return just the handlers, no internal states
   return {
-    position,
-    scale,
     handleWheel,
-    handleZoomButtons,
-    setPosition,
-    setScale,
+    handleZoomButtons
   };
 }
