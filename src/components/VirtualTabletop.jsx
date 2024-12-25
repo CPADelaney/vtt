@@ -189,31 +189,33 @@ export default function VirtualTabletop() {
    * Load initial state **once** on mount
    * (Remove loadState from the dependency array!)
    */
-  useEffect(() => {
-    console.log('[DEBUG] Attempting to load state...');
-    const loaded = loadState();
-    if (!loaded) {
-      console.log('[DEBUG] No saved state found, creating initial token...');
-      const idStr = `token-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-      setTokens([
-        {
-          id: idStr,
-          position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
-          stats: { hp: 100, maxHp: 100, name: 'New Token' },
-        },
-      ]);
-    } else {
-      console.log('[DEBUG] Loaded state:', loaded);
-      setTokens(loaded.tokens);
-      setIsHexGrid(loaded.grid.isHexGrid);
-      setOuterScale(loaded.grid.scale || 1);
-      setPosition({
-        x: loaded.grid.x || 0,
-        y: loaded.grid.y || 0,
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // <--- No dependencies => runs ONLY on mount.
+  
+    useEffect(() => {
+      const loaded = loadState();
+      if (!loaded) {
+        // If no saved state, create a default token, etc.
+        const idStr = `token-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+        setTokens([
+          {
+            id: idStr,
+            position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
+            stats: { hp: 100, maxHp: 100, name: 'New Token' },
+          },
+        ]);
+      } else {
+        // Load tokens
+        setTokens(loaded.tokens);
+        // Load grid type
+        setIsHexGrid(loaded.grid.isHexGrid);
+        // Restore zoom & pan
+        setOuterScale(loaded.grid.scale || 1);
+        setPosition({
+          x: loaded.grid.x || 0,
+          y: loaded.grid.y || 0
+        });
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
   // MouseDown & ContextMenu
   const handleMouseDown = useCallback(
