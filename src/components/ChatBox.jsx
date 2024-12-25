@@ -1,4 +1,5 @@
 // src/components/ChatBox.jsx
+
 import React, { useState } from 'react';
 import { MessageSquare, History } from 'lucide-react';
 
@@ -8,16 +9,8 @@ export const ChatBox = () => {
   const [actionHistory, setActionHistory] = useState([]);
   const [inCombat, setInCombat] = useState(false);
 
-  // If you want to simulate toggling combat or storing messages,
-  // you can do it here in local state, or remove these states if not needed.
-
-  // For example, if you want a "start combat" button, you could do:
-  // const handleCombatToggle = () => setInCombat(!inCombat);
-
-  // The rest is just UI with no external 'bridge' logic.
-
   return (
-    <div className="fixed bottom-0 right-64 w-96 h-96 bg-white shadow-lg flex flex-col">
+    <div className="chatbox bg-white shadow-lg flex flex-col" style={{ width: '350px', height: '400px' }}>
       {/* Chat Tabs */}
       <div className="flex border-b">
         <button
