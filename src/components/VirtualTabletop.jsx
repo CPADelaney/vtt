@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import _ from 'lodash';
 
 // Hooks
@@ -33,6 +33,21 @@ export default function VirtualTabletop() {
   const [outerScale, setOuterScale] = useState(1); 
   const [position, setPosition] = useState({ x: 0, y: 0 });
 
+  // A ref to store previous tokens array for debug comparison
+  const prevTokensRef = useRef(tokens);
+
+  // Debug effect that checks if tokens is actually changing
+  useEffect(() => {
+    if (prevTokensRef.current !== tokens) {
+      console.log('[DEBUG] Tokens array reference CHANGED');
+      console.log('Previous tokens:', prevTokensRef.current);
+      console.log('New tokens:', tokens);
+    } else {
+      console.log('[DEBUG] Tokens array reference did NOT change');
+    }
+    prevTokensRef.current = tokens;
+  }, [tokens]);
+
   // Memoized grid configuration
   const gridConfig = useMemo(() => ({
     squareSize: DEFAULT_SQUARE_SIZE,
@@ -54,6 +69,7 @@ export default function VirtualTabletop() {
     scale: 1, // or wire up scale from ZoomableContainer
     getSnappedPosition,
     onDragMove: (tokenId, newPos) => {
+      console.log('[DEBUG] onDragMove triggered', { tokenId, newPos });
       setTokens(prev =>
         prev.map(t => (t.id === tokenId ? { ...t, position: newPos } : t))
       );
@@ -71,6 +87,7 @@ export default function VirtualTabletop() {
     const y = e.clientY;
     const snappedPos = getSnappedPosition(x, y);
 
+    console.log('[DEBUG] Adding token at snapped position:', snappedPos);
     setTokens(prev => [
       ...prev,
       {
@@ -82,6 +99,7 @@ export default function VirtualTabletop() {
   }, [getSnappedPosition]);
 
   const handleDeleteTokens = useCallback(() => {
+    console.log('[DEBUG] Deleting tokens with ids:', Array.from(selectedTokenIds));
     setTokens(prev => prev.filter(t => !selectedTokenIds.has(t.id)));
     clearSelection();
   }, [selectedTokenIds, clearSelection]);
@@ -147,37 +165,26 @@ export default function VirtualTabletop() {
   }, []);
 
   // Create the debounced save function
-const debouncedSave = useMemo(() => {
-  return _.debounce((currentTokens) => {
-    console.log('Attempting save...');
-    saveState(currentTokens);
-  }, 1000);
-}, [saveState]);
+  const debouncedSave = useMemo(() => {
+    return _.debounce((currentTokens) => {
+      console.log('Attempting save...');
+      saveState(currentTokens);
+    }, 1000);
+  }, [saveState]);
 
-useEffect(() => {
-  if (tokens.length > 0) {
-    console.log('Tokens changed, scheduling save...');
-    debouncedSave(tokens);
-  }
-  
-  return () => {
-    debouncedSave.cancel();
-  };
-}, [tokens, debouncedSave]);
+  // Only watch token changes for auto-save
+  useEffect(() => {
+    if (tokens.length > 0) {
+      console.log('Tokens changed, scheduling save...');
+      debouncedSave(tokens);
+    }
+    
+    return () => {
+      debouncedSave.cancel();
+    };
+  }, [tokens, debouncedSave]);
 
-// Only watch token changes here
-useEffect(() => {
-  if (tokens.length > 0) {
-    console.log('Tokens changed, scheduling save...');
-    debouncedSave(tokens);
-  }
-  
-  return () => {
-    debouncedSave.cancel();
-  };
-}, [tokens, debouncedSave]);
-  
-  // Update the initial load effect (replace the existing one):
+  // Load initial state
   useEffect(() => {
     const loaded = loadState();
     if (!loaded) {
@@ -211,6 +218,7 @@ useEffect(() => {
 
           const tokenObj = tokens.find(t => t.id === tokenEl.id);
           if (tokenObj) {
+            console.log('[DEBUG] Starting drag for token:', tokenObj.id);
             startDrag(tokenObj, e);
           }
         } else {
@@ -226,6 +234,7 @@ useEffect(() => {
     e => {
       e.preventDefault();
       const tokenEl = e.target.closest('.token');
+      console.log('[DEBUG] Context menu on:', tokenEl ? 'token' : 'grid');
       showMenu(e, { type: tokenEl ? 'token' : 'grid' });
     },
     [showMenu]
