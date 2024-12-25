@@ -16,8 +16,8 @@ export function ZoomableContainer({
 
   // The parent container styles
   const containerStyle = {
-    width: '100%',
-    height: '100%',
+    width: '100vw',
+    height: '100vh',
     overflow: 'hidden',
     position: 'relative',
   };
