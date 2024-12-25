@@ -32,6 +32,7 @@ export default function VirtualTabletop() {
   const [isHexGrid, setIsHexGrid] = useState(false);
   const [tokens, setTokens] = useState([]);
   const [dimensions, setDimensions] = useState({ rows: 0, cols: 0 });
+  const [outerScale, setOuterScale] = useState(1); 
 
   // We no longer store `position` or `scale` here, because ZoomableContainer handles that.
 
@@ -195,22 +196,24 @@ const handleContextMenu = useCallback((e) => {
 
 return (
   <>
-    <Controls
-      isHexGrid={isHexGrid}
-      onToggleGrid={() => setIsHexGrid(!isHexGrid)}
-      // Optional: wire up controls to ZoomableContainer’s handleZoomButtons...
-      onZoomIn={() => {}}
-      onZoomOut={() => {}}
-    />
+      <Controls
+        isHexGrid={isHexGrid}
+        scale={outerScale}  // pass to Controls
+        // handle zoom in/out if you want to call ZoomableContainer from here
+        onZoomIn={() => {}}
+        onZoomOut={() => {}}
+        onToggleGrid={() => setIsHexGrid(!isHexGrid)}
+      />
 
-    <ZoomableContainer
-      containerId="tabletop-container"
-      initialPosition={{ x: 0, y: 0 }}
-      initialScale={1}
-      minScale={MIN_SCALE}
-      maxScale={MAX_SCALE}
-      zoomFactor={ZOOM_FACTOR}
-    >
+      <ZoomableContainer
+        containerId="tabletop-container"
+        onScaleChange={setOuterScale} // <-- whenever ZoomableContainer scale changes
+        initialPosition={{ x: 0, y: 0 }}
+        initialScale={1}
+        minScale={MIN_SCALE}
+        maxScale={MAX_SCALE}
+        zoomFactor={ZOOM_FACTOR}
+      >
       <div
         id="tabletop"
         className={isHexGrid ? 'hex-grid' : 'square-grid'}
