@@ -21,7 +21,7 @@ import { Sidebar } from './Sidebar';
 import { ChatBox } from './ChatBox';
 
 // Constants
-const MIN_SCALE = 0.8;
+const MIN_SCALE = 0.3;
 const MAX_SCALE = 3;
 const ZOOM_FACTOR = 0.1;
 const DEFAULT_SQUARE_SIZE = 50;
