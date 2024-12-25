@@ -1,8 +1,6 @@
-// js/hooks/useCampaignManager.js
 import { useEffect, useMemo, useCallback } from 'react';
 
 export function useCampaignManager(vtt, campaignId = 'default-campaign') {
-  // Helper to get current grid state from vtt-like object
   const getGridState = useCallback(() => ({
     isHexGrid: vtt.isHexGrid,
     scale: vtt.scale,
@@ -12,7 +10,6 @@ export function useCampaignManager(vtt, campaignId = 'default-campaign') {
     },
   }), [vtt]);
 
-  // Saves the given tokens array plus current grid state to localStorage
   const saveState = useCallback((tokens) => {
     const state = {
       campaignId,
@@ -23,13 +20,15 @@ export function useCampaignManager(vtt, campaignId = 'default-campaign') {
 
     try {
       localStorage.setItem(`vtt-state-${campaignId}`, JSON.stringify(state));
-      console.log(`Campaign '${campaignId}' saved at`, new Date().toLocaleTimeString());
+      console.log(
+        `Campaign '${campaignId}' saved at`,
+        new Date().toLocaleTimeString()
+      );
     } catch (error) {
       console.error('Failed to save campaign state:', error);
     }
   }, [campaignId, getGridState]);
 
-  // loadState: Reads localStorage & returns { tokens, grid }
   const loadState = useCallback(() => {
     try {
       const savedState = localStorage.getItem(`vtt-state-${campaignId}`);
@@ -37,7 +36,7 @@ export function useCampaignManager(vtt, campaignId = 'default-campaign') {
 
       const state = JSON.parse(savedState);
 
-      // Remove (or comment out) the auto-toggle to avoid repeated toggles:
+      // If you have toggling issues or loops, comment out:
       // if (state.gridState.isHexGrid !== vtt.isHexGrid) {
       //   vtt.toggleGridType?.();
       // }
@@ -54,7 +53,7 @@ export function useCampaignManager(vtt, campaignId = 'default-campaign') {
           x: state.gridState.position.x,
           y: state.gridState.position.y,
           isHexGrid: state.gridState.isHexGrid,
-        }
+        },
       };
     } catch (error) {
       console.error('Failed to load campaign state:', error);
@@ -64,7 +63,7 @@ export function useCampaignManager(vtt, campaignId = 'default-campaign') {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      // optional auto-save logic
+      // Optional auto-save every 30s, if you pass current tokens, etc.
     }, 30000);
 
     return () => clearInterval(interval);
