@@ -1,43 +1,38 @@
+// ZoomableContainer.jsx
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import _ from 'lodash';
+import { useZoomToMouse } from '../hooks/useZoomToMouse';
 
-/**
- * A "presentation + logic" component that:
- * 1) Receives `scale` and `position` from the parent.
- * 2) Calls `setScale(newVal)` and `setPosition(newVal)` whenever the user zooms or pans.
- * 3) Fires `onZoomEnd()` and `onPanEnd()` after the user stops interacting.
- */
 export function ZoomableContainer({
+  containerId = 'tabletop-container',
   scale,
   position,
   setScale,
   setPosition,
-  minScale = 0.3,
-  maxScale = 3,
+  minScale = 0.5,
+  maxScale = 4,
   zoomFactor = 0.1,
   onZoomEnd,
   onPanEnd,
-  children,
+  children
 }) {
-  // Panning state
+  // Use the advanced "zoom to mouse" hook with parent's states
+  const { handleWheel } = useZoomToMouse({
+    containerId,
+    scale,
+    position,
+    setScale,
+    setPosition,
+    minScale,
+    maxScale,
+    zoomFactor
+  });
+
+  // Right-click panning
   const [isPanning, setIsPanning] = useState(false);
   const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
 
-  // Wheel: zoom in or out
-  const handleWheel = useCallback((e) => {
-    e.preventDefault();
-    // Basic approach: scale up/down by zoomFactor
-    const delta = e.deltaY > 0 ? -1 : 1;
-    const newScale = scale * (1 + delta * zoomFactor);
-    const clamped = Math.min(Math.max(newScale, minScale), maxScale);
-    setScale(clamped);
-
-    // If you want "zoom to mouse" logic, you can do it here:
-    // - Convert (e.clientX, e.clientY) to world coords
-    // - Adjust `position` to keep that point under mouse
-  }, [scale, zoomFactor, minScale, maxScale, setScale]);
-
-  // Debounced detection of "wheel end"
+  // Debounce for "wheel end"
   const handleWheelEnd = useMemo(() => {
     return _.debounce(() => {
       console.log('[DEBUG] wheel ended => onZoomEnd');
@@ -45,14 +40,14 @@ export function ZoomableContainer({
     }, 300);
   }, [onZoomEnd]);
 
+  // Wrap handleWheel to detect the end of scrolling
   const onWheel = useCallback((e) => {
     handleWheel(e);
-    handleWheelEnd(); // schedule the "zoom end" callback
+    handleWheelEnd();
   }, [handleWheel, handleWheelEnd]);
 
-  // Right-click panning
   const startPanning = useCallback((e) => {
-    // If you want to allow left-click pan, remove this check
+    // Right-click only
     if (e.button !== 2) return;
     e.preventDefault();
     setIsPanning(true);
@@ -66,7 +61,7 @@ export function ZoomableContainer({
 
     const dx = e.clientX - lastPos.x;
     const dy = e.clientY - lastPos.y;
-    setPosition(prev => ({
+    setPosition((prev) => ({
       x: prev.x + dx,
       y: prev.y + dy,
     }));
@@ -80,29 +75,30 @@ export function ZoomableContainer({
     onPanEnd?.();
   }, [onPanEnd]);
 
-  // Attach listeners for panning
   useEffect(() => {
     if (!isPanning) return;
-    const mouseMoveHandler = (e) => handleMouseMove(e);
-    const mouseUpHandler = () => stopPanning();
-    const keyDownHandler = (e) => {
+
+    const onMouseMoveHandler = (e) => handleMouseMove(e);
+    const onMouseUpHandler = () => stopPanning();
+    const onKeyDownHandler = (e) => {
       if (e.key === 'Escape') stopPanning();
     };
-    window.addEventListener('mousemove', mouseMoveHandler);
-    window.addEventListener('mouseup', mouseUpHandler);
-    window.addEventListener('keydown', keyDownHandler);
+
+    window.addEventListener('mousemove', onMouseMoveHandler);
+    window.addEventListener('mouseup', onMouseUpHandler);
+    window.addEventListener('keydown', onKeyDownHandler);
 
     return () => {
-      window.removeEventListener('mousemove', mouseMoveHandler);
-      window.removeEventListener('mouseup', mouseUpHandler);
-      window.removeEventListener('keydown', keyDownHandler);
+      window.removeEventListener('mousemove', onMouseMoveHandler);
+      window.removeEventListener('mouseup', onMouseUpHandler);
+      window.removeEventListener('keydown', onKeyDownHandler);
     };
   }, [isPanning, handleMouseMove, stopPanning]);
 
   // Debug
-  console.log('[DEBUG] ZoomableContainer render => scale:', scale, 'pos:', position);
+  console.log('[DEBUG] ZoomableContainer => scale:', scale, 'pos:', position);
 
-  // Styles
+  // Style
   const containerStyle = {
     width: '100%',
     height: '100%',
@@ -114,17 +110,17 @@ export function ZoomableContainer({
     position: 'absolute',
     left: 0,
     top: 0,
-    // Apply parent's scale + position
     transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
     transformOrigin: '0 0',
   };
 
   return (
     <div
+      id={containerId}
       style={containerStyle}
       onWheel={onWheel}
       onMouseDown={startPanning}
-      onContextMenu={e => e.preventDefault()}
+      onContextMenu={(e) => e.preventDefault()}
     >
       <div style={contentStyle}>
         {children}
