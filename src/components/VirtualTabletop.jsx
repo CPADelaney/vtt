@@ -194,6 +194,16 @@ const handleContextMenu = useCallback((e) => {
   showMenu(e, { type: tokenEl ? 'token' : 'grid' });
 }, [showMenu]);
 
+console.log('----DEBUG HEX----', {
+  rows: dimensions.rows,
+  cols: dimensions.cols,
+  squareSize: gridConfig.squareSize,
+  hexSize: gridConfig.hexSize,
+  hexWidth: gridConfig.hexWidth,
+  hexHeight: gridConfig.hexHeight,
+  effectiveHeight: gridConfig.hexHeight * 0.75
+});
+
 return (
   <>
       <Controls
