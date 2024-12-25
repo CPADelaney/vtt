@@ -66,7 +66,7 @@ export default function VirtualTabletop() {
 
   // Token drag logic
   const { startDrag } = useTokenDrag({
-    scale: 1, // or wire up scale from ZoomableContainer if needed
+    scale: 1, 
     getSnappedPosition,
     onDragMove: (tokenId, newPos) => {
       console.log('[DEBUG] onDragMove triggered', { tokenId, newPos });
@@ -113,11 +113,9 @@ export default function VirtualTabletop() {
   // This object is what the campaign manager uses to read scale/position/etc.
   const vttObject = useMemo(() => ({
     isHexGrid,
-    scale: outerScale, // important! must match your current scale state
-    currentX: position.x,
+    scale: outerScale,    // must match React outerScale
+    currentX: position.x, // must match React position.x
     currentY: position.y,
-    // If toggling the grid from loaded state triggers a loop,
-    // you can remove or conditionally call toggleGridType.
     toggleGridType: () => setIsHexGrid(prev => !prev)
   }), [isHexGrid, outerScale, position]);
 
@@ -164,9 +162,17 @@ export default function VirtualTabletop() {
 
   // Create a debounced save function
   const debouncedSave = useMemo(() => {
-    return _.debounce((currentTokens) => {
+    return _.debounce((currentTokens, scaleVal, posVal) => {
       console.log('[DEBUG] Attempting save...');
+      console.log(`[DEBUG] Saving with scale=${scaleVal}, position=(${posVal?.x}, ${posVal?.y})`);
+      
+      // Just to see what localStorage has right now, before we overwrite:
+      console.log('[DEBUG] localStorage BEFORE save:', localStorage.getItem('vtt-state-default-campaign'));
+      
       saveState(currentTokens);
+      
+      // And after saving:
+      console.log('[DEBUG] localStorage AFTER save:', localStorage.getItem('vtt-state-default-campaign'));
     }, 1000);
   }, [saveState]);
 
@@ -174,12 +180,12 @@ export default function VirtualTabletop() {
   useEffect(() => {
     if (tokens.length > 0) {
       console.log('[DEBUG] Tokens changed, scheduling save...');
-      debouncedSave(tokens);
+      debouncedSave(tokens, outerScale, position);
     }
     return () => {
       debouncedSave.cancel();
     };
-  }, [tokens, debouncedSave]);
+  }, [tokens, outerScale, position, debouncedSave]);
 
   // Load initial state (only once on mount)
   useEffect(() => {
@@ -199,6 +205,7 @@ export default function VirtualTabletop() {
       console.log('[DEBUG] Loaded state:', loaded);
       setTokens(loaded.tokens);
       setIsHexGrid(loaded.grid.isHexGrid);
+      // Restore zoom & pan
       setOuterScale(loaded.grid.scale || 1);
       setPosition({
         x: loaded.grid.x || 0,
@@ -278,13 +285,12 @@ export default function VirtualTabletop() {
         containerId="tabletop-container"
         onScaleChange={setOuterScale}
         onPositionChange={setPosition}
-        // Try logging here to confirm it fires:
         onZoomEnd={() => {
-          console.log('[DEBUG] Zoom ended, saving...');
+          console.log('[DEBUG] Zoom ended, calling save...');
           saveState(tokens);
         }}
         onPanEnd={() => {
-          console.log('[DEBUG] Pan ended, saving...');
+          console.log('[DEBUG] Pan ended, calling save...');
           saveState(tokens);
         }}
         initialPosition={position}
