@@ -2,7 +2,7 @@
 import React from 'react';
 import VirtualTabletop from './components/VirtualTabletop';
 import ToolsBar from './components/ToolsBar';     // We'll create ToolsBar.jsx
-import Sidebar from './components/Sidebar';       // or Chat/DM tools
+import { Sidebar } from './components/Sidebar';
 import '../css/styles.css';
 
 export default function App() {
