@@ -1,70 +1,51 @@
+// useCampaignManager.js
 import { useEffect, useMemo, useCallback } from 'react';
 
-export function useCampaignManager(vtt, campaignId = 'default-campaign') {
-  const getGridState = useCallback(() => ({
-    isHexGrid: vtt.isHexGrid,
-    scale: vtt.scale,
-    position: {
-      x: vtt.currentX,
-      y: vtt.currentY,
-    },
-  }), [vtt]);
-  
+export function useCampaignManager(campaignId = 'default-campaign') {
+  // Save the entire object to localStorage
   const saveState = useCallback((fullState) => {
-    localStorage.setItem(`vtt-state-${campaignId}`, JSON.stringify(fullState));
-    console.log(`Campaign '${campaignId}' saved at`, new Date().toLocaleTimeString());
-  }, [campaignId]);
-
-
     try {
-      localStorage.setItem(`vtt-state-${campaignId}`, JSON.stringify(state));
-      console.log(
-        `Campaign '${campaignId}' saved at`,
-        new Date().toLocaleTimeString()
-      );
+      // Add a timestamp if you want
+      const stateWithTimestamp = {
+        ...fullState,
+        timestamp: Date.now(),
+      };
+
+      localStorage.setItem(`vtt-state-${campaignId}`, JSON.stringify(stateWithTimestamp));
+      console.log(`Campaign '${campaignId}' saved at`, new Date().toLocaleTimeString());
     } catch (error) {
       console.error('Failed to save campaign state:', error);
     }
-  }, [campaignId, getGridState]);
-
-  const loadState = useCallback(() => {
-    const savedJSON = localStorage.getItem(`vtt-state-${campaignId}`);
-    if (!savedJSON) return null;
-  
-    const savedState = JSON.parse(savedJSON);
-    console.log(`Campaign '${campaignId}' loaded at`, new Date(savedState.timestamp).toLocaleTimeString());
-    
-    return savedState;  // the entire object
   }, [campaignId]);
 
+  // Load the entire object from localStorage
+  const loadState = useCallback(() => {
+    try {
+      const savedJSON = localStorage.getItem(`vtt-state-${campaignId}`);
+      if (!savedJSON) return null;
 
+      const loaded = JSON.parse(savedJSON);
       console.log(
         `Campaign '${campaignId}' loaded at`,
-        new Date(state.timestamp).toLocaleTimeString()
+        new Date(loaded.timestamp).toLocaleTimeString()
       );
 
-      return {
-        tokens: state.tokens || [],
-        grid: {
-          scale: state.gridState.scale,
-          x: state.gridState.position.x,
-          y: state.gridState.position.y,
-          isHexGrid: state.gridState.isHexGrid,
-        },
-      };
+      // Return the entire object (tokens, scale, position, etc.)
+      return loaded;
     } catch (error) {
       console.error('Failed to load campaign state:', error);
       return null;
     }
-  }, [campaignId, vtt]);
+  }, [campaignId]);
 
+  // Optional auto-save every 30s
   useEffect(() => {
     const interval = setInterval(() => {
-      // Optional auto-save every 30s, if you pass current tokens, etc.
+      // e.g. if you want a timed “saveState(currentState)” call
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [saveState]);
+  }, []);
 
   return useMemo(() => ({
     saveState,
