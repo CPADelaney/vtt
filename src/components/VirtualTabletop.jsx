@@ -80,13 +80,8 @@ export default function VirtualTabletop() {
       // For now, we do something like:
       const { tokens, isHexGrid, scale, position } = fullState;
       // Save tokens + grid data
-      saveState(tokens); // or update your campaign manager to accept more data
-      // OR ideally update your campaign manager to accept the entire fullState
-      // and store everything in localStorage
-      // e.g. saveFullState(fullState);
-    },
-    [saveState]
-  );
+      saveState(fullState); // <-- pass the entire object, not just tokens
+    }, [saveState]);
 
   // 4) Auto-save effect (for entire gameState) with a 2s debounce
   useAutoSave(gameState, persistGameState, 2000);
