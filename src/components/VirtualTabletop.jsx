@@ -146,39 +146,20 @@ export default function VirtualTabletop() {
     return () => document.removeEventListener('wheel', preventDefault);
   }, []);
 
-// Replace the existing debouncedSave with this:
-const debouncedSave = useMemo(
-  () => _.debounce((tokens) => {
-    if (tokens.length > 0) {
-      console.log('Saving state...', {
-        tokensCount: tokens.length,
-        scale: outerScale,
-        position,
-      });
-      saveState(tokens);
-    }
-  }, 1000),
-  [saveState, outerScale, position] // Include these dependencies since we use them in the save
-);
-  
-// Combined save effect
+// Create the debounced save function
+const debouncedSave = useMemo(() => createDebouncedSave(), [createDebouncedSave]);
+
+// Only watch token changes here
 useEffect(() => {
   if (tokens.length > 0) {
+    console.log('Tokens changed, scheduling save...');
     debouncedSave(tokens);
   }
-
-    // Cleanup
+  
   return () => {
     debouncedSave.cancel();
   };
-}, [tokens, outerScale, position, debouncedSave]);
-
-  // Save when scale or position changes
-useEffect(() => {
-  if (tokens.length > 0) { // Only save if we have tokens to avoid overwriting with empty state
-    saveState(tokens);
-  }
-}, [outerScale, position, saveState, tokens]);
+}, [tokens, debouncedSave]);
   
   // Update the initial load effect (replace the existing one):
   useEffect(() => {
