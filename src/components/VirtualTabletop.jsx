@@ -151,6 +151,13 @@ export default function VirtualTabletop() {
     saveState(tokens);
   }
 }, [tokens, saveState]);
+
+  // Save when scale or position changes
+useEffect(() => {
+  if (tokens.length > 0) { // Only save if we have tokens to avoid overwriting with empty state
+    saveState(tokens);
+  }
+}, [outerScale, position, saveState, tokens]);
   
   // Update the initial load effect (replace the existing one):
   useEffect(() => {
