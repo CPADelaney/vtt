@@ -181,21 +181,72 @@ body {
   width: 0 !important;
 }
 
-/* Main content area */
+
+/* 
+   3-COLUMN LAYOUT:
+   - Left (tools): fixed ~60px
+   - Middle (main game area): flexible
+   - Right (chat, DM tools): fixed ~350px
+*/
+.app-layout {
+  display: grid;
+  grid-template-columns: 60px 1fr 350px; 
+  /* 
+    ^ Left ~60px icons
+         ^ Middle flexible
+               ^ Right 350px 
+  */
+  grid-template-rows: 100%;
+  grid-template-areas: "tools-bar main-content right-sidebar";
+
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden; /* no scrollbars on the root layout */
+}
+
+/* Left column: Tools bar (icons, drawing, etc.) */
+.tools-bar {
+  grid-area: tools-bar;
+  background-color: #f5f5f5;
+  border-right: 1px solid #ccc;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* center icons horizontally */
+  padding-top: 10px;
+  overflow-y: auto;
+}
+
+/* Middle column: the main game area */
 .main-content {
   grid-area: main-content;
   position: relative;
+  background: #eaeaea;
   overflow: hidden;
+  /* or overflow: auto, if you want scrollbars */
 }
 
-/* Right area for chat, DM tools, etc. */
-.right-area {
-  grid-area: right-area;
-  background-color: #f9f9f9;
+/* Right column: Chat, DM Tools, character sheets, etc. */
+.right-sidebar {
+  grid-area: right-sidebar;
+  background-color: #fff;
   border-left: 1px solid #ccc;
   overflow-y: auto;
 }
 
+/* Example class for icon buttons in left column */
+.tool-icon {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 10px;
+  border: none;
+  background: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  /* just an example hover style */
+}
+.tool-icon:hover {
+  background: #eee;
+}
 .chatbox {
   z-index: 900;
 }
