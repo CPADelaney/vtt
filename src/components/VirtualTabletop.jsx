@@ -168,33 +168,14 @@ export default function VirtualTabletop() {
     console.log('[DEBUG] Loading campaign state on mount...');
     const loaded = loadState();
     if (loaded) {
-      console.log('[DEBUG] Loaded state:', loaded);
-      setGameState((prev) => ({
-        ...prev,
-        isHexGrid: loaded.grid.isHexGrid,
-        tokens: loaded.tokens,
-        scale: loaded.grid.scale || 1,
-        position: {
-          x: loaded.grid.x || 0,
-          y: loaded.grid.y || 0,
-        },
-      }));
+      console.log('[DEBUG] Loaded entire fullState:', loaded);
+      // Overwrite everything in gameState with the loaded object
+      setGameState(loaded);
     } else {
-      console.log('[DEBUG] No saved state found, creating a default token...');
-      const newId = `token-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-      setGameState((prev) => ({
-        ...prev,
-        tokens: [
-          {
-            id: newId,
-            position: { x: 600, y: 400 },
-            stats: { hp: 100, maxHp: 100, name: 'New Token' },
-          },
-        ],
-      }));
+      console.log('[DEBUG] No saved state found...');
+      // set a default if needed
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadState]);
 
   // Zoom in/out
   const onZoomIn = () => {
