@@ -1,7 +1,10 @@
-// App.jsx
+// src/App.jsx
+
 import React, { useState } from 'react';
 import VirtualTabletop from './components/VirtualTabletop.jsx';
-import '../css/styles.css'; // Where your .app-layout, .left-sidebar, etc., live
+import { Sidebar } from './components/Sidebar.jsx';
+import { ChatBox } from './components/ChatBox.jsx';
+import './styles.css'; // Where .app-layout, .left-sidebar, etc. are
 
 export default function App() {
   const [collapsed, setCollapsed] = useState(false);
@@ -13,13 +16,25 @@ export default function App() {
         <button onClick={() => setCollapsed(!collapsed)}>
           {collapsed ? 'Expand' : 'Collapse'}
         </button>
-        {/* Sidebar content (DM controls, tabs, chat, etc.) */}
+
+        {/* Our collapsible DM Sidebar */}
+        <Sidebar />
       </div>
 
       {/* MAIN CONTENT */}
       <div className="main-content">
         {/* This is where your tabletop lives */}
         <VirtualTabletop />
+
+        {/* 
+          If you want the ChatBox in the main content area, just place it below.
+          For example, pinned at the bottom-right within main-content? 
+          Then you might add some absolute styling. 
+          Or just display it. 
+        */}
+        <div style={{ marginTop: '20px' }}>
+          <ChatBox />
+        </div>
       </div>
     </div>
   );
