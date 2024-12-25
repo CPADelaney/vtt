@@ -1,11 +1,13 @@
-// ZoomableContainer.jsx
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import _ from 'lodash';
 import { useZoomToMouse } from '../hooks/useZoomToMouse';
 
 export function ZoomableContainer({
   containerId = 'tabletop-container',
   onScaleChange,
   onPositionChange,
+  onZoomEnd,
+  onPanEnd,
   initialPosition = { x: 0, y: 0 },
   children,
   ...options
@@ -16,32 +18,42 @@ export function ZoomableContainer({
     scale,
     setScale,
     handleWheel,
-    handleZoomButtons,
-  } = useZoomToMouse({ 
-    containerId, 
+  } = useZoomToMouse({
+    containerId,
     initialPosition,
-    ...options 
+    ...options
   });
+
+  // For detecting "wheel end"
+  const handleWheelEnd = useMemo(() => {
+    return _.debounce(() => {
+      console.log('[DEBUG] wheel ended => onZoomEnd');
+      onZoomEnd?.();
+    }, 300);
+  }, [onZoomEnd]);
+
+  // Wrap handleWheel so we can detect end
+  const onWheel = useCallback((e) => {
+    handleWheel(e);
+    handleWheelEnd(); // schedule a call to onZoomEnd 300ms after the last wheel event
+  }, [handleWheel, handleWheelEnd]);
 
   // Report scale changes
   useEffect(() => {
-    if (onScaleChange) {
-      onScaleChange(scale);
-    }
+    onScaleChange?.(scale);
   }, [scale, onScaleChange]);
 
   // Report position changes
   useEffect(() => {
-    if (onPositionChange) {
-      onPositionChange(position);
-    }
+    onPositionChange?.(position);
   }, [position, onPositionChange]);
 
-  // Right-click panning state
+  // Right-click panning
   const [isPanning, setIsPanning] = useState(false);
   const [lastPosition, setLastPosition] = useState({ x: 0, y: 0 });
 
   const startPanning = useCallback((e) => {
+    // Right-click only. If you want left-click pan, remove the check below:
     if (e.button !== 2) return;
     e.preventDefault();
     setIsPanning(true);
@@ -54,9 +66,9 @@ export function ZoomableContainer({
     e.preventDefault();
     const deltaX = e.clientX - lastPosition.x;
     const deltaY = e.clientY - lastPosition.y;
-    setPosition((prev) => ({
+    setPosition(prev => ({
       x: prev.x + deltaX,
-      y: prev.y + deltaY
+      y: prev.y + deltaY,
     }));
     setLastPosition({ x: e.clientX, y: e.clientY });
   }, [isPanning, lastPosition, setPosition]);
@@ -64,27 +76,29 @@ export function ZoomableContainer({
   const stopPanning = useCallback(() => {
     setIsPanning(false);
     document.body.style.cursor = '';
-  }, []);
+    console.log('[DEBUG] stopPanning => calling onPanEnd');
+    onPanEnd?.();
+  }, [onPanEnd]);
 
   useEffect(() => {
     if (!isPanning) return;
-    
-    const onMouseMove = (e) => handleMouseMove(e);
-    const onMouseUp = () => stopPanning();
-    const onKeyDown = (e) => {
+
+    const onMouseMoveHandler = (e) => handleMouseMove(e);
+    const onMouseUpHandler = () => stopPanning();
+    const onKeyDownHandler = (e) => {
       if (e.key === 'Escape') stopPanning();
     };
 
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('mousemove', onMouseMoveHandler);
+    window.addEventListener('mouseup', onMouseUpHandler);
+    window.addEventListener('keydown', onKeyDownHandler);
 
     return () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('mousemove', onMouseMoveHandler);
+      window.removeEventListener('mouseup', onMouseUpHandler);
+      window.removeEventListener('keydown', onKeyDownHandler);
     };
-  }, [isPanning, handleMouseMove, stopPanning]);
+  }, [isPanning, stopPanning, handleMouseMove]);
 
   const containerStyle = {
     width: '100vw',
@@ -107,7 +121,7 @@ export function ZoomableContainer({
     <div
       id={containerId}
       style={containerStyle}
-      onWheel={handleWheel}
+      onWheel={onWheel}
       onMouseDown={startPanning}
       onContextMenu={(e) => e.preventDefault()}
     >
