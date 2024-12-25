@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, Swords } from 'lucide-react';
 
-export const Sidebar = () => {
+export const Sidebar = ({ isHexGrid, onToggleGrid }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [inCombat, setInCombat] = useState(false);
 
@@ -14,14 +14,23 @@ export const Sidebar = () => {
       }`}
       style={{ borderBottom: '1px solid #ccc' }}
     >
+      {/* Collapse/Expand Button */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        style={{ background: 'white', border: '1px solid #ccc' }}
+        style={{ 
+          background: 'white', 
+          border: '1px solid #ccc', 
+          margin: '8px',
+          cursor: 'pointer',
+          alignSelf: 'flex-start' 
+        }}
       >
-        {isExpanded ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+        {isExpanded ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
       </button>
 
+      {/* DM Tools Content */}
       <div className="flex flex-col w-full">
+        {/* Header */}
         <div className="p-4 border-b">
           <h2 className="font-bold text-lg flex items-center">
             <Swords size={20} className="mr-2" />
@@ -30,6 +39,7 @@ export const Sidebar = () => {
         </div>
 
         <div className="p-4 space-y-4">
+          {/* Combat Toggle */}
           <button
             onClick={() => setInCombat(!inCombat)}
             className={`w-full font-bold py-2 px-4 rounded transition-colors ${
@@ -39,6 +49,14 @@ export const Sidebar = () => {
             }`}
           >
             {inCombat ? 'End Combat' : 'Start Combat'}
+          </button>
+
+          {/* Grid Toggle */}
+          <button
+            onClick={onToggleGrid}
+            className="w-full font-bold py-2 px-4 rounded transition-colors bg-gray-300 hover:bg-gray-400 text-black"
+          >
+            {isHexGrid ? 'Switch to Square Grid' : 'Switch to Hex Grid'}
           </button>
         </div>
       </div>
