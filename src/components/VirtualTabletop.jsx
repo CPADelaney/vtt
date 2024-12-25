@@ -31,6 +31,7 @@ export default function VirtualTabletop() {
   const [tokens, setTokens] = useState([]);
   const [dimensions, setDimensions] = useState({ rows: 0, cols: 0 });
   const [outerScale, setOuterScale] = useState(1); 
+  const [position, setPosition] = useState({ x: 0, y: 0 });
 
   // Memoized grid configuration
   const gridConfig = useMemo(() => ({
@@ -91,13 +92,15 @@ export default function VirtualTabletop() {
     onDeleteTokens: handleDeleteTokens,
   });
 
-  // VTT state object
   const vttObject = useMemo(
     () => ({
       isHexGrid,
-      // other fields if needed
+      scale: outerScale,
+      currentX: position.x,
+      currentY: position.y,
+      toggleGridType: () => setIsHexGrid(prev => !prev)
     }),
-    [isHexGrid]
+    [isHexGrid, outerScale, position]
   );
 
   // Campaign manager
@@ -143,7 +146,13 @@ export default function VirtualTabletop() {
     return () => document.removeEventListener('wheel', preventDefault);
   }, []);
 
-  // Initial load
+  useEffect(() => {
+  if (tokens.length > 0) {
+    saveState(tokens);
+  }
+}, [tokens, saveState]);
+  
+  // Update the initial load effect (replace the existing one):
   useEffect(() => {
     const loaded = loadState();
     if (!loaded) {
@@ -158,6 +167,11 @@ export default function VirtualTabletop() {
     } else {
       setTokens(loaded.tokens);
       setIsHexGrid(loaded.grid.isHexGrid);
+      setOuterScale(loaded.grid.scale || 1);
+      setPosition({
+        x: loaded.grid.x || 0,
+        y: loaded.grid.y || 0
+      });
     }
   }, [loadState]);
 
@@ -222,19 +236,17 @@ export default function VirtualTabletop() {
 
   return (
     <>
-      {/* Zoom Controls */}
       <Controls
         onZoomIn={onZoomIn}
         onZoomOut={onZoomOut}
-        // if you no longer want to show "Toggle Grid" here, omit that prop
       />
 
-      {/* The Zoomable container for panning/zoom in the big area */}
       <ZoomableContainer
         containerId="tabletop-container"
         onScaleChange={setOuterScale}
-        initialPosition={{ x: 0, y: 0 }}
-        initialScale={1}
+        onPositionChange={setPosition}
+        initialPosition={position}
+        initialScale={outerScale}
         minScale={MIN_SCALE}
         maxScale={MAX_SCALE}
         zoomFactor={ZOOM_FACTOR}
@@ -267,13 +279,11 @@ export default function VirtualTabletop() {
         </div>
       </ZoomableContainer>
 
-      {/* DM Tools Sidebar (with Grid Toggle) */}
       <Sidebar
         isHexGrid={isHexGrid}
         onToggleGrid={onToggleGrid}
       />
 
-      {/* Chat */}
       <ChatBox />
     </>
   );
