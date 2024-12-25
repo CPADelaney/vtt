@@ -1,5 +1,5 @@
 import React from 'react';
-import { useZoomToMouse } from './useZoomToMouse';
+import { useZoomToMouse } from '../hooks/useZoomToMouse';
 
 export function ZoomableContainer({
   containerId = 'tabletop-container',
