@@ -146,11 +146,32 @@ export default function VirtualTabletop() {
     return () => document.removeEventListener('wheel', preventDefault);
   }, []);
 
-  useEffect(() => {
+// Replace the existing debouncedSave with this:
+const debouncedSave = useMemo(
+  () => _.debounce((tokens) => {
+    if (tokens.length > 0) {
+      console.log('Saving state...', {
+        tokensCount: tokens.length,
+        scale: outerScale,
+        position,
+      });
+      saveState(tokens);
+    }
+  }, 1000),
+  [saveState, outerScale, position] // Include these dependencies since we use them in the save
+);
+  
+// Combined save effect
+useEffect(() => {
   if (tokens.length > 0) {
-    saveState(tokens);
+    debouncedSave(tokens);
   }
-}, [tokens, saveState]);
+
+    // Cleanup
+  return () => {
+    debouncedSave.cancel();
+  };
+}, [tokens, outerScale, position, debouncedSave]);
 
   // Save when scale or position changes
 useEffect(() => {
