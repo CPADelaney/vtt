@@ -208,12 +208,20 @@ export default function VirtualTabletop() {
     }
   }, [clearSelection, selectTokenId, tokens, startDrag, startMarquee]);
 
+
   const handleContextMenu = useCallback((e) => {
-    console.log('[DEBUG-CHAIN] 5. VirtualTabletop contextmenu received');
+    // Always prevent default first
     e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('[DEBUG-CHAIN] 5. VirtualTabletop contextmenu received');
+    
     const tokenEl = e.target.closest('.token');
     console.log('[DEBUG-CHAIN] 6. Target type:', tokenEl ? 'token' : 'grid');
-    showMenu(e, { type: tokenEl ? 'token' : 'grid' });
+    
+    showMenu(e, { 
+      type: tokenEl ? 'token' : 'grid'
+    });
   }, [showMenu]);
 
   const onToggleGrid = () => {
