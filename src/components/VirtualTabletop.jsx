@@ -205,32 +205,42 @@ export default function VirtualTabletop() {
     }));
   };
 
-const handleMouseDown = useCallback((e) => {
-  console.log('[DEBUG] MouseDown event:', {
-    button: e.button,
-    target: e.target,
-    isToken: e.target.closest('.token') !== null,
-    shiftKey: e.shiftKey
-  });
-
-  if (e.button === 0) { // Left click
-    const tokenEl = e.target.closest('.token');
-    if (tokenEl) {
-      if (!e.shiftKey) clearSelection();
-      selectTokenId(tokenEl.id, e.shiftKey);
-
-      const tokenObj = tokens.find(t => t.id === tokenEl.id);
-      if (tokenObj) {
-        console.log('[DEBUG] start drag for token', tokenObj.id);
-        startDrag(tokenObj, e);
+  const handleMouseDown = useCallback((e) => {
+    // Stop any default behavior and propagation
+    e.preventDefault();
+    e.stopPropagation();
+  
+    console.log('[DEBUG] MouseDown triggered:', {
+      button: e.button,
+      target: e.target.className,
+      x: e.clientX,
+      y: e.clientY
+    });
+  
+    if (e.button === 0) { // Left click
+      const tokenEl = e.target.closest('.token');
+      
+      console.log('[DEBUG] Token check:', {
+        isToken: !!tokenEl,
+        tokenId: tokenEl?.id
+      });
+  
+      if (tokenEl) {
+        if (!e.shiftKey) clearSelection();
+        selectTokenId(tokenEl.id, e.shiftKey);
+  
+        const tokenObj = tokens.find(t => t.id === tokenEl.id);
+        if (tokenObj) {
+          console.log('[DEBUG] Starting token drag');
+          startDrag(tokenObj, e);
+        }
+      } else {
+        console.log('[DEBUG] Starting marquee');
+        if (!e.shiftKey) clearSelection();
+        startMarquee(e);
       }
-    } else {
-      console.log('[DEBUG] Starting marquee selection');
-      if (!e.shiftKey) clearSelection();
-      startMarquee(e);
     }
-  }
-}, [clearSelection, selectTokenId, tokens, startDrag, startMarquee]);
+  }, [clearSelection, selectTokenId, tokens, startDrag, startMarquee]);
 
 
   const handleContextMenu = useCallback((e) => {
