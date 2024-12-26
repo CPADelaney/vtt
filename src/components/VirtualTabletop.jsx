@@ -205,32 +205,32 @@ export default function VirtualTabletop() {
     }));
   };
 
-  const handleMouseDown = useCallback((e) => {
-    if (e.button === 0) { // Left click
-      console.log('[DEBUG] MouseDown event:', {
-        button: e.button,
-        target: e.target,
-        isToken: e.target.closest('.token') !== null,
-        shiftKey: e.shiftKey
-      });
-  
-      const tokenEl = e.target.closest('.token');
-      if (tokenEl) {
-        if (!e.shiftKey) clearSelection();
-        selectTokenId(tokenEl.id, e.shiftKey);
-  
-        const tokenObj = tokens.find(t => t.id === tokenEl.id);
-        if (tokenObj) {
-          console.log('[DEBUG] start drag for token', tokenObj.id);
-          startDrag(tokenObj, e);
-        }
-      } else {
-        console.log('[DEBUG] Starting marquee selection');
-        if (!e.shiftKey) clearSelection();
-        startMarquee(e);
+const handleMouseDown = useCallback((e) => {
+  console.log('[DEBUG] MouseDown event:', {
+    button: e.button,
+    target: e.target,
+    isToken: e.target.closest('.token') !== null,
+    shiftKey: e.shiftKey
+  });
+
+  if (e.button === 0) { // Left click
+    const tokenEl = e.target.closest('.token');
+    if (tokenEl) {
+      if (!e.shiftKey) clearSelection();
+      selectTokenId(tokenEl.id, e.shiftKey);
+
+      const tokenObj = tokens.find(t => t.id === tokenEl.id);
+      if (tokenObj) {
+        console.log('[DEBUG] start drag for token', tokenObj.id);
+        startDrag(tokenObj, e);
       }
+    } else {
+      console.log('[DEBUG] Starting marquee selection');
+      if (!e.shiftKey) clearSelection();
+      startMarquee(e);
     }
-  }, [clearSelection, selectTokenId, tokens, startDrag, startMarquee]);
+  }
+}, [clearSelection, selectTokenId, tokens, startDrag, startMarquee]);
 
 
   const handleContextMenu = useCallback((e) => {
