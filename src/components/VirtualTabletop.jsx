@@ -209,11 +209,14 @@ export default function VirtualTabletop() {
   }, [clearSelection, selectTokenId, tokens, startDrag, startMarquee]);
 
   const handleContextMenu = useCallback((e) => {
+    console.log('[DEBUG] Tabletop contextmenu event received', e.target);
     e.preventDefault();
+    e.stopPropagation(); // Stop it here to prevent any parent handlers
     const tokenEl = e.target.closest('.token');
     console.log('[DEBUG] context menu on', tokenEl ? 'token' : 'grid');
     showMenu(e, { type: tokenEl ? 'token' : 'grid' });
   }, [showMenu]);
+
 
   const onToggleGrid = () => {
     setGameState(prev => ({
