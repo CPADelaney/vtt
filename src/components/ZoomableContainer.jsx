@@ -30,9 +30,6 @@ export function ZoomableContainer({
   // Right-click panning state
   const [isPanning, setIsPanning] = useState(false);
   const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
-  
-  // Track if we're handling a pan to prevent context menu
-  const isPanningRef = useRef(false);
 
   // Debounced wheel end detection
   const handleWheelEnd = useMemo(() => {
@@ -48,78 +45,68 @@ export function ZoomableContainer({
   }, [handleWheel, handleWheelEnd]);
 
   const startPanning = useCallback((e) => {
-    // Only handle right click
-    if (e.button !== 2) return;
-    
-    // Important: Stop event propagation
-    e.stopPropagation();
-    e.preventDefault();
-    
-    isPanningRef.current = true;
-    setIsPanning(true);
-    setLastPos({ x: e.clientX, y: e.clientY });
-    document.body.style.cursor = 'grabbing';
+    // Only handle right click and ensure context menu is prevented
+    if (e.button === 2) {
+      e.preventDefault();
+      
+      setIsPanning(true);
+      setLastPos({ x: e.clientX, y: e.clientY });
+      document.body.style.cursor = 'grabbing';
+    }
   }, []);
 
   const handleMouseMove = useCallback((e) => {
     if (!isPanning) return;
     
     e.preventDefault();
-    e.stopPropagation();
     
     const dx = e.clientX - lastPos.x;
     const dy = e.clientY - lastPos.y;
     
-    setPosition(prev => ({
-      x: (prev?.x || 0) + dx,
-      y: (prev?.y || 0) + dy
-    }));
+    setPosition(prev => {
+      const currentX = prev?.x ?? 0;
+      const currentY = prev?.y ?? 0;
+      return {
+        x: currentX + dx,
+        y: currentY + dy
+      };
+    });
     
     setLastPos({ x: e.clientX, y: e.clientY });
   }, [isPanning, lastPos, setPosition]);
 
   const stopPanning = useCallback(() => {
-    setIsPanning(false);
-    isPanningRef.current = false;
-    document.body.style.cursor = '';
-    onPanEnd?.();
-  }, [onPanEnd]);
-
-  // Handle context menu behavior
-  const handleContextMenu = useCallback((e) => {
-    // If we're panning or just finished panning, prevent context menu
-    if (isPanningRef.current) {
-      e.preventDefault();
-      e.stopPropagation();
-      isPanningRef.current = false;
-      return;
+    if (isPanning) {
+      setIsPanning(false);
+      document.body.style.cursor = '';
+      onPanEnd?.();
     }
+  }, [isPanning, onPanEnd]);
+
+  // Always prevent context menu when right-clicking
+  const handleContextMenu = useCallback((e) => {
+    e.preventDefault();
   }, []);
 
   useEffect(() => {
-    if (!isPanning) return;
+    if (isPanning) {
+      const onMouseMove = (e) => handleMouseMove(e);
+      const onMouseUp = () => stopPanning();
+      const onKeyDown = (e) => {
+        if (e.key === 'Escape') stopPanning();
+      };
 
-    const onMouseMoveHandler = (e) => handleMouseMove(e);
-    const onMouseUpHandler = () => stopPanning();
-    const onKeyDownHandler = (e) => {
-      if (e.key === 'Escape') stopPanning();
-    };
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
+      window.addEventListener('keydown', onKeyDown);
 
-    window.addEventListener('mousemove', onMouseMoveHandler);
-    window.addEventListener('mouseup', onMouseUpHandler);
-    window.addEventListener('keydown', onKeyDownHandler);
-
-    return () => {
-      window.removeEventListener('mousemove', onMouseMoveHandler);
-      window.removeEventListener('mouseup', onMouseUpHandler);
-      window.removeEventListener('keydown', onKeyDownHandler);
-    };
+      return () => {
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+        window.removeEventListener('keydown', onKeyDown);
+      };
+    }
   }, [isPanning, handleMouseMove, stopPanning]);
-
-  // Debug logging
-  useEffect(() => {
-    console.log('[DEBUG] ZoomableContainer => scale:', scale, 'pos:', position);
-  }, [scale, position]);
 
   const containerStyle = {
     width: '100%',
