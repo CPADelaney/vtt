@@ -106,11 +106,6 @@ export function ZoomableContainer({
       onPanEnd?.();
     }
   }, [isPanning, onPanEnd]);
-
-const handleContextMenu = useCallback((e) => {
-  console.log('[DEBUG-CHAIN] 1. ZoomableContainer contextmenu received');
-  // Always prevent browser's default context menu
-  e.preventDefault();
   
 const isToken = e.target.closest('.token');
   console.log('[DEBUG-CHAIN] 2. Is token?', isToken);
@@ -127,22 +122,29 @@ const isToken = e.target.closest('.token');
   setPanStarted(false);
 }, [isPanning, panStarted]);
 
-  // Handle context menu
-  const handleContextMenu = useCallback((e) => {
-    console.log('[DEBUG] ZoomableContainer contextmenu event', e.target);
-    // Only prevent default browser menu
-    e.preventDefault();
-    
-    // Very important: Don't stop propagation if not panning
-    if (!isPanning && !panStarted) {
-      console.log('[DEBUG] ZoomableContainer allowing event to bubble');
-      return;
-    }
-    
-    console.log('[DEBUG] ZoomableContainer stopping event - was panning');
-    e.stopPropagation();
-    setPanStarted(false);
-  }, [isPanning, panStarted]);
+const handleContextMenu = useCallback((e) => {
+  console.log('[DEBUG-CHAIN] 1. ZoomableContainer contextmenu received');
+  // Always prevent browser's default context menu
+  e.preventDefault();
+  
+  const isToken = e.target.closest('.token');
+  console.log('[DEBUG-CHAIN] 2. Target info:', {
+    isToken,
+    isPanning,
+    panStarted,
+    element: e.target
+  });
+  
+  // If we're not panning, allow event to bubble up
+  if (!isPanning && !panStarted) {
+    console.log('[DEBUG-CHAIN] 3. Allowing event to bubble');
+    return;
+  }
+  
+  console.log('[DEBUG-CHAIN] 4. Stopping event - was panning');
+  e.stopPropagation();
+  setPanStarted(false);
+}, [isPanning, panStarted]);
 
   useEffect(() => {
     if (isPanning || panStarted) {
