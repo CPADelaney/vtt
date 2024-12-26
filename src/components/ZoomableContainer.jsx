@@ -184,10 +184,9 @@ return (
   >
     <div 
       style={contentStyle}
-      onContextMenu={handleContextMenu}  {/* Move context menu handler here */}
+      onContextMenu={handleContextMenu}  // Context menu handler on content div
     >
       {children}
     </div>
   </div>
 );
-}
