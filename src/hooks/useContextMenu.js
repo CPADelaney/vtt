@@ -17,25 +17,36 @@ export function useContextMenu({ onAddToken, onDeleteTokens }) {
    * @param {object} options - E.g. { type: 'token' | 'grid' }
    */
 const showMenu = useCallback((e, options) => {
-  console.log('[DEBUG-CHAIN] 8. showMenu called:', options);
+  console.log('[DEBUG-CHAIN] 7. showMenu called with options:', options);
   e.preventDefault();
   
-  // Remove any existing menu
+  // Remove any existing menu first
   const existingMenu = document.querySelector('.context-menu');
   if (existingMenu) {
-    console.log('[DEBUG-CHAIN] 9. Removing existing menu');
+    console.log('[DEBUG-CHAIN] 8. Removing existing menu');
     existingMenu.remove();
   }
-  
+
   const menuEl = document.createElement('div');
   menuEl.className = 'context-menu';
-  menuEl.style.left = `${e.clientX}px`;
-  menuEl.style.top = `${e.clientY}px`;
-  
+  menuEl.style.cssText = `
+    position: fixed;
+    left: ${e.clientX}px;
+    top: ${e.clientY}px;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 4px 0;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    z-index: 9999;
+    min-width: 120px;
+  `;
+
   if (options.type === 'token') {
-    console.log('[DEBUG-CHAIN] 10a. Creating token menu');
+    console.log('[DEBUG-CHAIN] 9a. Creating token menu');
     const deleteOption = document.createElement('div');
     deleteOption.className = 'context-menu-item';
+    deleteOption.style.cssText = 'padding: 8px 12px; cursor: pointer;';
     deleteOption.textContent = 'Delete Token(s)';
     deleteOption.onclick = () => {
       onDeleteTokens?.();
@@ -43,9 +54,10 @@ const showMenu = useCallback((e, options) => {
     };
     menuEl.appendChild(deleteOption);
   } else {
-    console.log('[DEBUG-CHAIN] 10b. Creating grid menu');
+    console.log('[DEBUG-CHAIN] 9b. Creating grid menu');
     const addOption = document.createElement('div');
     addOption.className = 'context-menu-item';
+    addOption.style.cssText = 'padding: 8px 12px; cursor: pointer;';
     addOption.textContent = 'Add Token';
     addOption.onclick = () => {
       onAddToken?.(e);
@@ -53,10 +65,9 @@ const showMenu = useCallback((e, options) => {
     };
     menuEl.appendChild(addOption);
   }
-  
-  // Add menu to document
+
   document.body.appendChild(menuEl);
-  console.log('[DEBUG-CHAIN] 11. Menu element added to document');
+  console.log('[DEBUG-CHAIN] 10. Menu added to document');
   setMenuState({ element: menuEl });
 }, [onAddToken, onDeleteTokens]);
 
