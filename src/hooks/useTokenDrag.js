@@ -1,27 +1,28 @@
-// js/hooks/useTokenDrag.js
 import { useState, useCallback, useEffect } from 'react';
 
-/**
- * A more React-centric approach:
- *  - Instead of updating tokenEl.style, we track the dragged token's ID and pass
- *    a callback to update the React state, so <Token> re-renders at the new position.
- */
 export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd }) {
   const [dragState, setDragState] = useState(null);
 
-  /**
-   * startDrag: Called when user starts dragging a token.
-   *  - token: an object describing the token (e.g. { id, x, y })
-   *  - e: the mouse event
-   */
-  const startDrag = useCallback((token, e) => {
-    // We'll store initial info so we can track delta
+  const startDrag = useCallback((initialToken, e, selectedTokens) => {
+    console.log('[DEBUG] Starting drag with tokens:', {
+      initialToken,
+      selectedCount: selectedTokens.length
+    });
+
+    // Store initial positions for all selected tokens
+    const tokenStartPositions = new Map();
+    selectedTokens.forEach(token => {
+      tokenStartPositions.set(token.id, {
+        x: token.position.x,
+        y: token.position.y
+      });
+    });
+
     setDragState({
-      tokenId: token.id,
+      tokenIds: selectedTokens.map(t => t.id),
       startMouseX: e.clientX,
       startMouseY: e.clientY,
-      tokenStartX: token.position.x,
-      tokenStartY: token.position.y
+      tokenStartPositions
     });
   }, []);
 
@@ -29,30 +30,39 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
     if (!dragState) return;
 
     function onMouseMove(e) {
-      // Calculate deltas
+      // Calculate deltas from the initial mouse position
       const dx = (e.clientX - dragState.startMouseX) / scale;
       const dy = (e.clientY - dragState.startMouseY) / scale;
 
-      const newX = dragState.tokenStartX + dx;
-      const newY = dragState.tokenStartY + dy;
+      // Update all selected tokens
+      dragState.tokenIds.forEach(tokenId => {
+        const startPos = dragState.tokenStartPositions.get(tokenId);
+        if (!startPos) return;
 
-      // Snap the position
-      const { x: snappedX, y: snappedY } = getSnappedPosition(newX, newY);
-
-      // If we want a “live” drag update, call onDragMove
-      onDragMove?.(dragState.tokenId, { x: snappedX, y: snappedY });
+        const newX = startPos.x + dx;
+        const newY = startPos.y + dy;
+        
+        // Snap each token's new position
+        const { x: snappedX, y: snappedY } = getSnappedPosition(newX, newY);
+        
+        // Update position through callback
+        onDragMove?.(tokenId, { x: snappedX, y: snappedY });
+      });
     }
 
     function onMouseUp() {
-      // Final position
+      // Call onDragEnd for each token if needed
       if (onDragEnd) {
-        onDragEnd(dragState.tokenId);
+        dragState.tokenIds.forEach(tokenId => {
+          onDragEnd(tokenId);
+        });
       }
       setDragState(null);
     }
 
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
+    
     return () => {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
