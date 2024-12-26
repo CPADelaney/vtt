@@ -205,33 +205,36 @@ export default function VirtualTabletop() {
     }));
   };
   
-    const handleMouseDown = useCallback((e) => {
-      console.log('[DEBUG] MouseDown event:', {
-        button: e.button,
-        target: e.target,
-        ctrlKey: e.ctrlKey,
-        metaKey: e.metaKey
-      });
-    
-      if (e.button === 0) { // Left click
-        const tokenEl = e.target.closest('.token');
-        const isAdditive = e.metaKey || e.ctrlKey;
-    
-        if (tokenEl) {
-          if (!isAdditive) clearSelection();
-          selectTokenId(tokenEl.id, isAdditive);
-    
+  const handleMouseDown = useCallback((e) => {
+    console.log('[DEBUG] MouseDown event:', {
+      button: e.button,
+      target: e.target,
+      ctrlKey: e.ctrlKey,
+      metaKey: e.metaKey
+    });
+  
+    if (e.button === 0) { // Left click
+      const tokenEl = e.target.closest('.token');
+      const isAdditive = e.metaKey || e.ctrlKey;
+  
+      if (tokenEl) {
+        if (!isAdditive) clearSelection();
+        selectTokenId(tokenEl.id, isAdditive);
+  
+        // Only start drag if we're not doing additive selection
+        if (!isAdditive) {
           const tokenObj = tokens.find(t => t.id === tokenEl.id);
           if (tokenObj) {
             console.log('[DEBUG] start drag for token', tokenObj.id);
             startDrag(tokenObj, e);
           }
-        } else {
-          if (!isAdditive) clearSelection();
-          startMarquee(e);
         }
+      } else {
+        if (!isAdditive) clearSelection();
+        startMarquee(e);
       }
-    }, [clearSelection, selectTokenId, tokens, startDrag, startMarquee]);
+    }
+  }, [clearSelection, selectTokenId, tokens, startDrag, startMarquee]);
     
       const handleContextMenu = useCallback((e) => {
         // Always prevent default first
