@@ -351,63 +351,61 @@ export default function VirtualTabletop() {
   }, []);
 
   // 11) Render
-return (
-  <>
-    <Controls onZoomIn={onZoomIn} onZoomOut={onZoomOut} />
-    <div className="tabletop-wrapper" style={{ width: '100%', height: '100%' }}>
-      <ZoomableContainer
-        containerId="tabletop-container"
-        scale={scale}
-        position={position}
-        setScale={(val) =>
-          setGameState(prev => ({
-            ...prev,
-            scale: val
-          }))
-        }
-        setPosition={(val) =>
-          setGameState(prev => ({
-            ...prev,
-            position: val
-          }))
-        }
-        minScale={MIN_SCALE}
-        maxScale={MAX_SCALE}
-        zoomFactor={ZOOM_FACTOR}
-        onContextMenu={handleContextMenu}
-        onMouseDown={handleMouseDown}  // Pass the handler here
-      >
-        <div
-          id="tabletop"
-          className={isHexGrid ? 'hex-grid' : 'square-grid'}
+  return (
+    <>
+      <Controls onZoomIn={onZoomIn} onZoomOut={onZoomOut} />
+      <div className="tabletop-wrapper" style={{ width: '100%', height: '100%' }}>
+        <ZoomableContainer
+          containerId="tabletop-container"
+          scale={scale}
+          position={position}
+          setScale={(val) =>
+            setGameState(prev => ({
+              ...prev,
+              scale: val
+            }))
+          }
+          setPosition={(val) =>
+            setGameState(prev => ({
+              ...prev,
+              position: val
+            }))
+          }
+          minScale={MIN_SCALE}
+          maxScale={MAX_SCALE}
+          zoomFactor={ZOOM_FACTOR}
           onContextMenu={handleContextMenu}
-          style={{ 
-            width: '100%', 
-            height: '100%', 
-            position: 'relative',
-            userSelect: 'none'
-          }}
+          onMouseDown={handleMouseDown}
         >
-          <Grid
-            isHexGrid={isHexGrid}
-            rows={dimensions.rows}
-            cols={dimensions.cols}
-            squareSize={gridConfig.squareSize}
-            hexSize={gridConfig.hexSize}
-            hexWidth={gridConfig.hexWidth}
-            hexHeight={gridConfig.hexHeight}
-          />
-          {tokens.map(token => (
-            <Token
-              key={token.id}
-              {...token}
-              isSelected={selectedTokenIds.has(token.id)}
-              // Remove the onClick handler - we'll handle everything in mousedown
-              onClick={(e) => e.stopPropagation()}  // Just stop propagation
+          <div
+            id="tabletop"
+            className={isHexGrid ? 'hex-grid' : 'square-grid'}
+            onContextMenu={handleContextMenu}
+            onMouseUp={handleMouseUp}  // Add this
+            style={{ 
+              width: '100%', 
+              height: '100%', 
+              position: 'relative',
+              userSelect: 'none'
+            }}
+          >
+            <Grid
+              isHexGrid={isHexGrid}
+              rows={dimensions.rows}
+              cols={dimensions.cols}
+              squareSize={gridConfig.squareSize}
+              hexSize={gridConfig.hexSize}
+              hexWidth={gridConfig.hexWidth}
+              hexHeight={gridConfig.hexHeight}
             />
-          ))}
-
-            {/* Render pings */}
+            {tokens.map(token => (
+              <Token
+                key={token.id}
+                {...token}
+                isSelected={selectedTokenIds.has(token.id)}
+                onClick={(e) => e.stopPropagation()}
+              />
+            ))}
             {pings.map(ping => (
               <Ping
                 key={ping.id}
@@ -423,5 +421,4 @@ return (
       </div>
     </>
   );
-}
 }
