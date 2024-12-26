@@ -176,17 +176,19 @@ export function ZoomableContainer({
     pointerEvents: isPanning ? 'none' : 'auto'
   };
 
-  return (
-    <div
-      id={containerId}
-      style={containerStyle}
-      onWheel={onWheel}
-      onMouseDown={startPanning}
-      onContextMenu={handleContextMenu}
+return (
+  <div
+    id={containerId}
+    style={containerStyle}
+    onWheel={onWheel}
+    onMouseDown={startPanning}
+  >
+    <div 
+      style={contentStyle}
+      onContextMenu={handleContextMenu}  {/* Move context menu handler here */}
     >
-      <div style={contentStyle}>
-        {children}
-      </div>
+      {children}
     </div>
-  );
+  </div>
+);
 }
