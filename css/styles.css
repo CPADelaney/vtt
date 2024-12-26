@@ -255,6 +255,23 @@ marqueeEl.style.cssText = `
 .tool-icon:hover {
   background: #eee;
 }
+
+/* Example ping animation */
+@keyframes pingAnimation {
+  0% {
+    transform: scale(0.5) translate(-50%, -50%);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.5) translate(-50%, -50%);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(2) translate(-50%, -50%);
+    opacity: 0;
+  }
+}
+
 .chatbox {
   z-index: 900;
 }
