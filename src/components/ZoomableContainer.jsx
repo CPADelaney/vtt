@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import _ from 'lodash';
 import { useZoomToMouse } from '../hooks/useZoomToMouse';
 
