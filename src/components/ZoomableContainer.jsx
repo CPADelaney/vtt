@@ -114,6 +114,9 @@ export function ZoomableContainer({
 const handleContextMenu = useCallback((e) => {
   console.log('[DEBUG-CHAIN] 1. ZoomableContainer contextmenu received');
   
+  // Always prevent browser's default context menu
+  e.preventDefault();
+  
   const isToken = e.target.closest('.token');
   console.log('[DEBUG-CHAIN] 2. Target info:', {
     isToken,
@@ -122,17 +125,29 @@ const handleContextMenu = useCallback((e) => {
     element: e.target
   });
   
-  // Only prevent default and stop propagation if we're actually panning
   if (isPanning) {
     console.log('[DEBUG-CHAIN] 3. Stopping event - was panning');
-    e.preventDefault();
     e.stopPropagation();
     setPanStarted(false);
     return;
   }
   
-  // Otherwise let it bubble up without preventing default
-  console.log('[DEBUG-CHAIN] 4. Allowing event to bubble');
+  // Important: Create a new custom event to bubble up
+  const customEvent = new MouseEvent('contextmenu', {
+    bubbles: true,
+    clientX: e.clientX,
+    clientY: e.clientY,
+    // Copy other relevant properties
+    button: e.button,
+    buttons: e.buttons,
+    ctrlKey: e.ctrlKey,
+    altKey: e.altKey,
+    shiftKey: e.shiftKey,
+    metaKey: e.metaKey
+  });
+  
+  console.log('[DEBUG-CHAIN] 4. Dispatching custom event');
+  e.target.dispatchEvent(customEvent);
 }, [isPanning, panStarted]);
 
   useEffect(() => {
