@@ -206,28 +206,28 @@ export default function VirtualTabletop() {
   };
   
     const handleMouseDown = useCallback((e) => {
-      console.log('[DEBUG-PARENT] MouseDown event:', {
+      console.log('[DEBUG] MouseDown event:', {
         button: e.button,
         target: e.target,
-        currentTarget: e.currentTarget,
-        clientX: e.clientX,
-        clientY: e.clientY
+        ctrlKey: e.ctrlKey,
+        metaKey: e.metaKey
       });
     
       if (e.button === 0) { // Left click
         const tokenEl = e.target.closest('.token');
+        const isAdditive = e.metaKey || e.ctrlKey;
+    
         if (tokenEl) {
-          if (!e.shiftKey) clearSelection();
-          selectTokenId(tokenEl.id, e.shiftKey);
+          if (!isAdditive) clearSelection();
+          selectTokenId(tokenEl.id, isAdditive);
     
           const tokenObj = tokens.find(t => t.id === tokenEl.id);
           if (tokenObj) {
-            console.log('[DEBUG-PARENT] Start drag for token', tokenObj.id);
+            console.log('[DEBUG] start drag for token', tokenObj.id);
             startDrag(tokenObj, e);
           }
         } else {
-          console.log('[DEBUG-PARENT] Starting marquee selection');
-          if (!e.shiftKey) clearSelection();
+          if (!isAdditive) clearSelection();
           startMarquee(e);
         }
       }
