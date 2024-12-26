@@ -15,14 +15,18 @@ export function useTokenSelection() {
       return newSet;
     });
   }, []);
-
+  
   const startMarquee = useCallback((e) => {
+    console.log('[DEBUG] startMarquee called');
+    
     // Get container and its transform state
     const container = document.getElementById('tabletop-container');
-    const contentEl = container.querySelector('div'); // The inner div with transform
-    const transform = new DOMMatrix(window.getComputedStyle(contentEl).transform);
+    console.log('[DEBUG] Container found:', container);
     
-    // Create marquee element in the transformed space
+    const contentEl = container.querySelector('div');
+    console.log('[DEBUG] Content element found:', contentEl);
+    
+    // Create marquee element
     const marqueeEl = document.createElement('div');
     marqueeEl.className = 'marquee';
     
@@ -30,22 +34,33 @@ export function useTokenSelection() {
     const containerRect = container.getBoundingClientRect();
     const startX = e.clientX - containerRect.left;
     const startY = e.clientY - containerRect.top;
-
-    // Apply initial positioning and styling
+  
+    console.log('[DEBUG] Marquee initial position:', { startX, startY });
+  
+    // Apply styling
     marqueeEl.style.cssText = `
       position: absolute;
       left: ${startX}px;
       top: ${startY}px;
       width: 0;
       height: 0;
-      border: 2px solid #3498db;
-      background-color: rgba(52, 152, 219, 0.1);
+      border: 2px solid red;
+      background-color: rgba(255, 0, 0, 0.1);
       pointer-events: none;
-      z-index: 1000;
+      z-index: 10000;
     `;
     
-    // Add marquee to the container instead of body
+    // Add to container
     container.appendChild(marqueeEl);
+    console.log('[DEBUG] Marquee element added:', marqueeEl);
+    
+    setMarqueeState({
+      element: marqueeEl,
+      startX,
+      startY,
+      containerRect
+    });
+  }, []);
     
     setMarqueeState({
       element: marqueeEl,
