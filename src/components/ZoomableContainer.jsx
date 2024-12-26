@@ -52,13 +52,18 @@ export function ZoomableContainer({
 
   const startPanning = useCallback((e) => {
     if (e.button === 2) {  // right click
+      // Check if click is on a token
+      const isToken = e.target.closest('.token');
+      if (isToken) {
+        setPanStarted(false);
+        return; // Let context menu handle tokens
+      }
+      
       setPanStarted(true);
       
       // Small timeout to determine if this is a pan or context menu
       setTimeout(() => {
         if (panStarted) {
-          e.preventDefault();
-          e.stopPropagation();
           setIsPanning(true);
           setLastPos({ x: e.clientX, y: e.clientY });
           document.body.style.cursor = 'grabbing';
@@ -71,6 +76,7 @@ export function ZoomableContainer({
     // If mouse moves while pan started, it's definitely a pan
     if (panStarted && !isPanning) {
       setIsPanning(true);
+      setLastPos({ x: e.clientX, y: e.clientY });
       document.body.style.cursor = 'grabbing';
     }
 
@@ -103,10 +109,10 @@ export function ZoomableContainer({
 
   // Handle context menu
   const handleContextMenu = useCallback((e) => {
-    // Only prevent default browser menu
+    // Always prevent browser's default context menu
     e.preventDefault();
     
-    // If we're not panning, allow the event to bubble up
+    // If we're not panning or just started panning, allow event to bubble
     if (!isPanning && !panStarted) {
       return;
     }
