@@ -235,27 +235,31 @@ export default function VirtualTabletop() {
     <>
       <Controls onZoomIn={onZoomIn} onZoomOut={onZoomOut} />
 
-      <ZoomableContainer
-        containerId="tabletop-container"
-        scale={scale}
-        position={position}
-        setScale={(val) =>
-          setGameState(prev => ({
-            ...prev,
-            scale: val
-          }))
-        }
-        setPosition={(val) =>
-          setGameState(prev => ({
-            ...prev,
-            position: val
-          }))
-        }
-        minScale={MIN_SCALE}
-        maxScale={MAX_SCALE}
-        zoomFactor={ZOOM_FACTOR}
-        // No manual onZoomEnd or onPanEnd (auto-save handles it)
+      <div 
+        onContextMenu={handleContextMenu} // Move context menu handler to outer div
+        style={{ width: '100%', height: '100%' }}
       >
+        <ZoomableContainer
+          containerId="tabletop-container"
+          scale={scale}
+          position={position}
+          setScale={(val) =>
+            setGameState(prev => ({
+              ...prev,
+              scale: val
+            }))
+          }
+          setPosition={(val) =>
+            setGameState(prev => ({
+              ...prev,
+              position: val
+            }))
+          }
+          minScale={MIN_SCALE}
+          maxScale={MAX_SCALE}
+          zoomFactor={ZOOM_FACTOR}
+          // No manual onZoomEnd or onPanEnd (auto-save handles it)
+        >
         <div
           id="tabletop"
           className={isHexGrid ? 'hex-grid' : 'square-grid'}
