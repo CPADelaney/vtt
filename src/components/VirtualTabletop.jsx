@@ -138,13 +138,29 @@ export default function VirtualTabletop() {
   const { selectedTokenIds, selectTokenId, clearSelection, startMarquee } =
     useTokenSelection();
 
-  // 8) Token handlers
   const handleAddToken = useCallback((e) => {
-    const x = e.clientX;
-    const y = e.clientY;
-    const snappedPos = getSnappedPosition(x, y);
-    console.log('[DEBUG] Adding token at', snappedPos);
-
+    // Get the container element
+    const container = document.getElementById('tabletop-container');
+    const containerRect = container.getBoundingClientRect();
+    
+    // Convert screen coordinates to grid coordinates
+    const screenX = e.clientX - containerRect.left;
+    const screenY = e.clientY - containerRect.top;
+    
+    // Transform screen coordinates to grid coordinates
+    const gridX = (screenX - position.x) / scale;
+    const gridY = (screenY - position.y) / scale;
+    
+    // Now snap the grid coordinates
+    const snappedPos = getSnappedPosition(gridX, gridY);
+    
+    console.log('[DEBUG] Adding token at', {
+      screen: { x: e.clientX, y: e.clientY },
+      container: { x: containerRect.left, y: containerRect.top },
+      transformed: { x: gridX, y: gridY },
+      snapped: snappedPos
+    });
+  
     setGameState(prev => ({
       ...prev,
       tokens: [
@@ -156,7 +172,7 @@ export default function VirtualTabletop() {
         }
       ]
     }));
-  }, [getSnappedPosition]);
+  }, [getSnappedPosition, position, scale]);
 
   const handleDeleteTokens = useCallback(() => {
     console.log('[DEBUG] Deleting tokens', Array.from(selectedTokenIds));
