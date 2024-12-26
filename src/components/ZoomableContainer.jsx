@@ -13,10 +13,10 @@ export function ZoomableContainer({
   zoomFactor = 0.1,
   onZoomEnd,
   onPanEnd,
-  onContextMenu,  // Add this prop
+  onContextMenu,
+  onMouseDown, // Add this prop to handle delegated events
   children
 }) {
-  // Mouse wheel zooming
   const { handleWheel } = useZoomToMouse({
     containerId,
     scale,
@@ -28,12 +28,10 @@ export function ZoomableContainer({
     zoomFactor
   });
 
-  // Right-click panning state
   const [isPanning, setIsPanning] = useState(false);
   const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
   const [panStarted, setPanStarted] = useState(false);
   
-  // Keep track of current position for panning
   const positionRef = useRef(position);
   useEffect(() => {
     positionRef.current = position;
@@ -51,40 +49,36 @@ export function ZoomableContainer({
     handleWheelEnd();
   }, [handleWheel, handleWheelEnd]);
   
-  const handleMouseDown = useCallback((e) => {
-    // Only handle right-click, let left clicks pass through
-    if (e.button !== 2) return;
+  const handleContainerMouseDown = useCallback((e) => {
+    console.log('[DEBUG-ZOOM] Container mousedown:', e.button);
     
-    console.log('[DEBUG] Right-click detected in ZoomableContainer');
-    
-    // Check if click is on a token
-    const isToken = e.target.closest('.token');
-    if (isToken) {
-      console.log('[DEBUG] Click on token, letting context menu handle it');
-      setPanStarted(false);
-      return; // Let context menu handle tokens
-    }
-    
-    e.preventDefault(); // Prevent default right-click behavior immediately
-    setPanStarted(true);
-    
-    // Small timeout to determine if this is a pan or context menu
-    setTimeout(() => {
-      if (panStarted && e.movementX === 0 && e.movementY === 0) {
-        // If mouse hasn't moved, treat as context menu
-        console.log('[DEBUG] No movement detected, treating as context menu');
+    // For right clicks, handle panning
+    if (e.button === 2) {
+      const isToken = e.target.closest('.token');
+      if (isToken) {
         setPanStarted(false);
-      } else if (panStarted) {
-        console.log('[DEBUG] Movement detected, starting pan');
-        setIsPanning(true);
-        setLastPos({ x: e.clientX, y: e.clientY });
-        document.body.style.cursor = 'grabbing';
+        return;
       }
-    }, 150);
-  }, [panStarted]);
+      
+      e.preventDefault();
+      setPanStarted(true);
+      
+      setTimeout(() => {
+        if (panStarted && e.movementX === 0 && e.movementY === 0) {
+          setPanStarted(false);
+        } else if (panStarted) {
+          setIsPanning(true);
+          setLastPos({ x: e.clientX, y: e.clientY });
+          document.body.style.cursor = 'grabbing';
+        }
+      }, 150);
+    } else {
+      // For left clicks, delegate to parent handler
+      onMouseDown?.(e);
+    }
+  }, [panStarted, onMouseDown]);
 
   const handleMouseMove = useCallback((e) => {
-    // If mouse moves while pan started, it's definitely a pan
     if (panStarted && !isPanning) {
       setIsPanning(true);
       setLastPos({ x: e.clientX, y: e.clientY });
@@ -119,29 +113,15 @@ export function ZoomableContainer({
   }, [isPanning, onPanEnd]);
   
   const handleContextMenu = useCallback((e) => {
-    console.log('[DEBUG-CHAIN] 1. ZoomableContainer contextmenu received');
-    
-    // Always prevent browser default
     e.preventDefault();
     
-    const isToken = e.target.closest('.token');
-    console.log('[DEBUG-CHAIN] 2. Target info:', {
-      isToken,
-      isPanning,
-      panStarted,
-      element: e.target
-    });
-    
     if (isPanning) {
-      console.log('[DEBUG-CHAIN] 3. Stopping event - was panning');
       setPanStarted(false);
       return;
     }
     
-    // Call the passed in handler
-    console.log('[DEBUG-CHAIN] 4. Calling parent handler');
     onContextMenu?.(e);
-  }, [isPanning, panStarted, onContextMenu]);
+  }, [isPanning, onContextMenu]);
 
   useEffect(() => {
     if (isPanning || panStarted) {
@@ -185,8 +165,8 @@ export function ZoomableContainer({
       id={containerId}
       style={containerStyle}
       onWheel={onWheel}
-      onMouseDown={handleMouseDown}  // Changed from startPanning
-      onContextMenu={handleContextMenu}  // Moved to outer container
+      onMouseDown={handleContainerMouseDown}
+      onContextMenu={handleContextMenu}
     >
       <div style={contentStyle}>
         {children}
