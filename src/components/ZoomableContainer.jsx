@@ -181,20 +181,34 @@ export function ZoomableContainer({
     pointerEvents: isPanning ? 'none' : 'auto'
   };
 
- return (
+return (
   <div
     id={containerId}
     style={containerStyle}
     onWheel={onWheel}
     onContextMenu={handleContextMenu}
     onMouseDown={(e) => {
+      console.log('[DEBUG-CONTAINER] Container mousedown:', {
+        button: e.button,
+        target: e.target.className,
+        propagation: !e.defaultPrevented
+      });
       // Only handle right-clicks, let everything else pass through
       if (e.button === 2) {
         handleMouseDown(e);
       }
     }}
   >
-    <div style={contentStyle}>
+    <div 
+      style={contentStyle}
+      onMouseDown={(e) => {
+        console.log('[DEBUG-CONTENT] Content div mousedown:', {
+          button: e.button,
+          target: e.target.className,
+          propagation: !e.defaultPrevented
+        });
+      }}
+    >
       {children}
     </div>
   </div>
