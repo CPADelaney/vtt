@@ -310,16 +310,18 @@ return (
             hexHeight={gridConfig.hexHeight}
           />
           {tokens.map(token => (
-            <Token
-              key={token.id}
-              {...token}
-              isSelected={selectedTokenIds.has(token.id)}
-              onClick={e => {
-                e.stopPropagation();
-                if (!e.shiftKey) clearSelection();
-                selectTokenId(token.id, e.shiftKey);
-              }}
-            />
+          <Token
+            key={token.id}
+            {...token}
+            isSelected={selectedTokenIds.has(token.id)}
+            onClick={e => {
+              e.stopPropagation();
+              // Use metaKey (Cmd on Mac) or ctrlKey (Ctrl on Windows/Linux)
+              const isAdditive = e.metaKey || e.ctrlKey;
+              if (!isAdditive) clearSelection();
+              selectTokenId(token.id, isAdditive);
+            }}
+          />
           ))}
         </div>
       </ZoomableContainer>
