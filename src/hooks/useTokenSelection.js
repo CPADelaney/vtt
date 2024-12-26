@@ -9,9 +9,25 @@ export function useTokenSelection() {
   }, []);
 
   const selectTokenId = useCallback((tokenId, additive = false) => {
+    console.log('[DEBUG] Selecting token:', { tokenId, additive });
     setSelectedTokenIds(prev => {
       const newSet = additive ? new Set(prev) : new Set();
-      newSet.add(tokenId);
+      // If additive and token is already selected, remove it (toggle behavior)
+      if (additive && prev.has(tokenId)) {
+        newSet.delete(tokenId);
+      } else {
+        newSet.add(tokenId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  // Similar to selectTokenId but for multiple tokens at once
+  const selectTokenIds = useCallback((tokenIds, additive = false) => {
+    console.log('[DEBUG] Selecting multiple tokens:', { tokenIds: Array.from(tokenIds), additive });
+    setSelectedTokenIds(prev => {
+      const newSet = additive ? new Set(prev) : new Set();
+      tokenIds.forEach(id => newSet.add(id));
       return newSet;
     });
   }, []);
@@ -25,7 +41,6 @@ export function useTokenSelection() {
       console.error('[DEBUG] Container not found');
       return;
     }
-    console.log('[DEBUG] Container found:', container);
     
     // Create marquee element
     const marqueeEl = document.createElement('div');
@@ -36,22 +51,19 @@ export function useTokenSelection() {
     const startX = e.clientX - containerRect.left;
     const startY = e.clientY - containerRect.top;
 
-    console.log('[DEBUG] Marquee initial position:', { startX, startY });
-
     // Apply styles inline to ensure they're present
     marqueeEl.style.position = 'absolute';
     marqueeEl.style.left = `${startX}px`;
     marqueeEl.style.top = `${startY}px`;
     marqueeEl.style.width = '0';
     marqueeEl.style.height = '0';
-    marqueeEl.style.border = '2px solid red';
-    marqueeEl.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
+    marqueeEl.style.border = '2px solid #3498db';
+    marqueeEl.style.backgroundColor = 'rgba(52, 152, 219, 0.1)';
     marqueeEl.style.pointerEvents = 'none';
     marqueeEl.style.zIndex = '10000';
     
     // Add to container
     container.appendChild(marqueeEl);
-    console.log('[DEBUG] Marquee element added:', marqueeEl);
     
     setMarqueeState({
       element: marqueeEl,
@@ -90,6 +102,7 @@ export function useTokenSelection() {
       
       // Get all tokens
       const tokenEls = document.querySelectorAll('.token');
+      const selectedTokens = new Set();
       
       tokenEls.forEach(tokenEl => {
         const tokenRect = tokenEl.getBoundingClientRect();
@@ -114,9 +127,12 @@ export function useTokenSelection() {
         );
 
         if (intersects) {
-          selectTokenId(tokenEl.id, e.shiftKey);
+          selectedTokens.add(tokenEl.id);
         }
       });
+
+      // Use shiftKey for additive selection with marquee
+      selectTokenIds(selectedTokens, e.shiftKey);
 
       // Cleanup
       element.remove();
@@ -127,16 +143,16 @@ export function useTokenSelection() {
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
 
-    // Cleanup function
     return () => {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
     };
-  }, [marqueeState, selectTokenId]);
+  }, [marqueeState, selectTokenIds]);
 
   return {
     selectedTokenIds,
     selectTokenId,
+    selectTokenIds,
     clearSelection,
     startMarquee
   };
