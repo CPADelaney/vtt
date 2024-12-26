@@ -275,30 +275,24 @@ export default function VirtualTabletop() {
   
       if (tokenEl) {
         e.stopPropagation();
-        
-        // Handle selection
         selectTokenId(tokenEl.id, isAdditive);
   
         // Only start drag if we're not doing additive selection
         if (!isAdditive) {
           const clickedToken = tokens.find(t => t.id === tokenEl.id);
           if (clickedToken) {
-            // Get all selected tokens
             const selectedTokens = tokens.filter(t => selectedTokenIds.has(t.id));
-            
-            console.log('[DEBUG] Starting drag with tokens:', {
-              clicked: clickedToken.id,
-              selected: selectedTokens.map(t => t.id)
-            });
-            
             startDrag(clickedToken, e, selectedTokens);
           }
         }
       } else {
+        // On empty space
         if (!isAdditive) clearSelection();
+        
+        // Start marquee - do this first before ping timer
         startMarquee(e);
-
-              // PING: Start a timer to see if the user holds click
+  
+        // Start ping timer
         isPingingRef.current = true;
         const container = document.getElementById('tabletop-container');
         const containerRect = container.getBoundingClientRect();
@@ -306,12 +300,17 @@ export default function VirtualTabletop() {
         const screenY = e.clientY - containerRect.top;
         const gridX = (screenX - position.x) / scale;
         const gridY = (screenY - position.y) / scale;
-
+  
+        if (pingTimeoutRef.current) {
+          clearTimeout(pingTimeoutRef.current);
+        }
+  
         pingTimeoutRef.current = setTimeout(() => {
           if (isPingingRef.current) {
+            console.log('[DEBUG] Creating ping at:', { gridX, gridY });
             createPing(gridX, gridY);
           }
-        }, 500); // 500ms threshold to trigger a ping
+        }, 500);
       }
     }
   }, [
