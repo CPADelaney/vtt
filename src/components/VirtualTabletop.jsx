@@ -24,6 +24,28 @@ const ZOOM_FACTOR = 0.1;
 const DEFAULT_SQUARE_SIZE = 50;
 const DEFAULT_HEX_SIZE = 30;
 
+// Example Ping component
+function Ping({ x, y, color }) {
+  return (
+    <div
+      className="ping"
+      style={{
+        position: 'absolute',
+        left: x,
+        top: y,
+        width: 50,
+        height: 50,
+        backgroundColor: color,
+        borderRadius: '50%',
+        transform: 'translate(-50%, -50%)',
+        pointerEvents: 'none',
+        animation: 'pingAnimation 2s ease-out forwards'
+      }}
+    />
+  );
+}
+
+
 export default function VirtualTabletop() {
   // 1) Single Source of Truth
   const [gameState, setGameState] = useState({
@@ -188,6 +210,40 @@ export default function VirtualTabletop() {
     onDeleteTokens: handleDeleteTokens
   });
 
+  // 8) PING LOGIC (New)
+  // --------------------------------------------------
+  const [pings, setPings] = useState([]);
+  const pingTimeoutRef = useRef(null);
+  const isPingingRef = useRef(false);
+
+  // Example: Each user can eventually pick a color. Hard-code for now:
+  const playerColor = '#ff0066'; 
+
+  const createPing = useCallback((x, y) => {
+    const newPing = {
+      id: Date.now(),
+      x,
+      y,
+      color: playerColor,
+    };
+
+    setPings(prev => [...prev, newPing]);
+
+    // Remove the ping after 2 seconds
+    setTimeout(() => {
+      setPings(prev => prev.filter((p) => p.id !== newPing.id));
+    }, 2000);
+  }, [playerColor]);
+
+  const handleMouseUp = useCallback(() => {
+    // If the user releases before the threshold, clear the ping timer
+    if (pingTimeoutRef.current) {
+      clearTimeout(pingTimeoutRef.current);
+    }
+    isPingingRef.current = false;
+  }, []);
+
+
   // 9) Zoom and mouse logic
   const onZoomIn = () => {
     console.log('[DEBUG] onZoomIn called');
@@ -241,20 +297,40 @@ export default function VirtualTabletop() {
       } else {
         if (!isAdditive) clearSelection();
         startMarquee(e);
+
+              // PING: Start a timer to see if the user holds click
+        isPingingRef.current = true;
+        const container = document.getElementById('tabletop-container');
+        const containerRect = container.getBoundingClientRect();
+        const screenX = e.clientX - containerRect.left;
+        const screenY = e.clientY - containerRect.top;
+        const gridX = (screenX - position.x) / scale;
+        const gridY = (screenY - position.y) / scale;
+
+        pingTimeoutRef.current = setTimeout(() => {
+          if (isPingingRef.current) {
+            createPing(gridX, gridY);
+          }
+        }, 500); // 500ms threshold to trigger a ping
       }
     }
-  }, [clearSelection, selectTokenId, tokens, selectedTokenIds, startDrag, startMarquee]);
-    
+  }, [
+    clearSelection, 
+    selectTokenId, 
+    tokens, 
+    selectedTokenIds, 
+    startDrag, 
+    startMarquee,
+    position, 
+    scale, 
+    createPing
+  ]);
+
   const handleContextMenu = useCallback((e) => {
-    // Always prevent default first
     e.preventDefault();
     e.stopPropagation();
-        
-    console.log('[DEBUG-CHAIN] 5. VirtualTabletop contextmenu received');
-    
-  const tokenEl = e.target.closest('.token');
-  console.log('[DEBUG-CHAIN] 6. Target type:', tokenEl ? 'token' : 'grid');
-    
+
+    const tokenEl = e.target.closest('.token');
     showMenu(e, { 
       type: tokenEl ? 'token' : 'grid'
     });
@@ -330,11 +406,22 @@ return (
               onClick={(e) => e.stopPropagation()}  // Just stop propagation
             />
           ))}
-        </div>
-      </ZoomableContainer>
-      <Sidebar isHexGrid={isHexGrid} onToggleGrid={onToggleGrid} />
-      <ChatBox />
-    </div>
-  </>
-);
+
+            {/* Render pings */}
+            {pings.map(ping => (
+              <Ping
+                key={ping.id}
+                x={ping.x}
+                y={ping.y}
+                color={ping.color}
+              />
+            ))}
+          </div>
+        </ZoomableContainer>
+        <Sidebar isHexGrid={isHexGrid} onToggleGrid={onToggleGrid} />
+        <ChatBox />
+      </div>
+    </>
+  );
+}
 }
