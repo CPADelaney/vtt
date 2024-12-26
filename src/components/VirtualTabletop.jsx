@@ -261,69 +261,69 @@ export default function VirtualTabletop() {
     }));
   };
   
-  const handleMouseDown = useCallback((e) => {
-    console.log('[DEBUG] MouseDown event:', {
-      button: e.button,
-      target: e.target,
-      ctrlKey: e.ctrlKey,
-      metaKey: e.metaKey
-    });
-  
-    if (e.button === 0) { // Left click
-      const tokenEl = e.target.closest('.token');
-      const isAdditive = e.metaKey || e.ctrlKey;
-  
-      if (tokenEl) {
-        e.stopPropagation();
-        selectTokenId(tokenEl.id, isAdditive);
-  
-        // Only start drag if we're not doing additive selection
-        if (!isAdditive) {
-          const clickedToken = tokens.find(t => t.id === tokenEl.id);
-          if (clickedToken) {
-            const selectedTokens = tokens.filter(t => selectedTokenIds.has(t.id));
-            startDrag(clickedToken, e, selectedTokens);
-          }
+const handleMouseDown = useCallback((e) => {
+  console.log('[DEBUG-TABLETOP] MouseDown event:', {
+    button: e.button,
+    target: e.target,
+    ctrlKey: e.ctrlKey,
+    metaKey: e.metaKey,
+    defaultPrevented: e.defaultPrevented,
+    className: e.target.className
+  });
+
+  if (e.button === 0) { // Left click
+    const tokenEl = e.target.closest('.token');
+    const isAdditive = e.metaKey || e.ctrlKey;
+
+    if (tokenEl) {
+      console.log('[DEBUG-TOKEN] Token clicked:', tokenEl.id);
+      e.stopPropagation();
+      selectTokenId(tokenEl.id, isAdditive);
+
+      if (!isAdditive) {
+        const clickedToken = tokens.find(t => t.id === tokenEl.id);
+        if (clickedToken) {
+          const selectedTokens = tokens.filter(t => selectedTokenIds.has(t.id));
+          startDrag(clickedToken, e, selectedTokens);
         }
-      } else {
-        // On empty space
-        if (!isAdditive) clearSelection();
-        
-        // Start marquee - do this first before ping timer
-        startMarquee(e);
-  
-        // Start ping timer
-        isPingingRef.current = true;
-        const container = document.getElementById('tabletop-container');
-        const containerRect = container.getBoundingClientRect();
-        const screenX = e.clientX - containerRect.left;
-        const screenY = e.clientY - containerRect.top;
-        const gridX = (screenX - position.x) / scale;
-        const gridY = (screenY - position.y) / scale;
-  
-        if (pingTimeoutRef.current) {
-          clearTimeout(pingTimeoutRef.current);
-        }
-  
-        pingTimeoutRef.current = setTimeout(() => {
-          if (isPingingRef.current) {
-            console.log('[DEBUG] Creating ping at:', { gridX, gridY });
-            createPing(gridX, gridY);
-          }
-        }, 500);
       }
+    } else {
+      console.log('[DEBUG-EMPTY] Empty space clicked, starting marquee/ping');
+      if (!isAdditive) clearSelection();
+      startMarquee(e);
+
+      // Start ping timer
+      isPingingRef.current = true;
+      const container = document.getElementById('tabletop-container');
+      const containerRect = container.getBoundingClientRect();
+      const screenX = e.clientX - containerRect.left;
+      const screenY = e.clientY - containerRect.top;
+      const gridX = (screenX - position.x) / scale;
+      const gridY = (screenY - position.y) / scale;
+
+      if (pingTimeoutRef.current) {
+        clearTimeout(pingTimeoutRef.current);
+      }
+
+      pingTimeoutRef.current = setTimeout(() => {
+        if (isPingingRef.current) {
+          console.log('[DEBUG-PING] Creating ping at:', { gridX, gridY });
+          createPing(gridX, gridY);
+        }
+      }, 500);
     }
-  }, [
-    clearSelection, 
-    selectTokenId, 
-    tokens, 
-    selectedTokenIds, 
-    startDrag, 
-    startMarquee,
-    position, 
-    scale, 
-    createPing
-  ]);
+  }
+}, [
+  clearSelection, 
+  selectTokenId, 
+  tokens, 
+  selectedTokenIds, 
+  startDrag, 
+  startMarquee,
+  position, 
+  scale, 
+  createPing
+]);
 
   const handleContextMenu = useCallback((e) => {
     e.preventDefault();
