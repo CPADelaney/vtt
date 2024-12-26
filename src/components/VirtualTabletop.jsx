@@ -204,17 +204,13 @@ export default function VirtualTabletop() {
       scale: Math.max(prev.scale * 0.9, MIN_SCALE)
     }));
   };
-
   const handleMouseDown = useCallback((e) => {
-    // Stop any default behavior and propagation
-    e.preventDefault();
-    e.stopPropagation();
-  
-    console.log('[DEBUG] MouseDown triggered:', {
+    console.log('[DEBUG] MouseDown event received:', {
       button: e.button,
       target: e.target.className,
       x: e.clientX,
-      y: e.clientY
+      y: e.clientY,
+      handled: e.defaultPrevented
     });
   
     if (e.button === 0) { // Left click
