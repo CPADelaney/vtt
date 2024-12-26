@@ -30,6 +30,7 @@ export function ZoomableContainer({
   // Right-click panning state
   const [isPanning, setIsPanning] = useState(false);
   const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
+  const [panStarted, setPanStarted] = useState(false);
   
   // Keep track of current position for panning
   const positionRef = useRef(position);
@@ -37,7 +38,6 @@ export function ZoomableContainer({
     positionRef.current = position;
   }, [position]);
 
-  // Debounced wheel end detection
   const handleWheelEnd = useMemo(() => {
     return _.debounce(() => {
       console.log('[DEBUG] wheel ended');
@@ -52,16 +52,28 @@ export function ZoomableContainer({
 
   const startPanning = useCallback((e) => {
     if (e.button === 2) {  // right click
-      e.preventDefault();
-      e.stopPropagation();
-      console.log('[DEBUG] Starting pan at:', { x: e.clientX, y: e.clientY });
-      setIsPanning(true);
-      setLastPos({ x: e.clientX, y: e.clientY });
-      document.body.style.cursor = 'grabbing';
+      setPanStarted(true);
+      
+      // Small timeout to determine if this is a pan or context menu
+      setTimeout(() => {
+        if (panStarted) {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsPanning(true);
+          setLastPos({ x: e.clientX, y: e.clientY });
+          document.body.style.cursor = 'grabbing';
+        }
+      }, 150); // Adjust this delay if needed
     }
   }, []);
 
   const handleMouseMove = useCallback((e) => {
+    // If mouse moves while pan started, it's definitely a pan
+    if (panStarted && !isPanning) {
+      setIsPanning(true);
+      document.body.style.cursor = 'grabbing';
+    }
+
     if (!isPanning) return;
 
     e.preventDefault();
@@ -72,36 +84,40 @@ export function ZoomableContainer({
 
     const currentPosition = positionRef.current || { x: 0, y: 0 };
     
-    console.log('[DEBUG] Pan update:', {
-      delta: { dx, dy },
-      from: currentPosition,
-      to: {
-        x: currentPosition.x + dx,
-        y: currentPosition.y + dy
-      }
-    });
-
     setPosition({
       x: currentPosition.x + dx,
       y: currentPosition.y + dy
     });
 
     setLastPos({ x: e.clientX, y: e.clientY });
-  }, [isPanning, lastPos, setPosition]);
+  }, [isPanning, lastPos, setPosition, panStarted]);
 
   const stopPanning = useCallback(() => {
-    if (!isPanning) return;
-    
-    console.log('[DEBUG] Stopping pan');
-    setIsPanning(false);
-    document.body.style.cursor = '';
-    onPanEnd?.();
+    setPanStarted(false);
+    if (isPanning) {
+      setIsPanning(false);
+      document.body.style.cursor = '';
+      onPanEnd?.();
+    }
   }, [isPanning, onPanEnd]);
 
+  // Handle context menu
+  const handleContextMenu = useCallback((e) => {
+    // Only prevent default browser menu
+    e.preventDefault();
+    
+    // If we're not panning, allow the event to bubble up
+    if (!isPanning && !panStarted) {
+      return;
+    }
+    
+    // If we are panning, stop propagation
+    e.stopPropagation();
+    setPanStarted(false);
+  }, [isPanning, panStarted]);
+
   useEffect(() => {
-    if (isPanning) {
-      console.log('[DEBUG] Adding pan event listeners');
-      
+    if (isPanning || panStarted) {
       const onMouseMove = (e) => handleMouseMove(e);
       const onMouseUp = () => stopPanning();
       const onKeyDown = (e) => {
@@ -118,7 +134,7 @@ export function ZoomableContainer({
         window.removeEventListener('keydown', onKeyDown);
       };
     }
-  }, [isPanning, handleMouseMove, stopPanning]);
+  }, [isPanning, panStarted, handleMouseMove, stopPanning]);
 
   const containerStyle = {
     width: '100%',
@@ -143,7 +159,7 @@ export function ZoomableContainer({
       style={containerStyle}
       onWheel={onWheel}
       onMouseDown={startPanning}
-      onContextMenu={e => e.preventDefault()}
+      onContextMenu={handleContextMenu}
     >
       <div style={contentStyle}>
         {children}
