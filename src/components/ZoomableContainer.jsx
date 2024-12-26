@@ -111,12 +111,12 @@ export function ZoomableContainer({
     }
   }, [isPanning, onPanEnd]);
   
-  const handleContextMenu = useCallback((e) => {
-    console.log('[DEBUG-CHAIN] 1. ZoomableContainer contextmenu received');
-    
-    // Always prevent browser's default context menu
-    e.preventDefault();
-    
+const handleContextMenu = useCallback((e) => {
+  console.log('[DEBUG-CHAIN] 1. ZoomableContainer contextmenu received');
+  
+  // Always prevent default browser context menu
+  e.preventDefault();
+  
   const isToken = e.target.closest('.token');
   console.log('[DEBUG-CHAIN] 2. Target info:', {
     isToken,
@@ -128,7 +128,6 @@ export function ZoomableContainer({
   // Only stop propagation if we're actually panning
   if (isPanning) {
     console.log('[DEBUG-CHAIN] 3. Stopping event - was panning');
-    e.preventDefault();
     e.stopPropagation();
     setPanStarted(false);
     return;
