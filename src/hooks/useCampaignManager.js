@@ -1,24 +1,30 @@
 // useCampaignManager.js
-import { useEffect, useMemo, useCallback } from 'react';
+import { useEffect, useCallback, useMemo } from 'react';
 
 export function useCampaignManager(campaignId = 'default-campaign') {
-  // Save the entire object to localStorage
+  /**
+   * saveState: accepts the **entire** game state object and writes it to localStorage.
+   */
   const saveState = useCallback((fullState) => {
     try {
-      // Add a timestamp if you want
-      const stateWithTimestamp = {
+      // Ensure we add a timestamp if not present
+      const stateToStore = {
         ...fullState,
-        timestamp: Date.now(),
+        timestamp: fullState.timestamp || Date.now()
       };
-
-      localStorage.setItem(`vtt-state-${campaignId}`, JSON.stringify(stateWithTimestamp));
-      console.log(`Campaign '${campaignId}' saved at`, new Date().toLocaleTimeString());
+      localStorage.setItem(`vtt-state-${campaignId}`, JSON.stringify(stateToStore));
+      console.log(
+        `Campaign '${campaignId}' saved at`,
+        new Date().toLocaleTimeString()
+      );
     } catch (error) {
       console.error('Failed to save campaign state:', error);
     }
   }, [campaignId]);
 
-  // Load the entire object from localStorage
+  /**
+   * loadState: reads the entire object from localStorage, or returns null if none found.
+   */
   const loadState = useCallback(() => {
     try {
       const savedJSON = localStorage.getItem(`vtt-state-${campaignId}`);
@@ -30,7 +36,7 @@ export function useCampaignManager(campaignId = 'default-campaign') {
         new Date(loaded.timestamp).toLocaleTimeString()
       );
 
-      // Return the entire object (tokens, scale, position, etc.)
+      // loaded should be { isHexGrid, tokens, scale, position, timestamp, ... }
       return loaded;
     } catch (error) {
       console.error('Failed to load campaign state:', error);
@@ -38,10 +44,12 @@ export function useCampaignManager(campaignId = 'default-campaign') {
     }
   }, [campaignId]);
 
-  // Optional auto-save every 30s
+  /**
+   * Optional effect for auto-save every X seconds
+   */
   useEffect(() => {
     const interval = setInterval(() => {
-      // e.g. if you want a timed “saveState(currentState)” call
+      // e.g. if you want a timed "saveState(currentGameState)" call
     }, 30000);
 
     return () => clearInterval(interval);
