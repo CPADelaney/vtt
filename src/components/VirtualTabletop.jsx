@@ -216,22 +216,12 @@ export default function VirtualTabletop() {
     showMenu(e, { type: tokenEl ? 'token' : 'grid' });
   }, [showMenu]);
 
-
   const onToggleGrid = () => {
     setGameState(prev => ({
       ...prev,
       isHexGrid: !prev.isHexGrid
     }));
   };
-
-   useEffect(() => {
-    console.log('[DEBUG-TEST] Testing menu creation...');
-    const testEvent = new MouseEvent('contextmenu', {
-      clientX: 100,
-      clientY: 100,
-    });
-    showMenu(testEvent, { type: 'grid' });
-  }, []); 
 
   // 10) Prevent default wheel scroll
   useEffect(() => {
