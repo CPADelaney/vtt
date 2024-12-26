@@ -114,9 +114,12 @@ body {
   border-radius: 4px;
   padding: 4px 0;
   box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-  z-index: 2000; /* Make sure this is higher than other elements */
+  z-index: 9999;  /* Very high z-index */
   min-width: 120px;
+  pointer-events: auto;  /* Ensure clicks work */
+  user-select: none;    /* Prevent text selection */
 }
+
 
 .context-menu-item {
   padding: 8px 12px;
