@@ -263,73 +263,68 @@ export default function VirtualTabletop() {
   }, []);
 
   // 11) Render
-  return (
-    <>
-      <Controls onZoomIn={onZoomIn} onZoomOut={onZoomOut} />
-      <div 
-        className="tabletop-wrapper" 
-        style={{ width: '100%', height: '100%' }}
-        onMouseDown={(e) => console.log('[DEBUG-ROOT] Root mousedown:', e.button)}
+return (
+  <>
+    <Controls onZoomIn={onZoomIn} onZoomOut={onZoomOut} />
+    <div className="tabletop-wrapper" style={{ width: '100%', height: '100%' }}>
+      <ZoomableContainer
+        containerId="tabletop-container"
+        scale={scale}
+        position={position}
+        setScale={(val) =>
+          setGameState(prev => ({
+            ...prev,
+            scale: val
+          }))
+        }
+        setPosition={(val) =>
+          setGameState(prev => ({
+            ...prev,
+            position: val
+          }))
+        }
+        minScale={MIN_SCALE}
+        maxScale={MAX_SCALE}
+        zoomFactor={ZOOM_FACTOR}
+        onContextMenu={handleContextMenu}
+        onMouseDown={handleMouseDown}  // Pass the handler here
       >
-        <ZoomableContainer
-          containerId="tabletop-container"
-          scale={scale}
-          position={position}
-          setScale={(val) =>
-            setGameState(prev => ({
-              ...prev,
-              scale: val
-            }))
-          }
-          setPosition={(val) =>
-            setGameState(prev => ({
-              ...prev,
-              position: val
-            }))
-          }
-          minScale={MIN_SCALE}
-          maxScale={MAX_SCALE}
-          zoomFactor={ZOOM_FACTOR}
+        <div
+          id="tabletop"
+          className={isHexGrid ? 'hex-grid' : 'square-grid'}
           onContextMenu={handleContextMenu}
+          style={{ 
+            width: '100%', 
+            height: '100%', 
+            position: 'relative',
+            userSelect: 'none'
+          }}
         >
-          <div
-            id="tabletop"
-            className={isHexGrid ? 'hex-grid' : 'square-grid'}
-            onMouseDown={handleMouseDown} // This is our main handler
-            onContextMenu={handleContextMenu}
-            style={{ 
-              width: '100%', 
-              height: '100%', 
-              position: 'relative',
-              userSelect: 'none' // Prevent text selection during drag
-            }}
-          >
-            <Grid
-              isHexGrid={isHexGrid}
-              rows={dimensions.rows}
-              cols={dimensions.cols}
-              squareSize={gridConfig.squareSize}
-              hexSize={gridConfig.hexSize}
-              hexWidth={gridConfig.hexWidth}
-              hexHeight={gridConfig.hexHeight}
+          <Grid
+            isHexGrid={isHexGrid}
+            rows={dimensions.rows}
+            cols={dimensions.cols}
+            squareSize={gridConfig.squareSize}
+            hexSize={gridConfig.hexSize}
+            hexWidth={gridConfig.hexWidth}
+            hexHeight={gridConfig.hexHeight}
+          />
+          {tokens.map(token => (
+            <Token
+              key={token.id}
+              {...token}
+              isSelected={selectedTokenIds.has(token.id)}
+              onClick={e => {
+                e.stopPropagation();
+                if (!e.shiftKey) clearSelection();
+                selectTokenId(token.id, e.shiftKey);
+              }}
             />
-            {tokens.map(token => (
-              <Token
-                key={token.id}
-                {...token}
-                isSelected={selectedTokenIds.has(token.id)}
-                onClick={e => {
-                  e.stopPropagation();
-                  if (!e.shiftKey) clearSelection();
-                  selectTokenId(token.id, e.shiftKey);
-                }}
-              />
-            ))}
-          </div>
-        </ZoomableContainer>
-        <Sidebar isHexGrid={isHexGrid} onToggleGrid={onToggleGrid} />
-        <ChatBox />
-      </div>
-    </>
-  );
-}
+          ))}
+        </div>
+      </ZoomableContainer>
+      <Sidebar isHexGrid={isHexGrid} onToggleGrid={onToggleGrid} />
+      <ChatBox />
+    </div>
+  </>
+);
