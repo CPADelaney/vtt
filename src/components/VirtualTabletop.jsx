@@ -209,11 +209,10 @@ export default function VirtualTabletop() {
   }, [clearSelection, selectTokenId, tokens, startDrag, startMarquee]);
 
   const handleContextMenu = useCallback((e) => {
-    console.log('[DEBUG] Tabletop contextmenu event received', e.target);
+    console.log('[DEBUG-CHAIN] 5. VirtualTabletop contextmenu received');
     e.preventDefault();
-    e.stopPropagation(); // Stop it here to prevent any parent handlers
     const tokenEl = e.target.closest('.token');
-    console.log('[DEBUG] context menu on', tokenEl ? 'token' : 'grid');
+    console.log('[DEBUG-CHAIN] 6. Target type:', tokenEl ? 'token' : 'grid');
     showMenu(e, { type: tokenEl ? 'token' : 'grid' });
   }, [showMenu]);
 
@@ -233,14 +232,6 @@ export default function VirtualTabletop() {
     });
     showMenu(testEvent, { type: 'grid' });
   }, []); 
-
-  const handleContextMenu = useCallback((e) => {
-    console.log('[DEBUG-CHAIN] 6. VirtualTabletop contextmenu received');
-    e.preventDefault();
-    const tokenEl = e.target.closest('.token');
-    console.log('[DEBUG-CHAIN] 7. Context menu for:', tokenEl ? 'token' : 'grid');
-    showMenu(e, { type: tokenEl ? 'token' : 'grid' });
-  }, [showMenu]);
 
   // 10) Prevent default wheel scroll
   useEffect(() => {
