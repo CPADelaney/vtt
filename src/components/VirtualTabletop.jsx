@@ -234,6 +234,14 @@ export default function VirtualTabletop() {
     showMenu(testEvent, { type: 'grid' });
   }, []); 
 
+  const handleContextMenu = useCallback((e) => {
+    console.log('[DEBUG-CHAIN] 6. VirtualTabletop contextmenu received');
+    e.preventDefault();
+    const tokenEl = e.target.closest('.token');
+    console.log('[DEBUG-CHAIN] 7. Context menu for:', tokenEl ? 'token' : 'grid');
+    showMenu(e, { type: tokenEl ? 'token' : 'grid' });
+  }, [showMenu]);
+
   // 10) Prevent default wheel scroll
   useEffect(() => {
     const preventDefault = e => e.preventDefault();
