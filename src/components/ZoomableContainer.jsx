@@ -51,30 +51,36 @@ export function ZoomableContainer({
     handleWheelEnd();
   }, [handleWheel, handleWheelEnd]);
   
-  const startPanning = useCallback((e) => {
-    if (e.button === 2) {  // right click
-      // Check if click is on a token
-      const isToken = e.target.closest('.token');
-      if (isToken) {
-        setPanStarted(false);
-        return; // Let context menu handle tokens
-      }
-      
-      e.preventDefault(); // Prevent default right-click behavior immediately
-      setPanStarted(true);
-      
-      // Small timeout to determine if this is a pan or context menu
-      setTimeout(() => {
-        if (panStarted && e.movementX === 0 && e.movementY === 0) {
-          // If mouse hasn't moved, treat as context menu
-          setPanStarted(false);
-        } else if (panStarted) {
-          setIsPanning(true);
-          setLastPos({ x: e.clientX, y: e.clientY });
-          document.body.style.cursor = 'grabbing';
-        }
-      }, 150);
+  const handleMouseDown = useCallback((e) => {
+    // Only handle right-click, let left clicks pass through
+    if (e.button !== 2) return;
+    
+    console.log('[DEBUG] Right-click detected in ZoomableContainer');
+    
+    // Check if click is on a token
+    const isToken = e.target.closest('.token');
+    if (isToken) {
+      console.log('[DEBUG] Click on token, letting context menu handle it');
+      setPanStarted(false);
+      return; // Let context menu handle tokens
     }
+    
+    e.preventDefault(); // Prevent default right-click behavior immediately
+    setPanStarted(true);
+    
+    // Small timeout to determine if this is a pan or context menu
+    setTimeout(() => {
+      if (panStarted && e.movementX === 0 && e.movementY === 0) {
+        // If mouse hasn't moved, treat as context menu
+        console.log('[DEBUG] No movement detected, treating as context menu');
+        setPanStarted(false);
+      } else if (panStarted) {
+        console.log('[DEBUG] Movement detected, starting pan');
+        setIsPanning(true);
+        setLastPos({ x: e.clientX, y: e.clientY });
+        document.body.style.cursor = 'grabbing';
+      }
+    }, 150);
   }, [panStarted]);
 
   const handleMouseMove = useCallback((e) => {
@@ -179,7 +185,7 @@ export function ZoomableContainer({
       id={containerId}
       style={containerStyle}
       onWheel={onWheel}
-      onMouseDown={startPanning}
+      onMouseDown={handleMouseDown}  // Changed from startPanning
       onContextMenu={handleContextMenu}  // Moved to outer container
     >
       <div style={contentStyle}>
