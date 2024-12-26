@@ -109,15 +109,17 @@ export function ZoomableContainer({
 
   // Handle context menu
   const handleContextMenu = useCallback((e) => {
-    // Always prevent browser's default context menu
+    console.log('[DEBUG] ZoomableContainer contextmenu event', e.target);
+    // Only prevent default browser menu
     e.preventDefault();
     
-    // If we're not panning or just started panning, allow event to bubble
+    // Very important: Don't stop propagation if not panning
     if (!isPanning && !panStarted) {
+      console.log('[DEBUG] ZoomableContainer allowing event to bubble');
       return;
     }
     
-    // If we are panning, stop propagation
+    console.log('[DEBUG] ZoomableContainer stopping event - was panning');
     e.stopPropagation();
     setPanStarted(false);
   }, [isPanning, panStarted]);
