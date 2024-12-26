@@ -1,11 +1,6 @@
-// js/hooks/useTokenSelection.js
 import { useState, useCallback, useEffect } from 'react';
 
-/**
- * Manages selection of tokens by ID, plus marquee logic.
- */
 export function useTokenSelection() {
-  // A set of token IDs that are selected
   const [selectedTokenIds, setSelectedTokenIds] = useState(new Set());
   const [marqueeState, setMarqueeState] = useState(null);
 
@@ -13,9 +8,6 @@ export function useTokenSelection() {
     setSelectedTokenIds(new Set());
   }, []);
 
-  /**
-   * selectTokenId: adds a token's ID to the selection (or replaces it if not additive).
-   */
   const selectTokenId = useCallback((tokenId, additive = false) => {
     setSelectedTokenIds(prev => {
       const newSet = additive ? new Set(prev) : new Set();
@@ -24,18 +16,36 @@ export function useTokenSelection() {
     });
   }, []);
 
-  /**
-   * startMarquee: create the marquee <div>, track coords
-   */
   const startMarquee = useCallback((e) => {
+    // Get container and its transform state
+    const container = document.getElementById('tabletop-container');
+    const contentEl = container.querySelector('div'); // The inner div with transform
+    const transform = new DOMMatrix(window.getComputedStyle(contentEl).transform);
+    
+    // Create marquee element in the transformed space
     const marqueeEl = document.createElement('div');
     marqueeEl.className = 'marquee';
-    document.body.appendChild(marqueeEl);
+    
+    // Position it relative to the container
+    const containerRect = container.getBoundingClientRect();
+    const startX = e.clientX - containerRect.left;
+    const startY = e.clientY - containerRect.top;
 
+    // Apply initial positioning
+    marqueeEl.style.position = 'absolute';
+    marqueeEl.style.left = startX + 'px';
+    marqueeEl.style.top = startY + 'px';
+    marqueeEl.style.pointerEvents = 'none';
+    
+    // Add marquee to the container instead of body
+    container.appendChild(marqueeEl);
+    
     setMarqueeState({
       element: marqueeEl,
-      startX: e.clientX,
-      startY: e.clientY
+      startX,
+      startY,
+      transform,
+      containerRect
     });
   }, []);
 
@@ -43,43 +53,67 @@ export function useTokenSelection() {
     if (!marqueeState) return;
 
     function onMouseMove(e) {
-      const { element, startX, startY } = marqueeState;
-      const minX = Math.min(e.clientX, startX);
-      const maxX = Math.max(e.clientX, startX);
-      const minY = Math.min(e.clientY, startY);
-      const maxY = Math.max(e.clientY, startY);
+      const { element, startX, startY, containerRect } = marqueeState;
+      
+      // Get current mouse position relative to container
+      const currentX = e.clientX - containerRect.left;
+      const currentY = e.clientY - containerRect.top;
 
-      element.style.left = `${minX}px`;
-      element.style.top = `${minY}px`;
-      element.style.width = `${maxX - minX}px`;
-      element.style.height = `${maxY - minY}px`;
+      // Calculate marquee dimensions
+      const minX = Math.min(currentX, startX);
+      const maxX = Math.max(currentX, startX);
+      const minY = Math.min(currentY, startY);
+      const maxY = Math.max(currentY, startY);
+
+      // Update marquee position and size
+      element.style.left = minX + 'px';
+      element.style.top = minY + 'px';
+      element.style.width = (maxX - minX) + 'px';
+      element.style.height = (maxY - minY) + 'px';
     }
 
     function onMouseUp(e) {
-      const rect = marqueeState.element.getBoundingClientRect();
-      // Instead of toggling .selected, 
-      // we collect all tokens from somewhere (like from your state) or from the DOM:
+      const { element, transform, containerRect } = marqueeState;
+      const marqueeRect = element.getBoundingClientRect();
+      
+      // Get all tokens
       const tokenEls = document.querySelectorAll('.token');
+      
       tokenEls.forEach(tokenEl => {
         const tokenRect = tokenEl.getBoundingClientRect();
+        
+        // Transform token coordinates to container space
+        const tokenLeft = tokenRect.left - containerRect.left;
+        const tokenTop = tokenRect.top - containerRect.top;
+        const tokenRight = tokenRect.right - containerRect.left;
+        const tokenBottom = tokenRect.bottom - containerRect.top;
+
+        // Check intersection in container space
+        const marqueeLeft = marqueeRect.left - containerRect.left;
+        const marqueeTop = marqueeRect.top - containerRect.top;
+        const marqueeRight = marqueeRect.right - containerRect.left;
+        const marqueeBottom = marqueeRect.bottom - containerRect.top;
+
         const intersects = !(
-          rect.right < tokenRect.left ||
-          rect.left > tokenRect.right ||
-          rect.bottom < tokenRect.top ||
-          rect.top > tokenRect.bottom
+          marqueeRight < tokenLeft ||
+          marqueeLeft > tokenRight ||
+          marqueeBottom < tokenTop ||
+          marqueeTop > tokenBottom
         );
+
         if (intersects) {
-          // select the token by ID
           selectTokenId(tokenEl.id, e.shiftKey);
         }
       });
 
-      marqueeState.element.remove();
+      // Cleanup
+      element.remove();
       setMarqueeState(null);
     }
 
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
+
     return () => {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
@@ -88,7 +122,7 @@ export function useTokenSelection() {
 
   return {
     selectedTokenIds,
-    selectTokenId, 
+    selectTokenId,
     clearSelection,
     startMarquee
   };
