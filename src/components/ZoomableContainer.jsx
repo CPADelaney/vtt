@@ -27,9 +27,12 @@ export function ZoomableContainer({
     zoomFactor
   });
 
-  // Right-click panning
+  // Right-click panning state
   const [isPanning, setIsPanning] = useState(false);
   const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
+  
+  // Track if we're handling a pan to prevent context menu
+  const isPanningRef = useRef(false);
 
   // Debounced wheel end detection
   const handleWheelEnd = useMemo(() => {
@@ -45,8 +48,14 @@ export function ZoomableContainer({
   }, [handleWheel, handleWheelEnd]);
 
   const startPanning = useCallback((e) => {
+    // Only handle right click
     if (e.button !== 2) return;
+    
+    // Important: Stop event propagation
+    e.stopPropagation();
     e.preventDefault();
+    
+    isPanningRef.current = true;
     setIsPanning(true);
     setLastPos({ x: e.clientX, y: e.clientY });
     document.body.style.cursor = 'grabbing';
@@ -54,32 +63,52 @@ export function ZoomableContainer({
 
   const handleMouseMove = useCallback((e) => {
     if (!isPanning) return;
+    
     e.preventDefault();
+    e.stopPropagation();
+    
     const dx = e.clientX - lastPos.x;
     const dy = e.clientY - lastPos.y;
+    
     setPosition(prev => ({
-      x: prev.x + dx,
-      y: prev.y + dy
+      x: (prev?.x || 0) + dx,
+      y: (prev?.y || 0) + dy
     }));
+    
     setLastPos({ x: e.clientX, y: e.clientY });
   }, [isPanning, lastPos, setPosition]);
 
   const stopPanning = useCallback(() => {
     setIsPanning(false);
+    isPanningRef.current = false;
     document.body.style.cursor = '';
     onPanEnd?.();
   }, [onPanEnd]);
 
+  // Handle context menu behavior
+  const handleContextMenu = useCallback((e) => {
+    // If we're panning or just finished panning, prevent context menu
+    if (isPanningRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      isPanningRef.current = false;
+      return;
+    }
+  }, []);
+
   useEffect(() => {
     if (!isPanning) return;
+
     const onMouseMoveHandler = (e) => handleMouseMove(e);
     const onMouseUpHandler = () => stopPanning();
     const onKeyDownHandler = (e) => {
       if (e.key === 'Escape') stopPanning();
     };
+
     window.addEventListener('mousemove', onMouseMoveHandler);
     window.addEventListener('mouseup', onMouseUpHandler);
     window.addEventListener('keydown', onKeyDownHandler);
+
     return () => {
       window.removeEventListener('mousemove', onMouseMoveHandler);
       window.removeEventListener('mouseup', onMouseUpHandler);
@@ -113,7 +142,7 @@ export function ZoomableContainer({
       style={containerStyle}
       onWheel={onWheel}
       onMouseDown={startPanning}
-      onContextMenu={(e) => e.preventDefault()}
+      onContextMenu={handleContextMenu}
     >
       <div style={contentStyle}>
         {children}
