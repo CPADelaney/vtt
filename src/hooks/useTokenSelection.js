@@ -67,47 +67,49 @@ export function useTokenSelection() {
         return newSet;
       });
     }, []);
-
-  const startMarquee = useCallback((e) => {
-    console.log('[DEBUG] startMarquee called');
     
-    // Get container and verify elements
-    const container = document.getElementById('tabletop-container');
-    if (!container) {
-      console.error('[DEBUG] Container not found');
-      return;
-    }
+    const startMarquee = useCallback((e) => {
+      console.log('[DEBUG] startMarquee called');
+      
+      // Get container and verify elements
+      const container = document.getElementById('tabletop-container');
+      if (!container) {
+        console.error('[DEBUG] Container not found');
+        return;
+      }
+      
+      // Create marquee element
+      const marqueeEl = document.createElement('div');
+      marqueeEl.className = 'marquee';
+      
+      // Get container bounds and calculate initial position
+      const containerRect = container.getBoundingClientRect();
+      const startX = e.clientX - containerRect.left;
+      const startY = e.clientY - containerRect.top;
     
-    // Create marquee element
-    const marqueeEl = document.createElement('div');
-    marqueeEl.className = 'marquee';
+      console.log('[DEBUG] Marquee start position:', { startX, startY });
     
-    // Get container bounds and calculate initial position
-    const containerRect = container.getBoundingClientRect();
-    const startX = e.clientX - containerRect.left;
-    const startY = e.clientY - containerRect.top;
-
-    // Apply styles inline to ensure they're present
-    marqueeEl.style.position = 'absolute';
-    marqueeEl.style.left = `${startX}px`;
-    marqueeEl.style.top = `${startY}px`;
-    marqueeEl.style.width = '0';
-    marqueeEl.style.height = '0';
-    marqueeEl.style.border = '2px solid #3498db';
-    marqueeEl.style.backgroundColor = 'rgba(52, 152, 219, 0.1)';
-    marqueeEl.style.pointerEvents = 'none';
-    marqueeEl.style.zIndex = '10000';
-    
-    // Add to container
-    container.appendChild(marqueeEl);
-    
-    setMarqueeState({
-      element: marqueeEl,
-      startX,
-      startY,
-      containerRect
-    });
-  }, []);
+      // Apply styles inline to ensure they're present
+      marqueeEl.style.position = 'absolute';
+      marqueeEl.style.left = `${startX}px`;
+      marqueeEl.style.top = `${startY}px`;
+      marqueeEl.style.width = '0';
+      marqueeEl.style.height = '0';
+      marqueeEl.style.border = '2px solid #3498db';
+      marqueeEl.style.backgroundColor = 'rgba(52, 152, 219, 0.1)';
+      marqueeEl.style.pointerEvents = 'none';
+      marqueeEl.style.zIndex = '10000';
+      
+      // Add to container
+      container.appendChild(marqueeEl);
+      
+      setMarqueeState({
+        element: marqueeEl,
+        startX,
+        startY,
+        containerRect
+      });
+    }, []);
 
   useEffect(() => {
     if (!marqueeState) return;
