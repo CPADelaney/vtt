@@ -235,10 +235,7 @@ export default function VirtualTabletop() {
     <>
       <Controls onZoomIn={onZoomIn} onZoomOut={onZoomOut} />
 
-      <div 
-        onContextMenu={handleContextMenu} // Move context menu handler to outer div
-        style={{ width: '100%', height: '100%' }}
-      >
+      <div className="tabletop-wrapper" style={{ width: '100%', height: '100%' }}>
         <ZoomableContainer
           containerId="tabletop-container"
           scale={scale}
@@ -258,38 +255,41 @@ export default function VirtualTabletop() {
           minScale={MIN_SCALE}
           maxScale={MAX_SCALE}
           zoomFactor={ZOOM_FACTOR}
-          // No manual onZoomEnd or onPanEnd (auto-save handles it)
         >
-        <div
-          id="tabletop"
-          className={isHexGrid ? 'hex-grid' : 'square-grid'}
-          onMouseDown={handleMouseDown}
-          onContextMenu={handleContextMenu}
-          style={{ width: '100%', height: '100%', position: 'relative' }}
-        >
-          <Grid
-            isHexGrid={isHexGrid}
-            rows={dimensions.rows}
-            cols={dimensions.cols}
-            squareSize={gridConfig.squareSize}
-            hexSize={gridConfig.hexSize}
-            hexWidth={gridConfig.hexWidth}
-            hexHeight={gridConfig.hexHeight}
-          />
-
-          {tokens.map(token => (
-            <Token
-              key={token.id}
-              {...token}
-              isSelected={selectedTokenIds.has(token.id)}
-              onClick={e => e.stopPropagation()}
+          <div
+            id="tabletop"
+            className={isHexGrid ? 'hex-grid' : 'square-grid'}
+            onMouseDown={handleMouseDown}
+            onContextMenu={handleContextMenu} // Only keep it here
+            style={{ width: '100%', height: '100%', position: 'relative' }}
+          >
+            <Grid
+              isHexGrid={isHexGrid}
+              rows={dimensions.rows}
+              cols={dimensions.cols}
+              squareSize={gridConfig.squareSize}
+              hexSize={gridConfig.hexSize}
+              hexWidth={gridConfig.hexWidth}
+              hexHeight={gridConfig.hexHeight}
             />
-          ))}
-        </div>
-      </ZoomableContainer>
 
-      <Sidebar isHexGrid={isHexGrid} onToggleGrid={onToggleGrid} />
-      <ChatBox />
+            {tokens.map(token => (
+              <Token
+                key={token.id}
+                {...token}
+                isSelected={selectedTokenIds.has(token.id)}
+                onClick={e => {
+                  e.stopPropagation();
+                  // Add any token click handling here if needed
+                }}
+              />
+            ))}
+          </div>
+        </ZoomableContainer>
+
+        <Sidebar isHexGrid={isHexGrid} onToggleGrid={onToggleGrid} />
+        <ChatBox />
+      </div>
     </>
   );
 }
