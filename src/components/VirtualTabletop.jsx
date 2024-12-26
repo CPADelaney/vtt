@@ -204,47 +204,41 @@ export default function VirtualTabletop() {
       scale: Math.max(prev.scale * 0.9, MIN_SCALE)
     }));
   };
-  const handleMouseDown = useCallback((e) => {
-    console.log('[DEBUG] MouseDown event received:', {
-      button: e.button,
-      target: e.target.className,
-      x: e.clientX,
-      y: e.clientY,
-      handled: e.defaultPrevented
-    });
   
-    if (e.button === 0) { // Left click
-      const tokenEl = e.target.closest('.token');
-      
-      console.log('[DEBUG] Token check:', {
-        isToken: !!tokenEl,
-        tokenId: tokenEl?.id
+    const handleMouseDown = useCallback((e) => {
+      console.log('[DEBUG-PARENT] MouseDown event:', {
+        button: e.button,
+        target: e.target,
+        currentTarget: e.currentTarget,
+        clientX: e.clientX,
+        clientY: e.clientY
       });
-  
-      if (tokenEl) {
-        if (!e.shiftKey) clearSelection();
-        selectTokenId(tokenEl.id, e.shiftKey);
-  
-        const tokenObj = tokens.find(t => t.id === tokenEl.id);
-        if (tokenObj) {
-          console.log('[DEBUG] Starting token drag');
-          startDrag(tokenObj, e);
-        }
-      } else {
-        console.log('[DEBUG] Starting marquee');
-        if (!e.shiftKey) clearSelection();
-        startMarquee(e);
-      }
-    }
-  }, [clearSelection, selectTokenId, tokens, startDrag, startMarquee]);
-
-
-  const handleContextMenu = useCallback((e) => {
-    // Always prevent default first
-    e.preventDefault();
-    e.stopPropagation();
     
-    console.log('[DEBUG-CHAIN] 5. VirtualTabletop contextmenu received');
+      if (e.button === 0) { // Left click
+        const tokenEl = e.target.closest('.token');
+        if (tokenEl) {
+          if (!e.shiftKey) clearSelection();
+          selectTokenId(tokenEl.id, e.shiftKey);
+    
+          const tokenObj = tokens.find(t => t.id === tokenEl.id);
+          if (tokenObj) {
+            console.log('[DEBUG-PARENT] Start drag for token', tokenObj.id);
+            startDrag(tokenObj, e);
+          }
+        } else {
+          console.log('[DEBUG-PARENT] Starting marquee selection');
+          if (!e.shiftKey) clearSelection();
+          startMarquee(e);
+        }
+      }
+    }, [clearSelection, selectTokenId, tokens, startDrag, startMarquee]);
+    
+      const handleContextMenu = useCallback((e) => {
+        // Always prevent default first
+        e.preventDefault();
+        e.stopPropagation();
+        
+        console.log('[DEBUG-CHAIN] 5. VirtualTabletop contextmenu received');
     
     const tokenEl = e.target.closest('.token');
     console.log('[DEBUG-CHAIN] 6. Target type:', tokenEl ? 'token' : 'grid');
