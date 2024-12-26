@@ -7,34 +7,66 @@ export function useTokenSelection() {
   const clearSelection = useCallback(() => {
     setSelectedTokenIds(new Set());
   }, []);
-
+  
   const selectTokenId = useCallback((tokenId, additive = false) => {
     console.log('[DEBUG] Selecting token:', { tokenId, additive });
+    
     setSelectedTokenIds(prev => {
-      // If additive, create a new set with all previous selections
+      // Start with either previous selection (if additive) or empty set
       const newSet = additive ? new Set(prev) : new Set();
       
-      // For additive selection, toggle the token's selected state
       if (additive && prev.has(tokenId)) {
+        // If additive and already selected, remove it (toggle)
         newSet.delete(tokenId);
       } else {
+        // Otherwise add it
         newSet.add(tokenId);
       }
       
-      console.log('[DEBUG] New selection:', Array.from(newSet));
+      console.log('[DEBUG] New selection:', {
+        tokenId,
+        wasSelected: prev.has(tokenId),
+        isAdditive: additive,
+        newSelection: Array.from(newSet)
+      });
+      
       return newSet;
     });
   }, []);
-
-  // Similar to selectTokenId but for multiple tokens at once
-  const selectTokenIds = useCallback((tokenIds, additive = false) => {
-    console.log('[DEBUG] Selecting multiple tokens:', { tokenIds: Array.from(tokenIds), additive });
-    setSelectedTokenIds(prev => {
-      const newSet = additive ? new Set(prev) : new Set();
-      tokenIds.forEach(id => newSet.add(id));
-      return newSet;
-    });
-  }, []);
+    
+    const selectTokenIds = useCallback((tokenIds, additive = false) => {
+      console.log('[DEBUG] Selecting multiple tokens:', { 
+        tokenIds: Array.from(tokenIds), 
+        additive,
+      });
+    
+      setSelectedTokenIds(prev => {
+        // Start with either previous selection (if additive) or empty set
+        const newSet = additive ? new Set(prev) : new Set();
+        
+        // If additive, we want to toggle any tokens that are already selected
+        if (additive) {
+          tokenIds.forEach(id => {
+            if (prev.has(id)) {
+              newSet.delete(id);
+            } else {
+              newSet.add(id);
+            }
+          });
+        } else {
+          // If not additive, simply add all new tokens
+          tokenIds.forEach(id => newSet.add(id));
+        }
+    
+        console.log('[DEBUG] New multi-selection:', {
+          additive,
+          previousSelection: Array.from(prev),
+          newSelection: Array.from(newSet)
+        });
+        
+        return newSet;
+      });
+    }, []);
 
   const startMarquee = useCallback((e) => {
     console.log('[DEBUG] startMarquee called');
