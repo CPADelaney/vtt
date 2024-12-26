@@ -49,7 +49,7 @@ export function ZoomableContainer({
     handleWheel(e);
     handleWheelEnd();
   }, [handleWheel, handleWheelEnd]);
-
+  
   const startPanning = useCallback((e) => {
     if (e.button === 2) {  // right click
       // Check if click is on a token
@@ -59,16 +59,20 @@ export function ZoomableContainer({
         return; // Let context menu handle tokens
       }
       
+      e.preventDefault(); // Prevent default right-click behavior immediately
       setPanStarted(true);
       
       // Small timeout to determine if this is a pan or context menu
       setTimeout(() => {
-        if (panStarted) {
+        if (panStarted && e.movementX === 0 && e.movementY === 0) {
+          // If mouse hasn't moved, treat as context menu
+          setPanStarted(false);
+        } else if (panStarted) {
           setIsPanning(true);
           setLastPos({ x: e.clientX, y: e.clientY });
           document.body.style.cursor = 'grabbing';
         }
-      }, 150); // Adjust this delay if needed
+      }, 150);
     }
   }, [panStarted]);
 
@@ -106,7 +110,7 @@ export function ZoomableContainer({
       onPanEnd?.();
     }
   }, [isPanning, onPanEnd]);
-
+  
   const handleContextMenu = useCallback((e) => {
     console.log('[DEBUG-CHAIN] 1. ZoomableContainer contextmenu received');
     
@@ -121,16 +125,18 @@ export function ZoomableContainer({
       element: e.target
     });
     
-    // If we're panning or about to pan, stop the event and reset pan state
-    if (isPanning || panStarted) {
+    // If we're actually panning (not just panStarted), stop the event
+    if (isPanning) {
       console.log('[DEBUG-CHAIN] 3. Stopping event - was panning');
       e.stopPropagation();
       setPanStarted(false);
       return;
     }
     
-    // Otherwise, let the event bubble up to parent handlers
-    console.log('[DEBUG-CHAIN] 4. Allowing event to bubble');
+    // If pan hasn't started yet, let context menu show
+    if (!panStarted) {
+      console.log('[DEBUG-CHAIN] 4. Allowing event to bubble');
+    }
   }, [isPanning, panStarted]);
 
   useEffect(() => {
