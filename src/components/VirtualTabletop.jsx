@@ -262,6 +262,7 @@ export default function VirtualTabletop() {
         minScale={MIN_SCALE}
         maxScale={MAX_SCALE}
         zoomFactor={ZOOM_FACTOR}
+        onContextMenu={handleContextMenu}  // Pass the handler down
       >
         <div
           id="tabletop"
