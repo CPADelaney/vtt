@@ -31,6 +31,20 @@ export function ZoomableContainer({
   const [isPanning, setIsPanning] = useState(false);
   const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
 
+  // Debounced wheel end detection
+  const handleWheelEnd = useMemo(() => {
+    return _.debounce(() => {
+      console.log('[DEBUG] wheel ended');
+      onZoomEnd?.();
+    }, 300);
+  }, [onZoomEnd]);
+
+  // Combine wheel handling with end detection
+  const onWheel = useCallback((e) => {
+    handleWheel(e);
+    handleWheelEnd();
+  }, [handleWheel, handleWheelEnd]);
+
   // Debug current state
   useEffect(() => {
     if (isPanning) {
@@ -41,6 +55,7 @@ export function ZoomableContainer({
   const startPanning = useCallback((e) => {
     if (e.button === 2) {  // right click
       e.preventDefault();
+      e.stopPropagation();
       console.log('[DEBUG] Starting pan at:', { x: e.clientX, y: e.clientY });
       setIsPanning(true);
       setLastPos({ x: e.clientX, y: e.clientY });
@@ -50,6 +65,9 @@ export function ZoomableContainer({
 
   const handleMouseMove = useCallback((e) => {
     if (!isPanning) return;
+
+    e.preventDefault();
+    e.stopPropagation();
 
     const dx = e.clientX - lastPos.x;
     const dy = e.clientY - lastPos.y;
@@ -70,34 +88,35 @@ export function ZoomableContainer({
   }, [isPanning, lastPos, setPosition, position]);
 
   const stopPanning = useCallback(() => {
+    if (!isPanning) return;
+    
     console.log('[DEBUG] Stopping pan');
     setIsPanning(false);
     document.body.style.cursor = '';
     onPanEnd?.();
-  }, [onPanEnd]);
+  }, [isPanning, onPanEnd]);
 
   // Set up event listeners when panning starts
   useEffect(() => {
     if (isPanning) {
       console.log('[DEBUG] Adding pan event listeners');
       
-      const onMouseMove = (e) => {
-        e.preventDefault();
-        handleMouseMove(e);
-      };
-
-      const onMouseUp = () => {
-        stopPanning();
+      const onMouseMove = (e) => handleMouseMove(e);
+      const onMouseUp = () => stopPanning();
+      const onKeyDown = (e) => {
+        if (e.key === 'Escape') stopPanning();
       };
 
       // Add listeners to window to catch events outside container
       window.addEventListener('mousemove', onMouseMove, { capture: true });
       window.addEventListener('mouseup', onMouseUp, { capture: true });
+      window.addEventListener('keydown', onKeyDown);
 
       return () => {
         console.log('[DEBUG] Removing pan event listeners');
         window.removeEventListener('mousemove', onMouseMove, { capture: true });
         window.removeEventListener('mouseup', onMouseUp, { capture: true });
+        window.removeEventListener('keydown', onKeyDown);
       };
     }
   }, [isPanning, handleMouseMove, stopPanning]);
