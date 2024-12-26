@@ -13,6 +13,7 @@ export function ZoomableContainer({
   zoomFactor = 0.1,
   onZoomEnd,
   onPanEnd,
+  onContextMenu,  // Add this prop
   children
 }) {
   // Mouse wheel zooming
@@ -111,44 +112,30 @@ export function ZoomableContainer({
     }
   }, [isPanning, onPanEnd]);
   
-const handleContextMenu = useCallback((e) => {
-  console.log('[DEBUG-CHAIN] 1. ZoomableContainer contextmenu received');
-  
-  // Always prevent browser's default context menu
-  e.preventDefault();
-  
-  const isToken = e.target.closest('.token');
-  console.log('[DEBUG-CHAIN] 2. Target info:', {
-    isToken,
-    isPanning,
-    panStarted,
-    element: e.target
-  });
-  
-  if (isPanning) {
-    console.log('[DEBUG-CHAIN] 3. Stopping event - was panning');
-    e.stopPropagation();
-    setPanStarted(false);
-    return;
-  }
-  
-  // Important: Create a new custom event to bubble up
-  const customEvent = new MouseEvent('contextmenu', {
-    bubbles: true,
-    clientX: e.clientX,
-    clientY: e.clientY,
-    // Copy other relevant properties
-    button: e.button,
-    buttons: e.buttons,
-    ctrlKey: e.ctrlKey,
-    altKey: e.altKey,
-    shiftKey: e.shiftKey,
-    metaKey: e.metaKey
-  });
-  
-  console.log('[DEBUG-CHAIN] 4. Dispatching custom event');
-  e.target.dispatchEvent(customEvent);
-}, [isPanning, panStarted]);
+  const handleContextMenu = useCallback((e) => {
+    console.log('[DEBUG-CHAIN] 1. ZoomableContainer contextmenu received');
+    
+    // Always prevent browser default
+    e.preventDefault();
+    
+    const isToken = e.target.closest('.token');
+    console.log('[DEBUG-CHAIN] 2. Target info:', {
+      isToken,
+      isPanning,
+      panStarted,
+      element: e.target
+    });
+    
+    if (isPanning) {
+      console.log('[DEBUG-CHAIN] 3. Stopping event - was panning');
+      setPanStarted(false);
+      return;
+    }
+    
+    // Call the passed in handler
+    console.log('[DEBUG-CHAIN] 4. Calling parent handler');
+    onContextMenu?.(e);
+  }, [isPanning, panStarted, onContextMenu]);
 
   useEffect(() => {
     if (isPanning || panStarted) {
