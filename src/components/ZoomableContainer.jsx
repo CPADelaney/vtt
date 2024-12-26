@@ -31,24 +31,17 @@ export function ZoomableContainer({
   const [isPanning, setIsPanning] = useState(false);
   const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
 
-  // Debounced wheel end detection
-  const handleWheelEnd = useMemo(() => {
-    return _.debounce(() => {
-      console.log('[DEBUG] wheel ended');
-      onZoomEnd?.();
-    }, 300);
-  }, [onZoomEnd]);
-
-  const onWheel = useCallback((e) => {
-    handleWheel(e);
-    handleWheelEnd();
-  }, [handleWheel, handleWheelEnd]);
+  // Debug current state
+  useEffect(() => {
+    if (isPanning) {
+      console.log('[DEBUG] Panning active, last position:', lastPos);
+    }
+  }, [isPanning, lastPos]);
 
   const startPanning = useCallback((e) => {
-    // Only handle right click and ensure context menu is prevented
-    if (e.button === 2) {
+    if (e.button === 2) {  // right click
       e.preventDefault();
-      
+      console.log('[DEBUG] Starting pan at:', { x: e.clientX, y: e.clientY });
       setIsPanning(true);
       setLastPos({ x: e.clientX, y: e.clientY });
       document.body.style.cursor = 'grabbing';
@@ -57,53 +50,54 @@ export function ZoomableContainer({
 
   const handleMouseMove = useCallback((e) => {
     if (!isPanning) return;
-    
-    e.preventDefault();
-    
+
     const dx = e.clientX - lastPos.x;
     const dy = e.clientY - lastPos.y;
-    
+
+    console.log('[DEBUG] Mouse move delta:', { dx, dy });
+    console.log('[DEBUG] Current position:', position);
+
     setPosition(prev => {
-      const currentX = prev?.x ?? 0;
-      const currentY = prev?.y ?? 0;
-      return {
-        x: currentX + dx,
-        y: currentY + dy
+      const newPos = {
+        x: (prev?.x || 0) + dx,
+        y: (prev?.y || 0) + dy
       };
+      console.log('[DEBUG] New position:', newPos);
+      return newPos;
     });
-    
+
     setLastPos({ x: e.clientX, y: e.clientY });
-  }, [isPanning, lastPos, setPosition]);
+  }, [isPanning, lastPos, setPosition, position]);
 
   const stopPanning = useCallback(() => {
-    if (isPanning) {
-      setIsPanning(false);
-      document.body.style.cursor = '';
-      onPanEnd?.();
-    }
-  }, [isPanning, onPanEnd]);
+    console.log('[DEBUG] Stopping pan');
+    setIsPanning(false);
+    document.body.style.cursor = '';
+    onPanEnd?.();
+  }, [onPanEnd]);
 
-  // Always prevent context menu when right-clicking
-  const handleContextMenu = useCallback((e) => {
-    e.preventDefault();
-  }, []);
-
+  // Set up event listeners when panning starts
   useEffect(() => {
     if (isPanning) {
-      const onMouseMove = (e) => handleMouseMove(e);
-      const onMouseUp = () => stopPanning();
-      const onKeyDown = (e) => {
-        if (e.key === 'Escape') stopPanning();
+      console.log('[DEBUG] Adding pan event listeners');
+      
+      const onMouseMove = (e) => {
+        e.preventDefault();
+        handleMouseMove(e);
       };
 
-      window.addEventListener('mousemove', onMouseMove);
-      window.addEventListener('mouseup', onMouseUp);
-      window.addEventListener('keydown', onKeyDown);
+      const onMouseUp = () => {
+        stopPanning();
+      };
+
+      // Add listeners to window to catch events outside container
+      window.addEventListener('mousemove', onMouseMove, { capture: true });
+      window.addEventListener('mouseup', onMouseUp, { capture: true });
 
       return () => {
-        window.removeEventListener('mousemove', onMouseMove);
-        window.removeEventListener('mouseup', onMouseUp);
-        window.removeEventListener('keydown', onKeyDown);
+        console.log('[DEBUG] Removing pan event listeners');
+        window.removeEventListener('mousemove', onMouseMove, { capture: true });
+        window.removeEventListener('mouseup', onMouseUp, { capture: true });
       };
     }
   }, [isPanning, handleMouseMove, stopPanning]);
@@ -112,7 +106,8 @@ export function ZoomableContainer({
     width: '100%',
     height: '100%',
     overflow: 'hidden',
-    position: 'relative'
+    position: 'relative',
+    touchAction: 'none' // Prevent touch events from scrolling
   };
 
   const contentStyle = {
@@ -120,7 +115,8 @@ export function ZoomableContainer({
     left: 0,
     top: 0,
     transform: `translate(${position?.x || 0}px, ${position?.y || 0}px) scale(${scale})`,
-    transformOrigin: '0 0'
+    transformOrigin: '0 0',
+    pointerEvents: isPanning ? 'none' : 'auto' // Prevent interaction while panning
   };
 
   return (
@@ -129,7 +125,7 @@ export function ZoomableContainer({
       style={containerStyle}
       onWheel={onWheel}
       onMouseDown={startPanning}
-      onContextMenu={handleContextMenu}
+      onContextMenu={e => e.preventDefault()}
     >
       <div style={contentStyle}>
         {children}
