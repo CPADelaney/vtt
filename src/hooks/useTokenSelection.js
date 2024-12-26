@@ -11,13 +11,17 @@ export function useTokenSelection() {
   const selectTokenId = useCallback((tokenId, additive = false) => {
     console.log('[DEBUG] Selecting token:', { tokenId, additive });
     setSelectedTokenIds(prev => {
+      // If additive, create a new set with all previous selections
       const newSet = additive ? new Set(prev) : new Set();
-      // If additive and token is already selected, remove it (toggle behavior)
+      
+      // For additive selection, toggle the token's selected state
       if (additive && prev.has(tokenId)) {
         newSet.delete(tokenId);
       } else {
         newSet.add(tokenId);
       }
+      
+      console.log('[DEBUG] New selection:', Array.from(newSet));
       return newSet;
     });
   }, []);
