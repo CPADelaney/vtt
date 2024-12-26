@@ -225,6 +225,15 @@ export default function VirtualTabletop() {
     }));
   };
 
+   useEffect(() => {
+    console.log('[DEBUG-TEST] Testing menu creation...');
+    const testEvent = new MouseEvent('contextmenu', {
+      clientX: 100,
+      clientY: 100,
+    });
+    showMenu(testEvent, { type: 'grid' });
+  }, []); 
+
   // 10) Prevent default wheel scroll
   useEffect(() => {
     const preventDefault = e => e.preventDefault();
