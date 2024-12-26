@@ -31,11 +31,18 @@ export function useTokenSelection() {
     const startX = e.clientX - containerRect.left;
     const startY = e.clientY - containerRect.top;
 
-    // Apply initial positioning
-    marqueeEl.style.position = 'absolute';
-    marqueeEl.style.left = startX + 'px';
-    marqueeEl.style.top = startY + 'px';
-    marqueeEl.style.pointerEvents = 'none';
+    // Apply initial positioning and styling
+    marqueeEl.style.cssText = `
+      position: absolute;
+      left: ${startX}px;
+      top: ${startY}px;
+      width: 0;
+      height: 0;
+      border: 2px solid #3498db;
+      background-color: rgba(52, 152, 219, 0.1);
+      pointer-events: none;
+      z-index: 1000;
+    `;
     
     // Add marquee to the container instead of body
     container.appendChild(marqueeEl);
@@ -66,10 +73,10 @@ export function useTokenSelection() {
       const maxY = Math.max(currentY, startY);
 
       // Update marquee position and size
-      element.style.left = minX + 'px';
-      element.style.top = minY + 'px';
-      element.style.width = (maxX - minX) + 'px';
-      element.style.height = (maxY - minY) + 'px';
+      element.style.left = `${minX}px`;
+      element.style.top = `${minY}px`;
+      element.style.width = `${maxX - minX}px`;
+      element.style.height = `${maxY - minY}px`;
     }
 
     function onMouseUp(e) {
