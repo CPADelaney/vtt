@@ -174,19 +174,17 @@ const handleContextMenu = useCallback((e) => {
     pointerEvents: isPanning ? 'none' : 'auto'
   };
 
-return (
-  <div
-    id={containerId}
-    style={containerStyle}
-    onWheel={onWheel}
-    onMouseDown={startPanning}
-  >
-    <div 
-      style={contentStyle}
-      onContextMenu={handleContextMenu}  // Context menu handler on content div
+  return (
+    <div
+      id={containerId}
+      style={containerStyle}
+      onWheel={onWheel}
+      onMouseDown={startPanning}
+      onContextMenu={handleContextMenu}  // Moved to outer container
     >
-      {children}
+      <div style={contentStyle}>
+        {children}
+      </div>
     </div>
-  </div>
-);
+  );
 }
