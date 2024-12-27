@@ -140,6 +140,21 @@ export default function VirtualTabletop() {
     };
   }, [updateGridDimensions]);
 
+  const { totalWidth, totalHeight } = useMemo(() => {
+    if (isHexGrid) {
+      return {
+        totalWidth: dimensions.cols * gridConfig.hexWidth,
+        totalHeight: dimensions.rows * (gridConfig.hexHeight * 0.75),
+      };
+    } else {
+      return {
+        totalWidth: dimensions.cols * gridConfig.squareSize,
+        totalHeight: dimensions.rows * gridConfig.squareSize,
+      };
+    }
+  }, [dimensions, isHexGrid, gridConfig]);
+
+
   // 6) Token drag
   const { startDrag } = useTokenDrag({
     scale: gameState.scale,  // use actual scale for correct drag coords
@@ -374,7 +389,8 @@ return (
         maxScale={MAX_SCALE}
         zoomFactor={ZOOM_FACTOR}
         onContextMenu={handleContextMenu}
-        // Remove onMouseDown from here
+        gridWidth={totalWidth}       // <-- pass computed width
+        gridHeight={totalHeight}     // <-- pass computed height
       >
       <div
         id="tabletop"
