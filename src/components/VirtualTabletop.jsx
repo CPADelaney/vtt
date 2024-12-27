@@ -52,7 +52,6 @@ export default function VirtualTabletop() {
     tokens: [],
     scale: 1,
     position: { x: 0, y: 0 },
-    // chatLog, hp, etc. if desired
   });
 
   const { isHexGrid, tokens, scale, position } = gameState;
@@ -60,11 +59,9 @@ export default function VirtualTabletop() {
   // 2) Load & Save from campaignManager
   const { saveState, loadState } = useCampaignManager('default-campaign');
 
-  // 3) Token selection
-  const { selectedTokenIds, selectTokenId, clearSelection, startMarquee } =
-    useTokenSelection();
+  // 3) Token selection and deletion
+  const { selectedTokenIds, selectTokenId, clearSelection, startMarquee } = useTokenSelection();
 
-  // 4) Context menu setup
   const handleDeleteTokens = useCallback(() => {
     console.log('[DEBUG] Deleting tokens', Array.from(selectedTokenIds));
     setGameState(prev => ({
@@ -74,7 +71,7 @@ export default function VirtualTabletop() {
     clearSelection();
   }, [selectedTokenIds, clearSelection]);
 
-  // Add keyboard shortcuts (after state declarations but before other effects)
+  // Add keyboard shortcuts for deletion
   useEffect(() => {
     function handleKeyDown(e) {
       // Only handle if no input elements are focused
@@ -87,7 +84,6 @@ export default function VirtualTabletop() {
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedTokenIds.size > 0) {
         // Prevent default browser behavior (like browser back on Backspace)
         e.preventDefault();
-        
         console.log('[DEBUG] Delete/Backspace pressed with selected tokens:', Array.from(selectedTokenIds));
         handleDeleteTokens();
       }
@@ -103,7 +99,7 @@ export default function VirtualTabletop() {
     const loaded = loadState();
     if (loaded) {
       console.log('[DEBUG] Loaded fullState:', loaded);
-      setGameState(loaded); // top-level scale, position, tokens, etc.
+      setGameState(loaded);
     } else {
       console.log('[DEBUG] No saved state found... using defaults');
     }
@@ -119,7 +115,7 @@ export default function VirtualTabletop() {
 
   useAutoSave(gameState, persistGameState, 2000);
 
-  // 3) Debug watchers
+  // Debug watchers
   const prevTokensRef = useRef(tokens);
   useEffect(() => {
     if (prevTokensRef.current !== tokens) {
@@ -132,7 +128,7 @@ export default function VirtualTabletop() {
     console.log('[DEBUG] outerScale is now', scale);
   }, [scale]);
 
-  // 4) Grid config
+  // Grid config
   const gridConfig = useMemo(() => ({
     squareSize: DEFAULT_SQUARE_SIZE,
     hexSize: DEFAULT_HEX_SIZE,
@@ -147,7 +143,7 @@ export default function VirtualTabletop() {
     hexHeight: gridConfig.hexHeight,
   });
 
-  // 5) Dimensions for dynamic grid layout
+  // Dimensions for dynamic grid layout
   const [dimensions, setDimensions] = useState({ rows: 0, cols: 0 });
 
   const updateGridDimensions = useMemo(() => _.debounce(() => {
@@ -190,10 +186,9 @@ export default function VirtualTabletop() {
     }
   }, [dimensions, isHexGrid, gridConfig]);
 
-
-  // 6) Token drag
+  // Token drag
   const { startDrag } = useTokenDrag({
-    scale: gameState.scale,  // use actual scale for correct drag coords
+    scale: gameState.scale,
     getSnappedPosition,
     onDragMove: (tokenId, newPos) => {
       console.log('[DEBUG] onDragMove triggered for', tokenId, '=>', newPos);
@@ -207,24 +202,16 @@ export default function VirtualTabletop() {
     onDragEnd: _.noop
   });
 
-  // 7) Token selection
-  const { selectedTokenIds, selectTokenId, clearSelection, startMarquee } =
-    useTokenSelection();
-
   const handleAddToken = useCallback((e) => {
-    // Get the container element
     const container = document.getElementById('tabletop-container');
     const containerRect = container.getBoundingClientRect();
     
-    // Convert screen coordinates to grid coordinates
     const screenX = e.clientX - containerRect.left;
     const screenY = e.clientY - containerRect.top;
     
-    // Transform screen coordinates to grid coordinates
     const gridX = (screenX - position.x) / scale;
     const gridY = (screenY - position.y) / scale;
     
-    // Now snap the grid coordinates
     const snappedPos = getSnappedPosition(gridX, gridY);
     
     console.log('[DEBUG] Adding token at', {
@@ -247,26 +234,15 @@ export default function VirtualTabletop() {
     }));
   }, [getSnappedPosition, position, scale]);
 
-  const handleDeleteTokens = useCallback(() => {
-    console.log('[DEBUG] Deleting tokens', Array.from(selectedTokenIds));
-    setGameState(prev => ({
-      ...prev,
-      tokens: prev.tokens.filter(t => !selectedTokenIds.has(t.id))
-    }));
-    clearSelection();
-  }, [selectedTokenIds, clearSelection]);
-
   const { showMenu } = useContextMenu({
     onAddToken: handleAddToken,
     onDeleteTokens: handleDeleteTokens
   });
 
-  // 8) PING LOGIC
+  // PING LOGIC
   const [pings, setPings] = useState([]);
   const pingTimeoutRef = useRef(null);
   const isPingingRef = useRef(false);
-
-  // For the movement threshold approach:
   const mouseDownRef = useRef(null);
 
   const playerColor = '#ff0066'; 
@@ -284,11 +260,10 @@ export default function VirtualTabletop() {
       clearTimeout(pingTimeoutRef.current);
     }
     isPingingRef.current = false;
-    mouseDownRef.current = null;   // reset our potential-drag state
+    mouseDownRef.current = null;
   }, []);
 
-
-  // 9) Zoom and mouse logic
+  // Zoom and mouse logic
   const onZoomIn = () => {
     console.log('[DEBUG] onZoomIn called');
     setGameState(prev => ({
@@ -305,96 +280,88 @@ export default function VirtualTabletop() {
     }));
   };
   
-const handleMouseDown = useCallback((e) => {
-  console.log('[DEBUG-TABLETOP] MouseDown event:', {
-    button: e.button,
-    target: e.target,
-    ctrlKey: e.ctrlKey,
-    metaKey: e.metaKey,
-    defaultPrevented: e.defaultPrevented,
-    className: e.target.className
-  });
+  const handleMouseDown = useCallback((e) => {
+    console.log('[DEBUG-TABLETOP] MouseDown event:', {
+      button: e.button,
+      target: e.target,
+      ctrlKey: e.ctrlKey,
+      metaKey: e.metaKey,
+      defaultPrevented: e.defaultPrevented,
+      className: e.target.className
+    });
 
-  // Left-click only
-  if (e.button === 0) {
-    const tokenEl = e.target.closest('.token');
-    const isAdditive = e.metaKey || e.ctrlKey;
+    if (e.button === 0) {
+      const tokenEl = e.target.closest('.token');
+      const isAdditive = e.metaKey || e.ctrlKey;
 
-    if (tokenEl) {
-      e.stopPropagation();
-      const clickedToken = tokens.find(t => t.id === tokenEl.id);
-      const wasSelected = selectedTokenIds.has(tokenEl.id);
-      
-      if (wasSelected && !isAdditive) {
-        // If clicking an already selected token without modifier,
-        // don't change selection, just start dragging the selection
-        const selectedTokens = tokens.filter(t => selectedTokenIds.has(t.id));
-        startDrag(clickedToken, e, selectedTokens);
+      if (tokenEl) {
+        e.stopPropagation();
+        const clickedToken = tokens.find(t => t.id === tokenEl.id);
+        const wasSelected = selectedTokenIds.has(tokenEl.id);
+        
+        if (wasSelected && !isAdditive) {
+          const selectedTokens = tokens.filter(t => selectedTokenIds.has(t.id));
+          startDrag(clickedToken, e, selectedTokens);
+        } else {
+          selectTokenId(tokenEl.id, isAdditive);
+          if (!isAdditive) {
+            startDrag(clickedToken, e, [clickedToken]);
+          }
+        }
       } else {
-        // If token wasn't selected or using modifier key, update selection
-        selectTokenId(tokenEl.id, isAdditive);
+        console.log('[DEBUG-EMPTY] Potential marquee or ping');
+        e.stopPropagation();
+        e.preventDefault();
+
         if (!isAdditive) {
-          // If not using modifier key, start drag with just this token
-          startDrag(clickedToken, e, [clickedToken]);
+          clearSelection();
         }
-      }
-    } else {
-      // Potential marquee or ping
-      console.log('[DEBUG-EMPTY] Potential marquee or ping');
-      e.stopPropagation();
-      e.preventDefault();
 
-      if (!isAdditive) {
-        clearSelection();
-      }
+        const container = document.getElementById('tabletop-container');
+        const containerRect = container.getBoundingClientRect();
+        const screenX = e.clientX - containerRect.left;
+        const screenY = e.clientY - containerRect.top;
 
-      const container = document.getElementById('tabletop-container');
-      const containerRect = container.getBoundingClientRect();
-      const screenX = e.clientX - containerRect.left;
-      const screenY = e.clientY - containerRect.top;
+        const gridX = (screenX - position.x) / scale;
+        const gridY = (screenY - position.y) / scale;
 
-      const gridX = (screenX - position.x) / scale;
-      const gridY = (screenY - position.y) / scale;
+        mouseDownRef.current = {
+          startScreenX: screenX,
+          startScreenY: screenY,
+          startGridX: gridX,
+          startGridY: gridY,
+          hasDragged: false,
+        };
 
-      mouseDownRef.current = {
-        startScreenX: screenX,
-        startScreenY: screenY,
-        startGridX: gridX,
-        startGridY: gridY,
-        hasDragged: false,
-      };
-
-      // Start ping timer
-      isPingingRef.current = true;
-      if (pingTimeoutRef.current) {
-        clearTimeout(pingTimeoutRef.current);
-      }
-      pingTimeoutRef.current = setTimeout(() => {
-        if (isPingingRef.current &&
-            mouseDownRef.current &&
-            !mouseDownRef.current.hasDragged) {
-          createPing(
-            mouseDownRef.current.startGridX,
-            mouseDownRef.current.startGridY
-          );
+        isPingingRef.current = true;
+        if (pingTimeoutRef.current) {
+          clearTimeout(pingTimeoutRef.current);
         }
-      }, 500);
+        pingTimeoutRef.current = setTimeout(() => {
+          if (isPingingRef.current &&
+              mouseDownRef.current &&
+              !mouseDownRef.current.hasDragged) {
+            createPing(
+              mouseDownRef.current.startGridX,
+              mouseDownRef.current.startGridY
+            );
+          }
+        }, 500);
+      }
     }
-  }
-}, [
-  clearSelection,
-  selectTokenId,
-  tokens,
-  selectedTokenIds,
-  startDrag,
-  position,
-  scale,
-  createPing
-]);
+  }, [
+    clearSelection,
+    selectTokenId,
+    tokens,
+    selectedTokenIds,
+    startDrag,
+    position,
+    scale,
+    createPing
+  ]);
 
-  // somewhere in your code
   const handleMouseMove = useCallback((e) => {
-    if (!mouseDownRef.current) return; // no left-click in progress
+    if (!mouseDownRef.current) return;
 
     const dx = e.clientX - mouseDownRef.current.startScreenX;
     const dy = e.clientY - mouseDownRef.current.startScreenY;
@@ -403,14 +370,12 @@ const handleMouseDown = useCallback((e) => {
     if (!mouseDownRef.current.hasDragged && distance > 5) {
       console.log('[DEBUG] Movement threshold => startMarquee + cancel ping');
 
-      // Cancel ping
       if (pingTimeoutRef.current) {
         clearTimeout(pingTimeoutRef.current);
         pingTimeoutRef.current = null;
       }
       isPingingRef.current = false;
 
-      // Start marquee
       startMarquee(e);
       mouseDownRef.current.hasDragged = true; 
     }
@@ -432,12 +397,13 @@ const handleMouseDown = useCallback((e) => {
     }));
   };
 
-  // 10) Prevent default wheel scroll
+  // Prevent default wheel scroll
   useEffect(() => {
     const preventDefault = e => e.preventDefault();
     document.addEventListener('wheel', preventDefault, { passive: false });
     return () => document.removeEventListener('wheel', preventDefault);
   }, []);
+
 
   // 11) Render
 return (
