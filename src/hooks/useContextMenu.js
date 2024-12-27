@@ -3,7 +3,6 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 export function useContextMenu({ onAddToken, onDeleteTokens }) {
   const [menuState, setMenuState] = useState(null);
   const menuRef = useRef(null);
-  const clickHandlerEnabledRef = useRef(false);
 
   const cleanupMenu = useCallback(() => {
     if (menuRef.current) {
@@ -11,21 +10,14 @@ export function useContextMenu({ onAddToken, onDeleteTokens }) {
       menuRef.current = null;
     }
     setMenuState(null);
-    clickHandlerEnabledRef.current = false;
   }, []);
 
   const showMenu = useCallback((e, options) => {
-    // Don't show menu if it was a pan action
-    if (e.isPanning) {
-      return;
-    }
-
     e.preventDefault();
     e.stopPropagation();
     
     cleanupMenu();
 
-    // Create and add menu
     const menuEl = document.createElement('div');
     menuEl.className = 'context-menu';
     menuEl.style.cssText = `
@@ -41,14 +33,13 @@ export function useContextMenu({ onAddToken, onDeleteTokens }) {
       min-width: 120px;
     `;
 
-    // Add menu items based on context
     if (options.type === 'token') {
       const deleteOption = document.createElement('div');
       deleteOption.className = 'context-menu-item';
       deleteOption.style.cssText = 'padding: 8px 12px; cursor: pointer; user-select: none;';
       deleteOption.textContent = 'Delete Token(s)';
-      deleteOption.onclick = (clickEvent) => {
-        clickEvent.stopPropagation();
+      deleteOption.onclick = (e) => {
+        e.stopPropagation();
         onDeleteTokens?.();
         cleanupMenu();
       };
@@ -58,15 +49,14 @@ export function useContextMenu({ onAddToken, onDeleteTokens }) {
       addOption.className = 'context-menu-item';
       addOption.style.cssText = 'padding: 8px 12px; cursor: pointer; user-select: none;';
       addOption.textContent = 'Add Token';
-      addOption.onclick = (clickEvent) => {
-        clickEvent.stopPropagation();
+      addOption.onclick = (e) => {
+        e.stopPropagation();
         onAddToken?.(e);
         cleanupMenu();
       };
       menuEl.appendChild(addOption);
     }
 
-    // Ensure menu stays within viewport
     document.body.appendChild(menuEl);
     menuRef.current = menuEl;
 
@@ -84,36 +74,35 @@ export function useContextMenu({ onAddToken, onDeleteTokens }) {
     });
 
     setMenuState({ element: menuEl });
-    
-    // Enable click handling immediately
-    clickHandlerEnabledRef.current = true;
   }, [onAddToken, onDeleteTokens, cleanupMenu]);
 
+  // Global event listeners for cleanup
   useEffect(() => {
     if (!menuState) return;
 
-    function onMouseDown(e) {
-      // Check if click is outside menu and click handling is enabled
-      if (clickHandlerEnabledRef.current && !e.target.closest('.context-menu')) {
+    const handleClickOutside = (e) => {
+      if (!menuRef.current?.contains(e.target)) {
         cleanupMenu();
       }
-    }
+    };
 
-    function onKeyDown(e) {
+    const handleEscape = (e) => {
       if (e.key === 'Escape') {
         cleanupMenu();
       }
-    }
+    };
 
-    // Add listeners immediately
-    window.addEventListener('mousedown', onMouseDown, true);
-    window.addEventListener('keydown', onKeyDown, true);
+    // Use capture phase to get events first
+    window.addEventListener('mousedown', handleClickOutside, true);
+    window.addEventListener('contextmenu', handleClickOutside, true);
+    window.addEventListener('keydown', handleEscape, true);
 
     return () => {
-      window.removeEventListener('mousedown', onMouseDown, true);
-      window.removeEventListener('keydown', onKeyDown, true);
+      window.removeEventListener('mousedown', handleClickOutside, true);
+      window.removeEventListener('contextmenu', handleClickOutside, true);
+      window.removeEventListener('keydown', handleEscape, true);
     };
   }, [menuState, cleanupMenu]);
 
-  return { showMenu };
+  return { showMenu, cleanupMenu };
 }
