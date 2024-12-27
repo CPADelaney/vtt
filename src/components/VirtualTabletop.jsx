@@ -48,7 +48,7 @@ function Ping({ x, y, color }) {
 
 export default function VirtualTabletop() {
   // 1) Single Source of Truth - Replace useState with useStateWithHistory
-  const [gameState, updateGameState, undoGameState, historyInfo] = useStateWithHistory({
+  const [gameState, setGameState, updateGameState, undoGameState, historyInfo] = useStateWithHistory({
     isHexGrid: false,
     tokens: [],
     scale: 1,
@@ -59,7 +59,6 @@ export default function VirtualTabletop() {
       console.log('[DEBUG] Undid to state:', prevState);
     }
   });
-
   const { isHexGrid, tokens, scale, position } = gameState;
 
   // 2) Load & Save from campaignManager
