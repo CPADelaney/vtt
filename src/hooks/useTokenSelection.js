@@ -74,12 +74,6 @@ export function useTokenSelection() {
    */
 const startMarquee = useCallback((e) => {
   console.log('[DEBUG] startMarquee called');
-  // Do the existing marquee creation logic
-  // No need to immediately cancel ping, 
-  // because we already canceled it in handleMouseMove 
-  // the moment we decided to drag.
-}, []);
-    
     // Get container and verify
     const container = document.getElementById('tabletop-container');
     if (!container) {
