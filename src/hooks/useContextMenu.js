@@ -1,19 +1,27 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 
 export function useContextMenu({ onAddToken, onDeleteTokens }) {
   const [menuState, setMenuState] = useState(null);
+  const menuRef = useRef(null);
+  const clickHandlerEnabledRef = useRef(false);
 
   const cleanupMenu = useCallback(() => {
-    const existingMenu = document.querySelector('.context-menu');
-    if (existingMenu) {
-      existingMenu.remove();
+    if (menuRef.current) {
+      menuRef.current.remove();
+      menuRef.current = null;
     }
     setMenuState(null);
+    clickHandlerEnabledRef.current = false;
   }, []);
 
   const showMenu = useCallback((e, options) => {
-    console.log('[DEBUG-CHAIN] 7. showMenu called with options:', options);
+    // Don't show menu if it was a pan action
+    if (e.isPanning) {
+      return;
+    }
+
     e.preventDefault();
+    e.stopPropagation();
     
     cleanupMenu();
 
@@ -33,16 +41,8 @@ export function useContextMenu({ onAddToken, onDeleteTokens }) {
       min-width: 120px;
     `;
 
-    const styleSheet = document.createElement('style');
-    styleSheet.textContent = `
-      .context-menu-item:hover {
-        background-color: #f0f0f0;
-      }
-    `;
-    menuEl.appendChild(styleSheet);
-
+    // Add menu items based on context
     if (options.type === 'token') {
-      console.log('[DEBUG-CHAIN] 9a. Creating token menu');
       const deleteOption = document.createElement('div');
       deleteOption.className = 'context-menu-item';
       deleteOption.style.cssText = 'padding: 8px 12px; cursor: pointer; user-select: none;';
@@ -54,7 +54,6 @@ export function useContextMenu({ onAddToken, onDeleteTokens }) {
       };
       menuEl.appendChild(deleteOption);
     } else {
-      console.log('[DEBUG-CHAIN] 9b. Creating grid menu');
       const addOption = document.createElement('div');
       addOption.className = 'context-menu-item';
       addOption.style.cssText = 'padding: 8px 12px; cursor: pointer; user-select: none;';
@@ -68,11 +67,14 @@ export function useContextMenu({ onAddToken, onDeleteTokens }) {
     }
 
     // Ensure menu stays within viewport
+    document.body.appendChild(menuEl);
+    menuRef.current = menuEl;
+
     requestAnimationFrame(() => {
       const rect = menuEl.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
-
+      
       if (rect.right > viewportWidth) {
         menuEl.style.left = `${viewportWidth - rect.width - 5}px`;
       }
@@ -81,24 +83,18 @@ export function useContextMenu({ onAddToken, onDeleteTokens }) {
       }
     });
 
-    document.body.appendChild(menuEl);
-    console.log('[DEBUG-CHAIN] 10. Menu added to document');
+    setMenuState({ element: menuEl });
     
-    // Set menu state after a small delay to avoid immediate cleanup
-    setTimeout(() => {
-      setMenuState({ element: menuEl });
-    }, 100);
+    // Enable click handling immediately
+    clickHandlerEnabledRef.current = true;
   }, [onAddToken, onDeleteTokens, cleanupMenu]);
 
   useEffect(() => {
     if (!menuState) return;
 
-    // Flag to track if we should handle clicks
-    let canHandleClicks = false;
-
     function onMouseDown(e) {
-      // Only handle clicks if we're ready and click is outside menu
-      if (canHandleClicks && !e.target.closest('.context-menu')) {
+      // Check if click is outside menu and click handling is enabled
+      if (clickHandlerEnabledRef.current && !e.target.closest('.context-menu')) {
         cleanupMenu();
       }
     }
@@ -109,19 +105,13 @@ export function useContextMenu({ onAddToken, onDeleteTokens }) {
       }
     }
 
-    // Add listeners immediately but delay when we start handling clicks
-    window.addEventListener('mousedown', onMouseDown);
-    window.addEventListener('keydown', onKeyDown);
-
-    // Enable click handling after a small delay
-    const enableClickHandling = setTimeout(() => {
-      canHandleClicks = true;
-    }, 100);
+    // Add listeners immediately
+    window.addEventListener('mousedown', onMouseDown, true);
+    window.addEventListener('keydown', onKeyDown, true);
 
     return () => {
-      clearTimeout(enableClickHandling);
-      window.removeEventListener('mousedown', onMouseDown);
-      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('mousedown', onMouseDown, true);
+      window.removeEventListener('keydown', onKeyDown, true);
     };
   }, [menuState, cleanupMenu]);
 
