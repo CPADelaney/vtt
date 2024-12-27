@@ -1,14 +1,13 @@
-import { useState, useCallback, useEffect } from 'react';
-
 export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd }) {
   const [dragState, setDragState] = useState(null);
+  const isDraggingRef = useRef(false);
 
   const startDrag = useCallback((initialToken, e, selectedTokens) => {
     console.log('[DEBUG] Starting drag with tokens:', {
       initialToken,
       selectedCount: selectedTokens.length
     });
-
+    
     // Store initial positions for all selected tokens
     const tokenStartPositions = new Map();
     selectedTokens.forEach(token => {
@@ -18,6 +17,7 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
       });
     });
 
+    isDraggingRef.current = true;
     setDragState({
       tokenIds: selectedTokens.map(t => t.id),
       startMouseX: e.clientX,
@@ -30,15 +30,16 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
     if (!dragState) return;
 
     function onMouseMove(e) {
+      if (!isDraggingRef.current) return;
+
       // Calculate deltas from the initial mouse position
       const dx = (e.clientX - dragState.startMouseX) / scale;
       const dy = (e.clientY - dragState.startMouseY) / scale;
-
+      
       // Update all selected tokens
       dragState.tokenIds.forEach(tokenId => {
         const startPos = dragState.tokenStartPositions.get(tokenId);
         if (!startPos) return;
-
         const newX = startPos.x + dx;
         const newY = startPos.y + dy;
         
@@ -46,17 +47,22 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
         const { x: snappedX, y: snappedY } = getSnappedPosition(newX, newY);
         
         // Update position through callback
-        onDragMove?.(tokenId, { x: snappedX, y: snappedY });
+        onDragMove?.(tokenId, { x: snappedX, y: snappedY }, false); // Pass false to indicate this is not the final position
       });
     }
 
     function onMouseUp() {
-      // Call onDragEnd for each token if needed
+      if (!isDraggingRef.current) return;
+
+      isDraggingRef.current = false;
+      
+      // Call onDragEnd for each token
       if (onDragEnd) {
         dragState.tokenIds.forEach(tokenId => {
           onDragEnd(tokenId);
         });
       }
+
       setDragState(null);
     }
 
