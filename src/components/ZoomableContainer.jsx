@@ -14,6 +14,8 @@ export function ZoomableContainer({
   onZoomEnd,
   onPanEnd,
   onContextMenu,
+  gridWidth,
+  gridHeight,
   children
 }) {
   const { handleWheel } = useZoomToMouse({
@@ -172,13 +174,18 @@ export function ZoomableContainer({
     touchAction: 'none'
   };
 
-const contentStyle = {
+  const contentStyle = {
     position: 'absolute',
     left: 0,
     top: 0,
-    transform: `translate(${position?.x || 0}px, ${position?.y || 0}px) scale(${scale})`,
+
+    // Use the REAL grid dimensions:
+    width: gridWidth,
+    height: gridHeight,
+
+    transform: `translate(${position?.x}px, ${position?.y}px) scale(${scale})`,
     transformOrigin: '0 0',
-    pointerEvents: isPanning ? 'none' : 'auto',
+    pointerEvents: isPanning ? 'none' : 'auto'
   };
 
   return (
