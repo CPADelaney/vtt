@@ -251,14 +251,6 @@ export default function VirtualTabletop() {
     mouseDownRef.current = null;   // reset our potential-drag state
   }, []);
 
-  const handleMouseUp = useCallback(() => {
-    // If the user releases before the threshold, clear the ping timer
-    if (pingTimeoutRef.current) {
-      clearTimeout(pingTimeoutRef.current);
-    }
-    isPingingRef.current = false;
-  }, []);
-
 
   // 9) Zoom and mouse logic
   const onZoomIn = () => {
