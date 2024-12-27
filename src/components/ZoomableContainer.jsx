@@ -172,52 +172,52 @@ export function ZoomableContainer({
     touchAction: 'none'
   };
 
-  const contentStyle = {
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      transform: `translate(${position?.x || 0}px, ${position?.y || 0}px) scale(${scale})`,
-      transformOrigin: '0 0',
-      pointerEvents: isPanning ? 'none' : 'auto',
-      Width: '100%',    // Change from width to minWidth
-      Height: '100%',   // Change from height to minHeight
-    };
-  
-    return (
-      <div
-        id={containerId}
-        style={{
-          ...containerStyle,
-          pointerEvents: 'auto'  // Add this
-        }}
-        onWheel={onWheel}
+const contentStyle = {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    transform: `translate(${position?.x || 0}px, ${position?.y || 0}px) scale(${scale})`,
+    transformOrigin: '0 0',
+    pointerEvents: isPanning ? 'none' : 'auto',
+    width: '100%',  // Add this
+    height: '100%', // Add this
+  };
+
+  return (
+    <div
+      id={containerId}
+      style={{
+        ...containerStyle,
+        pointerEvents: 'auto'  // Add this
+      }}
+      onWheel={onWheel}
+      onMouseDown={(e) => {
+        console.log('[DEBUG-CONTAINER] Container mousedown:', {
+          button: e.button,
+          target: e.target.className,
+          tagName: e.target.tagName,
+          path: e.nativeEvent.composedPath().map(el => el.id || el.className || el.tagName).join(' -> ')
+        });
+        
+        if (e.button === 2) {  // Only handle right clicks
+          handleMouseDown(e);
+        }
+      }}
+      onContextMenu={handleContextMenu}
+    >
+      <div 
+        style={contentStyle}
         onMouseDown={(e) => {
-          console.log('[DEBUG-CONTAINER] Container mousedown:', {
+          console.log('[DEBUG-CONTENT] Content div mousedown:', {
             button: e.button,
             target: e.target.className,
             tagName: e.target.tagName,
             path: e.nativeEvent.composedPath().map(el => el.id || el.className || el.tagName).join(' -> ')
           });
-          
-          if (e.button === 2) {  // Only handle right clicks
-            handleMouseDown(e);
-          }
         }}
-        onContextMenu={handleContextMenu}
       >
-        <div 
-          style={contentStyle}
-          onMouseDown={(e) => {
-            console.log('[DEBUG-CONTENT] Content div mousedown:', {
-              button: e.button,
-              target: e.target.className,
-              tagName: e.target.tagName,
-              path: e.nativeEvent.composedPath().map(el => el.id || el.className || el.tagName).join(' -> ')
-            });
-          }}
-        >
-          {children}
-        </div>
+        {children}
       </div>
-    );
+    </div>
+  );
   }
