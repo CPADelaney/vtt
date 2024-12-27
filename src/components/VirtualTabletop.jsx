@@ -280,79 +280,81 @@ const handleMouseDown = useCallback((e) => {
   });
 
   // Left-click only
-    if (e.button === 0) {
-      const tokenEl = e.target.closest('.token');
-      const isAdditive = e.metaKey || e.ctrlKey;
+  if (e.button === 0) {
+    const tokenEl = e.target.closest('.token');
+    const isAdditive = e.metaKey || e.ctrlKey;
 
-      if (tokenEl) {
-        // Handle token selection/drag
-        e.stopPropagation();
+    if (tokenEl) {
+      e.stopPropagation();
+      const clickedToken = tokens.find(t => t.id === tokenEl.id);
+      const wasSelected = selectedTokenIds.has(tokenEl.id);
+      
+      if (wasSelected && !isAdditive) {
+        // If clicking an already selected token without modifier,
+        // don't change selection, just start dragging the selection
+        const selectedTokens = tokens.filter(t => selectedTokenIds.has(t.id));
+        startDrag(clickedToken, e, selectedTokens);
+      } else {
+        // If token wasn't selected or using modifier key, update selection
         selectTokenId(tokenEl.id, isAdditive);
         if (!isAdditive) {
-          const clickedToken = tokens.find(t => t.id === tokenEl.id);
-          if (clickedToken) {
-            const selectedTokens = tokens.filter(t => selectedTokenIds.has(t.id));
-            startDrag(clickedToken, e, selectedTokens);
-          }
+          // If not using modifier key, start drag with just this token
+          startDrag(clickedToken, e, [clickedToken]);
         }
-      } else {
-        // Potential marquee or ping
-        console.log('[DEBUG-EMPTY] Potential marquee or ping');
-        e.stopPropagation();
-        e.preventDefault();
-
-        if (!isAdditive) {
-          clearSelection();
-        }
-
-        const container = document.getElementById('tabletop-container');
-        const containerRect = container.getBoundingClientRect();
-        const screenX = e.clientX - containerRect.left;
-        const screenY = e.clientY - containerRect.top;
-
-        const gridX = (screenX - position.x) / scale;
-        const gridY = (screenY - position.y) / scale;
-
-        // Store initial click info
-        mouseDownRef.current = {
-          startScreenX: screenX,
-          startScreenY: screenY,
-          startGridX: gridX,
-          startGridY: gridY,
-          hasDragged: false,
-        };
-
-        // Start a 500ms ping timer
-        isPingingRef.current = true;
-        if (pingTimeoutRef.current) {
-          clearTimeout(pingTimeoutRef.current);
-        }
-        pingTimeoutRef.current = setTimeout(() => {
-          if (isPingingRef.current &&
-              mouseDownRef.current &&
-              !mouseDownRef.current.hasDragged) {
-            console.log('[DEBUG-PING] Creating ping at:', {
-              gridX: mouseDownRef.current.startGridX,
-              gridY: mouseDownRef.current.startGridY
-            });
-            createPing(
-              mouseDownRef.current.startGridX,
-              mouseDownRef.current.startGridY
-            );
-          }
-        }, 500);
       }
+    } else {
+      // Potential marquee or ping
+      console.log('[DEBUG-EMPTY] Potential marquee or ping');
+      e.stopPropagation();
+      e.preventDefault();
+
+      if (!isAdditive) {
+        clearSelection();
+      }
+
+      const container = document.getElementById('tabletop-container');
+      const containerRect = container.getBoundingClientRect();
+      const screenX = e.clientX - containerRect.left;
+      const screenY = e.clientY - containerRect.top;
+
+      const gridX = (screenX - position.x) / scale;
+      const gridY = (screenY - position.y) / scale;
+
+      mouseDownRef.current = {
+        startScreenX: screenX,
+        startScreenY: screenY,
+        startGridX: gridX,
+        startGridY: gridY,
+        hasDragged: false,
+      };
+
+      // Start ping timer
+      isPingingRef.current = true;
+      if (pingTimeoutRef.current) {
+        clearTimeout(pingTimeoutRef.current);
+      }
+      pingTimeoutRef.current = setTimeout(() => {
+        if (isPingingRef.current &&
+            mouseDownRef.current &&
+            !mouseDownRef.current.hasDragged) {
+          createPing(
+            mouseDownRef.current.startGridX,
+            mouseDownRef.current.startGridY
+          );
+        }
+      }, 500);
     }
-  }, [
-    clearSelection,
-    selectTokenId,
-    tokens,
-    selectedTokenIds,
-    startDrag,
-    position,
-    scale,
-    createPing
-  ]);
+  }
+}, [
+  clearSelection,
+  selectTokenId,
+  tokens,
+  selectedTokenIds,
+  startDrag,
+  position,
+  scale,
+  createPing
+]);
 
   // somewhere in your code
   const handleMouseMove = useCallback((e) => {
@@ -422,7 +424,7 @@ const handleMouseDown = useCallback((e) => {
           <div
             id="tabletop"
             className={isHexGrid ? 'hex-grid' : 'square-grid'}
-            onMouseDown={handleMouseDown}
+            onMouseDown={}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onContextMenu={handleContextMenu}
