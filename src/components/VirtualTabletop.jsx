@@ -404,7 +404,7 @@ const handleMouseDown = useCallback((e) => {
   }, []);
 
   // 11) Render
-  return (
+return (
     <>
       <Controls onZoomIn={onZoomIn} onZoomOut={onZoomOut} />
       <div className="tabletop-wrapper" style={{ width: '100%', height: '100%' }}>
@@ -424,7 +424,7 @@ const handleMouseDown = useCallback((e) => {
           <div
             id="tabletop"
             className={isHexGrid ? 'hex-grid' : 'square-grid'}
-            onMouseDown={}
+            onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onContextMenu={handleContextMenu}
