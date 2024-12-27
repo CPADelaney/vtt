@@ -291,11 +291,15 @@ const handleMouseDown = useCallback((e) => {
     const tokenEl = e.target.closest('.token');
     const isAdditive = e.metaKey || e.ctrlKey;
 
+    // ----------------------------------------------------
+    // 1) If the user clicked a token...
+    // ----------------------------------------------------
     if (tokenEl) {
       console.log('[DEBUG-TOKEN] Token clicked:', tokenEl.id);
       e.stopPropagation();
       selectTokenId(tokenEl.id, isAdditive);
 
+      // Only start drag if NOT additive
       if (!isAdditive) {
         const clickedToken = tokens.find(t => t.id === tokenEl.id);
         if (clickedToken) {
@@ -303,16 +307,21 @@ const handleMouseDown = useCallback((e) => {
           startDrag(clickedToken, e, selectedTokens);
         }
       }
-    } else {
+    } 
+    // ----------------------------------------------------
+    // 2) Otherwise, user clicked empty space => marquee/ping
+    // ----------------------------------------------------
+    else {
       console.log('[DEBUG-EMPTY] Empty space clicked, starting marquee/ping');
-      
-      // If not additive, clear selection first
+
+      // Clear selection if not additive
       if (!isAdditive) {
         clearSelection();
       }
 
-      // 1) Define a helper to cancel ping
+      // A) Define a helper to cancel an in-progress ping
       const cancelPing = () => {
+        console.log('[DEBUG] Canceling ping...');
         if (pingTimeoutRef.current) {
           clearTimeout(pingTimeoutRef.current);
           pingTimeoutRef.current = null;
@@ -320,10 +329,11 @@ const handleMouseDown = useCallback((e) => {
         isPingingRef.current = false;
       };
 
-      // 2) Start marquee selection, passing the cancel function
+      // B) Start marquee selection, passing the cancel function
+      //    If the user actually drags => ping is canceled immediately
       startMarquee(e, cancelPing);
 
-      // 3) Simultaneously, start a ping timer
+      // C) Simultaneously, (re)start a ping timer
       isPingingRef.current = true;
       const container = document.getElementById('tabletop-container');
       const containerRect = container.getBoundingClientRect();
@@ -332,12 +342,12 @@ const handleMouseDown = useCallback((e) => {
       const gridX = (screenX - position.x) / scale;
       const gridY = (screenY - position.y) / scale;
 
-      // Clear any old pending ping
+      // Clear any old pending ping, just in case
       if (pingTimeoutRef.current) {
         clearTimeout(pingTimeoutRef.current);
       }
 
-      // After 500ms, if still "pinging," actually create the ping
+      // After 500ms, if still "pinging," create the ping
       pingTimeoutRef.current = setTimeout(() => {
         if (isPingingRef.current) {
           console.log('[DEBUG-PING] Creating ping at:', { gridX, gridY });
@@ -357,6 +367,8 @@ const handleMouseDown = useCallback((e) => {
   scale,
   createPing
 ]);
+
+  
   const handleContextMenu = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
