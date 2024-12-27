@@ -126,11 +126,11 @@ export function ZoomableContainer({
     // If we actually panned or are currently panning, do NOT show the context menu
     if (didPanRef.current || isPanning) {
       console.log('[DEBUG] Suppressing context menu after pan');
-      // Optionally reset didPanRef here, if you only want to suppress once
+      // Reset didPan if you only want to suppress once
       didPanRef.current = false;
       return;
     }
-    
+  
     // If we get here, no panning took place => show custom context menu
     const isToken = e.target.closest('.token');
     console.log('[DEBUG] Context menu check:', {
@@ -138,9 +138,13 @@ export function ZoomableContainer({
       wasPanning: isPanning,
       didPan: didPanRef.current
     });
-    
-    onContextMenu?.(e);
+  
+    // No optional chaining here—use normal check:
+    if (onContextMenu) {
+      onContextMenu(e);
+    }
   }, [isPanning, onContextMenu]);
+
 
     
     const isToken = e.target.closest('.token');
