@@ -179,8 +179,10 @@ export function ZoomableContainer({
       transform: `translate(${position?.x || 0}px, ${position?.y || 0}px) scale(${scale})`,
       transformOrigin: '0 0',
       pointerEvents: isPanning ? 'none' : 'auto',
-      width: '100%',  // Add this
-      height: '100%', // Add this
+      minWidth: '100%',    // Change from width to minWidth
+      minHeight: '100%',   // Change from height to minHeight
+      width: 'max-content',  // Add this
+      height: 'max-content', // Add this
     };
   
     return (
