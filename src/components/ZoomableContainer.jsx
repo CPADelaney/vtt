@@ -179,8 +179,6 @@ const contentStyle = {
     transform: `translate(${position?.x || 0}px, ${position?.y || 0}px) scale(${scale})`,
     transformOrigin: '0 0',
     pointerEvents: isPanning ? 'none' : 'auto',
-    width: '100%',  // Add this
-    height: '100%', // Add this
   };
 
   return (
