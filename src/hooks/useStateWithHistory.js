@@ -1,14 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 
-/**
- * Custom hook for managing state with undo history
- * @param {any} initialState - The initial state value
- * @param {Object} options - Configuration options
- * @param {number} [options.maxHistory=50] - Maximum number of history states to keep
- * @param {function} [options.onUndo] - Callback that runs after an undo operation
- * @returns {[any, function, function, { canUndo: boolean, history: Array }]} 
- * Returns [currentState, setState, undo, metadata]
- */
 export function useStateWithHistory(initialState, options = {}) {
   const { 
     maxHistory = 50,
@@ -19,10 +10,13 @@ export function useStateWithHistory(initialState, options = {}) {
   const [state, setState] = useState(initialState);
   const [history, setHistory] = useState([initialState]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  
-  // Refs for tracking undo status
   const isUndoingRef = useRef(false);
   
+  // Direct state updates (won't add to history)
+  const setDirectState = useCallback((updater) => {
+    setState(updater);
+  }, []);
+
   // Update state and add to history
   const updateState = useCallback((updater) => {
     if (isUndoingRef.current) return;
@@ -31,16 +25,12 @@ export function useStateWithHistory(initialState, options = {}) {
       const newState = typeof updater === 'function' ? updater(prev) : updater;
       
       setHistory(prevHistory => {
-        // If we're not at the end, truncate future states
         const historySoFar = prevHistory.slice(0, currentIndex + 1);
-        
-        // Add new state and limit history length
         const newHistory = [...historySoFar, newState];
         if (newHistory.length > maxHistory) {
-          newHistory.shift(); // Remove oldest state
-          setCurrentIndex(prev => prev - 1); // Adjust index
+          newHistory.shift();
+          setCurrentIndex(prev => prev - 1);
         }
-        
         return newHistory;
       });
       
@@ -64,13 +54,11 @@ export function useStateWithHistory(initialState, options = {}) {
   // Add keyboard shortcut
   useEffect(() => {
     function handleKeyDown(e) {
-      // Only handle if no input elements are focused
       if (document.activeElement.tagName === 'INPUT' || 
           document.activeElement.tagName === 'TEXTAREA') {
         return;
       }
 
-      // Handle Ctrl+Z for undo
       if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         undo();
@@ -81,10 +69,10 @@ export function useStateWithHistory(initialState, options = {}) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [undo]);
 
-  // Return current state, update function, undo function, and metadata
   return [
     state, 
-    updateState, 
+    setDirectState, // Direct updates
+    updateState,    // History-tracked updates
     undo,
     {
       canUndo: currentIndex > 0,
