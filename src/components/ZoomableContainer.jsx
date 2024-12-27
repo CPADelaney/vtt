@@ -53,45 +53,43 @@ export function ZoomableContainer({
     handleWheelEnd();
   }, [handleWheel, handleWheelEnd]);
   
-  const handleMouseDown = useCallback((e) => {
-    // Only handle right-click, let left clicks pass through
-    if (e.button !== 2) return;
-    
-    console.log('[DEBUG] Right-click detected in ZoomableContainer');
-    
-    const isToken = e.target.closest('.token');
-    if (isToken) {
-      console.log('[DEBUG] Click on token, letting context menu handle it');
+const handleMouseDown = useCallback((e) => {
+  // Only handle right-click
+  if (e.button !== 2) return;
+  
+  // If clicking on a token, let context menu handle it
+  const isToken = e.target.closest('.token');
+  if (isToken) {
+    setPanStarted(false);
+    return;
+  }
+  
+  e.preventDefault();
+  e.stopPropagation();
+  
+  setPanStarted(true);
+  didPanRef.current = false;
+
+  // Set a flag to start panning if mouse moves within timeout
+  const panTimeout = setTimeout(() => {
+    if (panStarted && !didPanRef.current) {
       setPanStarted(false);
-      return;
     }
-    
-    e.preventDefault();
-    setPanStarted(true);
-    didPanRef.current = false;
-    
-    setTimeout(() => {
-      if (panStarted && e.movementX === 0 && e.movementY === 0) {
-        console.log('[DEBUG] No movement detected, treating as context menu');
-        setPanStarted(false);
-      } else if (panStarted) {
-        console.log('[DEBUG] Movement detected, starting pan');
-        setIsPanning(true);
-        setLastPos({ x: e.clientX, y: e.clientY });
-        document.body.style.cursor = 'grabbing';
-      }
-    }, 150);
-  }, [panStarted]);
+  }, 150);
 
-  const handleMouseMove = useCallback((e) => {
-    if (panStarted && !isPanning) {
-      setIsPanning(true);
-      setLastPos({ x: e.clientX, y: e.clientY });
-      document.body.style.cursor = 'grabbing';
-    }
+  // Clean up timeout if component unmounts
+  return () => clearTimeout(panTimeout);
+}, [panStarted]);
+const handleMouseMove = useCallback((e) => {
+  if (!panStarted) return;
 
-    if (!isPanning) return;
+  if (!isPanning) {
+    setIsPanning(true);
+    setLastPos({ x: e.clientX, y: e.clientY });
+    document.body.style.cursor = 'grabbing';
+  }
 
+  if (isPanning) {
     e.preventDefault();
     e.stopPropagation();
 
@@ -108,7 +106,8 @@ export function ZoomableContainer({
     });
 
     setLastPos({ x: e.clientX, y: e.clientY });
-  }, [isPanning, lastPos, setPosition, panStarted]);
+  }
+}, [isPanning, lastPos, panStarted, setPosition]);
 
   const stopPanning = useCallback(() => {
     setPanStarted(false);
@@ -120,43 +119,22 @@ export function ZoomableContainer({
   }, [isPanning, onPanEnd]);
   
 const handleContextMenu = useCallback((e) => {
-  // Always prevent browser default
   e.preventDefault();
+  e.stopPropagation();
 
-  // If we actually panned or are currently panning, do NOT show the context menu
+  // Don't show context menu if we panned
   if (didPanRef.current || isPanning) {
     console.log('[DEBUG] Suppressing context menu after pan');
     didPanRef.current = false;
     return;
   }
 
-  // If we get here, no panning took place => show custom context menu
+  // If no panning occurred, show the context menu
+  const isToken = e.target.closest('.token');
   if (onContextMenu) {
-    // Add isPanning flag to the event
-    e.isPanning = didPanRef.current || isPanning;
     onContextMenu(e);
   }
 }, [isPanning, onContextMenu]);
-
-  useEffect(() => {
-    if (isPanning || panStarted) {
-      const onMouseMove = (e) => handleMouseMove(e);
-      const onMouseUp = () => stopPanning();
-      const onKeyDown = (e) => {
-        if (e.key === 'Escape') stopPanning();
-      };
-
-      window.addEventListener('mousemove', onMouseMove);
-      window.addEventListener('mouseup', onMouseUp);
-      window.addEventListener('keydown', onKeyDown);
-
-      return () => {
-        window.removeEventListener('mousemove', onMouseMove);
-        window.removeEventListener('mouseup', onMouseUp);
-        window.removeEventListener('keydown', onKeyDown);
-      };
-    }
-  }, [isPanning, panStarted, handleMouseMove, stopPanning]);
 
   const containerStyle = {
     width: '100%',
