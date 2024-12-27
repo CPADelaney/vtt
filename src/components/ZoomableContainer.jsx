@@ -187,30 +187,23 @@ return (
     style={containerStyle}
     onWheel={onWheel}
     onContextMenu={handleContextMenu}
-    onMouseDown={(e) => {
-      console.log('[DEBUG-CONTAINER] Container mousedown:', {
-        button: e.button,
-        target: e.target.className,
-        propagation: !e.defaultPrevented
-      });
-      // Only handle right-clicks, let everything else pass through
-      if (e.button === 2) {
-        handleMouseDown(e);
-      }
-    }}
   >
     <div 
       style={contentStyle}
       onMouseDown={(e) => {
+        // Only handle right-clicks at this level
         console.log('[DEBUG-CONTENT] Content div mousedown:', {
           button: e.button,
-          target: e.target.className,
-          propagation: !e.defaultPrevented
+          target: e.target.className
         });
+        if (e.button === 2) {
+          handleMouseDown(e);
+        }
       }}
     >
       {children}
     </div>
   </div>
+);
 );
 }
