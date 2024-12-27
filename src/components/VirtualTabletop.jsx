@@ -230,6 +230,7 @@ export default function VirtualTabletop() {
   const [pings, setPings] = useState([]);
   const pingTimeoutRef = useRef(null);
   const isPingingRef = useRef(false);
+  const mouseDownRef = useRef(null);
 
   // Example: Each user can eventually pick a color. Hard-code for now:
   const playerColor = '#ff0066'; 
@@ -291,14 +292,10 @@ const handleMouseDown = useCallback((e) => {
     const tokenEl = e.target.closest('.token');
     const isAdditive = e.metaKey || e.ctrlKey;
 
-    // ----------------------------------------------------
-    // 1) If the user clicked on a token...
-    // ----------------------------------------------------
     if (tokenEl) {
-      console.log('[DEBUG-TOKEN] Token clicked:', tokenEl.id);
-      e.stopPropagation(); // <-- stop event from going further up
+      // ... same as before (token click logic) ...
+      e.stopPropagation();
       selectTokenId(tokenEl.id, isAdditive);
-
       if (!isAdditive) {
         const clickedToken = tokens.find(t => t.id === tokenEl.id);
         if (clickedToken) {
@@ -307,53 +304,49 @@ const handleMouseDown = useCallback((e) => {
         }
       }
     } 
-    // ----------------------------------------------------
-    // 2) Otherwise, empty space => marquee + ping
-    // ----------------------------------------------------
     else {
-      console.log('[DEBUG-EMPTY] Empty space clicked, starting marquee/ping');
-      
-      // **Stop event from bubbling** (prevents second ping in parent)
+      // -----------------------
+      // EMPTY SPACE => Potential Marquee or Ping
+      // -----------------------
+      console.log('[DEBUG-EMPTY] Potential marquee or ping');
+
       e.stopPropagation();
       e.preventDefault();
 
-      // If not additive, clear selection
       if (!isAdditive) {
         clearSelection();
       }
 
-      // A) Define a helper to cancel any existing ping
-      const cancelPing = () => {
-        console.log('[DEBUG] Canceling ping...');
-        if (pingTimeoutRef.current) {
-          clearTimeout(pingTimeoutRef.current);
-          pingTimeoutRef.current = null;
-        }
-        isPingingRef.current = false;
-      };
-
-      // B) Start marquee selection, passing in cancelPing
-      startMarquee(e, cancelPing);
-
-      // C) Start a new ping timer
-      isPingingRef.current = true;
+      // 1) Store initial mouse down info
       const container = document.getElementById('tabletop-container');
       const containerRect = container.getBoundingClientRect();
       const screenX = e.clientX - containerRect.left;
       const screenY = e.clientY - containerRect.top;
+
+      // Transform to grid coords
       const gridX = (screenX - position.x) / scale;
       const gridY = (screenY - position.y) / scale;
 
-      // Clear any old ping
+      mouseDownRef.current = {
+        startScreenX: screenX,
+        startScreenY: screenY,
+        startGridX: gridX,
+        startGridY: gridY,
+        hasDragged: false
+      };
+
+      // 2) Set a 500ms ping timer
+      isPingingRef.current = true;
       if (pingTimeoutRef.current) {
         clearTimeout(pingTimeoutRef.current);
       }
-
-      // After 500ms, if still "pinging," do the ping
       pingTimeoutRef.current = setTimeout(() => {
-        if (isPingingRef.current) {
-          console.log('[DEBUG-PING] Creating ping at:', { gridX, gridY });
-          createPing(gridX, gridY);
+        if (isPingingRef.current && mouseDownRef.current && !mouseDownRef.current.hasDragged) {
+          console.log('[DEBUG-PING] Creating ping at:', {
+            gridX: mouseDownRef.current.startGridX,
+            gridY: mouseDownRef.current.startGridY
+          });
+          createPing(mouseDownRef.current.startGridX, mouseDownRef.current.startGridY);
         }
       }, 500);
     }
@@ -364,11 +357,41 @@ const handleMouseDown = useCallback((e) => {
   tokens,
   selectedTokenIds,
   startDrag,
-  startMarquee,
   position,
   scale,
   createPing
 ]);
+
+  // somewhere in your code
+const handleMouseMove = useCallback((e) => {
+  // If no left-click in progress, do nothing
+  if (!mouseDownRef.current) return;
+
+  // Calculate how far the user moved from initial screen coords
+  const dx = e.clientX - mouseDownRef.current.startScreenX;
+  const dy = e.clientY - mouseDownRef.current.startScreenY;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+
+  // We pick 5px as a small threshold
+  if (!mouseDownRef.current.hasDragged && distance > 5) {
+    console.log('[DEBUG] Movement threshold => startMarquee + cancel ping');
+
+    // Cancel any ping
+    if (pingTimeoutRef.current) {
+      clearTimeout(pingTimeoutRef.current);
+      pingTimeoutRef.current = null;
+    }
+    isPingingRef.current = false;
+
+    // Now call your marquee function
+    startMarquee(e);  // we no longer need a cancelPing param
+    mouseDownRef.current.hasDragged = true; 
+  }
+
+  // If marquee is started, your useTokenSelection hook's onMouseMove 
+  // will handle drawing the marquee. 
+  // Or you can keep some logic here if you want
+}, [startMarquee]);
 
 
   
@@ -434,6 +457,9 @@ return (
             tagName: e.target.tagName
           });
           handleMouseDown(e);
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
         }}
         onContextMenu={handleContextMenu}
         onMouseUp={handleMouseUp}
