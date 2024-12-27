@@ -1,147 +1,281 @@
+/* Global */
 body {
-    margin: 0;
-    overflow: hidden;
-    font-family: Arial, sans-serif;
+  margin: 0;
+  overflow: hidden;
+  font-family: Arial, sans-serif;
 }
 
+/* Controls container, now handled by <Controls /> in React */
 .controls {
-    position: fixed;
-    top: 10px;
-    left: 10px;
-    z-index: 1000;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 10px;
-    border-radius: 5px;
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
+/* Zoom controls inside .controls */
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 10px;
+}
+
+.zoom-controls button {
+  width: 30px;
+  height: 30px;
+  font-size: 18px;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* Container for your tabletop, typically 100% of viewport */
 #tabletop-container {
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
-    background: #f0f0f0;
-    position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #f0f0f0;
+  position: relative;
 }
 
+/* The main tabletop element that gets panned/zoomed */
 #tabletop {
-    position: absolute;
-    transform-origin: 0 0;
+  position: absolute;
+  transform-origin: 0 0;
 }
 
+/* Cursor style when panning (grabbing) */
 #tabletop.grabbing {
-    cursor: grabbing;
+  cursor: grabbing;
 }
 
 /* Base grid cell styles */
 .grid-cell {
-    position: absolute;
-    box-sizing: border-box;
+  position: absolute;
+  box-sizing: border-box;
 }
 
-/* Square grid specific */
+/* Square grid specific (when isHexGrid = false) */
 .square-grid .grid-cell {
-    width: 50px;
-    height: 50px;
-    border: 1px solid #ccc;
-    background: rgba(255, 255, 255, 0.5);
+  width: 50px; /* or gridConfig.squareSize */
+  height: 50px;
+  border: 1px solid #ccc;
+  background: rgba(255, 255, 255, 0.5);
 }
 
-/* Hex grid specific */
+/* Hex grid specific (when isHexGrid = true) */
 .hex-grid .grid-cell {
-    position: absolute;
+  position: absolute;
 }
 
 .hexagon {
-    fill: rgba(255, 255, 255, 0.5);
-    stroke: #ccc;
-    stroke-width: 1px;
+  fill: rgba(255, 255, 255, 0.5);
+  stroke: #ccc;
+  stroke-width: 1px;
 }
 
 /* Token styles */
 .token {
-    position: absolute;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: red;
-    transform: translate(-50%, -50%);
-    cursor: move;
-    z-index: 100;
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: red;
+  transform: translate(-50%, -50%);
+  cursor: move;
+  z-index: 100;
 }
 
 .token.selected {
-    outline: 2px solid #007bff;
-    outline-offset: 2px;
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
 }
 
-/* Selection marquee */
-.marquee {
-    position: fixed;
-    border: 2px solid #007bff;
-    background-color: rgba(0, 123, 255, 0.1);
-    pointer-events: none;
-    z-index: 1000;
-}
+/* Selection marquee (used by your useTokenSelection) */
+marqueeEl.style.cssText = `
+  position: absolute;
+  left: ${startX}px;
+  top: ${startY}px;
+  width: 0;
+  height: 0;
+  border: 2px solid #3498db;
+  background-color: rgba(52, 152, 219, 0.1);
+  pointer-events: none;
+  z-index: 1000;
+`;
 
 /* Context menu */
 .context-menu {
-    position: fixed;
-    background: white;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    padding: 4px 0;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    z-index: 1000;
-    min-width: 120px;
+  position: fixed;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 4px 0;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  z-index: 9999;  /* Very high z-index */
+  min-width: 120px;
+  pointer-events: auto;  /* Ensure clicks work */
+  user-select: none;    /* Prevent text selection */
 }
 
+
 .context-menu-item {
-    padding: 8px 12px;
-    cursor: pointer;
-    user-select: none;
+  padding: 8px 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s;
 }
 
 .context-menu-item:hover {
-    background-color: #f0f0f0;
+  background-color: #f0f0f0;
 }
 
+/* A debug or version display element (optional) */
 #version-display {
-    position: fixed;
-    bottom: 10px;
-    right: 10px;
-    background: rgba(0, 0, 0, 0.7);
-    color: white;
-    padding: 5px 10px;
-    border-radius: 3px;
-    font-family: monospace;
-    z-index: 1000;
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 3px;
+  font-family: monospace;
+  z-index: 1000;
 }
 
-.zoom-controls {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    margin-left: 10px;
+/* 
+  ----------------------------------------
+   3-COLUMN GRID LAYOUT FOR THE ENTIRE APP
+  ----------------------------------------
+   - Left sidebar (collapsible or static)
+   - Main content (tabletop)
+   - Right area (DM Tools, Chat, etc.)
+*/
+.app-layout {
+  display: grid;
+  /* Three columns: left sidebar, main content, right area */
+  grid-template-columns: 300px 1fr 400px;
+  grid-template-rows: 100%;
+  grid-template-areas: "left-sidebar main-content right-area";
+
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden; /* no scrollbars on the root layout */
 }
 
-.zoom-controls button {
-    width: 30px;
-    height: 30px;
-    font-size: 18px;
-    line-height: 1;
-    padding: 0;
-    cursor: pointer;
+/* Left sidebar area */
+.left-sidebar {
+  grid-area: left-sidebar;
+  background-color: #eee;
+  border-right: 1px solid #ccc;
+  overflow-y: auto;
+  transition: width 0.3s ease; /* Smooth collapse/expand if you want */
 }
 
-#zoomValue {
-    min-width: 48px;
-    text-align: center;
+/* 
+  .collapsed class can be toggled in React to shrink the sidebar.
+  Example usage:
+    .left-sidebar.collapsed {
+      width: 0 !important;
+    }
+*/
+.left-sidebar.collapsed {
+  width: 0 !important;
 }
 
-/* React component core styles - only what can't be handled by Tailwind */
-.sidebar {
-    z-index: 1000;
+
+/* 
+   3-COLUMN LAYOUT:
+   - Left (tools): fixed ~60px
+   - Middle (main game area): flexible
+   - Right (chat, DM tools): fixed ~350px
+*/
+.app-layout {
+  display: grid;
+  grid-template-columns: 60px 1fr 350px; 
+  /* 
+    ^ Left ~60px icons
+         ^ Middle flexible
+               ^ Right 350px 
+  */
+  grid-template-rows: 100%;
+  grid-template-areas: "tools-bar main-content right-sidebar";
+
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden; /* no scrollbars on the root layout */
 }
 
+/* Left column: Tools bar (icons, drawing, etc.) */
+.tools-bar {
+  grid-area: tools-bar;
+  background-color: #f5f5f5;
+  border-right: 1px solid #ccc;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* center icons horizontally */
+  padding-top: 10px;
+  overflow-y: auto;
+}
+
+/* Middle column: the main game area */
+.main-content {
+  grid-area: main-content;
+  position: relative;
+  background: #eaeaea;
+  overflow: hidden;
+  /* or overflow: auto, if you want scrollbars */
+}
+
+/* Right column: Chat, DM Tools, character sheets, etc. */
+.right-sidebar {
+  grid-area: right-sidebar;
+  background-color: #fff;
+  border-left: 1px solid #ccc;
+  overflow-y: auto;
+}
+
+/* Example class for icon buttons in left column */
+.tool-icon {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 10px;
+  border: none;
+  background: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  /* just an example hover style */
+}
+.tool-icon:hover {
+  background: #eee;
+}
+
+@keyframes pingAnimation {
+  0% {
+    transform: translate(-50%, -50%) scale(0.3);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2);
+    opacity: 0;
+  }
+}
+
+.ping {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  pointer-events: none;
+  will-change: transform, opacity;
+  animation: pingAnimation 2s ease-out forwards;
+}
 .chatbox {
-    z-index: 900;
+  z-index: 900;
 }
