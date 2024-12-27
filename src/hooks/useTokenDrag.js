@@ -1,3 +1,5 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+
 export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd }) {
   const [dragState, setDragState] = useState(null);
   const isDraggingRef = useRef(false);
