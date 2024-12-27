@@ -186,19 +186,28 @@ export function ZoomableContainer({
       id={containerId}
       style={containerStyle}
       onWheel={onWheel}
+      onMouseDown={(e) => {
+        console.log('[DEBUG-CONTAINER] Container mousedown:', {
+          button: e.button,
+          target: e.target.className,
+          tagName: e.target.tagName
+        });
+        
+        if (e.button === 2) {  // Only handle right clicks
+          handleMouseDown(e);
+        }
+        // Don't stop propagation or prevent default for left clicks
+      }}
       onContextMenu={handleContextMenu}
     >
       <div 
         style={contentStyle}
         onMouseDown={(e) => {
-          // Only handle right-clicks at this level
           console.log('[DEBUG-CONTENT] Content div mousedown:', {
             button: e.button,
-            target: e.target.className
+            target: e.target.className,
+            tagName: e.target.tagName
           });
-          if (e.button === 2) {
-            handleMouseDown(e);
-          }
         }}
       >
         {children}
