@@ -29,12 +29,11 @@ export function ZoomableContainer({
     zoomFactor
   });
 
-  // Right-click panning state
+  // States
   const [isPanning, setIsPanning] = useState(false);
   const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
-  const [panStarted, setPanStarted] = useState(false);
-  const rightClickTimerRef = useRef(null);
   const hasMovedRef = useRef(false);
+  const startPosRef = useRef(null);
   
   // Keep track of current position for panning
   const positionRef = useRef(position);
@@ -55,54 +54,30 @@ export function ZoomableContainer({
   }, [handleWheel, handleWheelEnd]);
   
   const handleMouseDown = useCallback((e) => {
-    // Only handle right-click
     if (e.button !== 2) return;
     
     const isToken = e.target.closest('.token');
-    if (isToken) {
-      console.log('[DEBUG] Click on token, letting context menu handle it');
-      return;
-    }
+    if (isToken) return;
     
     e.preventDefault();
     e.stopPropagation();
 
-    // Reset movement tracking
+    // Record the exact start position
+    startPosRef.current = { x: e.clientX, y: e.clientY };
     hasMovedRef.current = false;
-    
-    // Start a short timer
-    if (rightClickTimerRef.current) {
-      clearTimeout(rightClickTimerRef.current);
-    }
-    rightClickTimerRef.current = setTimeout(() => {
-      // If we haven't moved by now, it's a context menu attempt
-      if (!hasMovedRef.current) {
-        setPanStarted(false);
-        setIsPanning(false);
-      }
-    }, 200);
-
-    setPanStarted(true);
+    setIsPanning(true);
     setLastPos({ x: e.clientX, y: e.clientY });
   }, []);
 
   const handleMouseMove = useCallback((e) => {
-    if (!panStarted) return;
+    if (!isPanning) return;
 
     const dx = e.clientX - lastPos.x;
     const dy = e.clientY - lastPos.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-
-    // If we've moved more than a few pixels
-    if (distance > 3) {
+    
+    if (Math.abs(dx) > 0 || Math.abs(dy) > 0) {
       hasMovedRef.current = true;
-      if (!isPanning) {
-        setIsPanning(true);
-        document.body.style.cursor = 'grabbing';
-      }
-      
-      e.preventDefault();
-      e.stopPropagation();
+      document.body.style.cursor = 'grabbing';
       
       setPosition({
         x: positionRef.current.x + dx,
@@ -111,37 +86,59 @@ export function ZoomableContainer({
 
       setLastPos({ x: e.clientX, y: e.clientY });
     }
-  }, [isPanning, lastPos, panStarted, setPosition]);
+  }, [isPanning, lastPos, setPosition]);
 
   const handleMouseUp = useCallback((e) => {
-    // Clear the timer
-    if (rightClickTimerRef.current) {
-      clearTimeout(rightClickTimerRef.current);
-      rightClickTimerRef.current = null;
-    }
-
-    if (hasMovedRef.current) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    
-    setPanStarted(false);
     setIsPanning(false);
     document.body.style.cursor = '';
+    startPosRef.current = null;
   }, []);
 
   const handleContextMenu = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
 
-    // Only show menu if we haven't moved
     if (!hasMovedRef.current && onContextMenu) {
       onContextMenu(e);
     }
-
-    // Reset for next interaction
-    hasMovedRef.current = false;
   }, [onContextMenu]);
+
+  // Global event listeners for panning
+  useEffect(() => {
+    if (isPanning) {
+      const onMouseMove = (e) => {
+        e.preventDefault();
+        handleMouseMove(e);
+      };
+      const onMouseUp = (e) => {
+        e.preventDefault();
+        handleMouseUp(e);
+      };
+      const onKeyDown = (e) => {
+        if (e.key === 'Escape') {
+          handleMouseUp(e);
+        }
+      };
+
+      // Add document-level listeners
+      document.addEventListener('mousemove', onMouseMove, { capture: true });
+      document.addEventListener('mouseup', onMouseUp, { capture: true });
+      document.addEventListener('keydown', onKeyDown, { capture: true });
+
+      return () => {
+        document.removeEventListener('mousemove', onMouseMove, { capture: true });
+        document.removeEventListener('mouseup', onMouseUp, { capture: true });
+        document.removeEventListener('keydown', onKeyDown, { capture: true });
+      };
+    }
+  }, [isPanning, handleMouseMove, handleMouseUp]);
+
+  // Prevent default wheel scroll
+  useEffect(() => {
+    const preventDefault = e => e.preventDefault();
+    document.addEventListener('wheel', preventDefault, { passive: false });
+    return () => document.removeEventListener('wheel', preventDefault);
+  }, []);
 
   const containerStyle = {
     width: '100%',
@@ -178,17 +175,21 @@ export function ZoomableContainer({
           path: e.nativeEvent.composedPath().map(el => el.id || el.className || el.tagName).join(' -> ')
         });
         
-        if (e.button === 2) {  // Only handle right clicks
+        if (e.button === 2) {
           handleMouseDown(e);
         }
       }}
       onMouseMove={(e) => {
-        if (e.button === 2 || panStarted) {
+        if (isPanning) {
+          e.preventDefault();
+          e.stopPropagation();
           handleMouseMove(e);
         }
       }}
       onMouseUp={(e) => {
-        if (e.button === 2 || panStarted) {
+        if (isPanning) {
+          e.preventDefault();
+          e.stopPropagation();
           handleMouseUp(e);
         }
       }}
