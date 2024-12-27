@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 
 export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd }) {
   const [dragState, setDragState] = useState(null);
@@ -9,7 +9,6 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
       initialToken,
       selectedCount: selectedTokens.length
     });
-    
     // Store initial positions for all selected tokens
     const tokenStartPositions = new Map();
     selectedTokens.forEach(token => {
@@ -18,7 +17,6 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
         y: token.position.y
       });
     });
-
     isDraggingRef.current = true;
     setDragState({
       tokenIds: selectedTokens.map(t => t.id),
@@ -49,21 +47,32 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
         const { x: snappedX, y: snappedY } = getSnappedPosition(newX, newY);
         
         // Update position through callback
-        onDragMove?.(tokenId, { x: snappedX, y: snappedY }, false); // Pass false to indicate this is not the final position
+        onDragMove?.(tokenId, { x: snappedX, y: snappedY }, false);
       });
     }
 
     function onMouseUp() {
       if (!isDraggingRef.current) return;
-
-      isDraggingRef.current = false;
       
-      // Call onDragEnd for each token
-      if (onDragEnd) {
-        dragState.tokenIds.forEach(tokenId => {
-          onDragEnd(tokenId);
-        });
-      }
+      isDraggingRef.current = false;
+
+      // Get final positions
+      dragState.tokenIds.forEach(tokenId => {
+        const dx = (window.event.clientX - dragState.startMouseX) / scale;
+        const dy = (window.event.clientY - dragState.startMouseY) / scale;
+        const startPos = dragState.tokenStartPositions.get(tokenId);
+        
+        if (startPos) {
+          const { x: snappedX, y: snappedY } = getSnappedPosition(
+            startPos.x + dx,
+            startPos.y + dy
+          );
+          // Final update with isFinal flag
+          onDragMove?.(tokenId, { x: snappedX, y: snappedY }, true);
+        }
+
+        onDragEnd?.(tokenId);
+      });
 
       setDragState(null);
     }
