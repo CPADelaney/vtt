@@ -119,31 +119,24 @@ export function ZoomableContainer({
     }
   }, [isPanning, onPanEnd]);
   
-  const handleContextMenu = useCallback((e) => {
-    // Always prevent browser default
-    e.preventDefault();
-  
-    // If we actually panned or are currently panning, do NOT show the context menu
-    if (didPanRef.current || isPanning) {
-      console.log('[DEBUG] Suppressing context menu after pan');
-      // Reset didPan if you only want to suppress once
-      didPanRef.current = false;
-      return;
-    }
-  
-    // If we get here, no panning took place => show custom context menu
-    const isToken = e.target.closest('.token');
-    console.log('[DEBUG] Context menu check:', {
-      isToken,
-      wasPanning: isPanning,
-      didPan: didPanRef.current
-    });
-  
-    // No optional chaining here—use normal check:
-    if (onContextMenu) {
-      onContextMenu(e);
-    }
-  }, [isPanning, onContextMenu]);
+const handleContextMenu = useCallback((e) => {
+  // Always prevent browser default
+  e.preventDefault();
+
+  // If we actually panned or are currently panning, do NOT show the context menu
+  if (didPanRef.current || isPanning) {
+    console.log('[DEBUG] Suppressing context menu after pan');
+    didPanRef.current = false;
+    return;
+  }
+
+  // If we get here, no panning took place => show custom context menu
+  if (onContextMenu) {
+    // Add isPanning flag to the event
+    e.isPanning = didPanRef.current || isPanning;
+    onContextMenu(e);
+  }
+}, [isPanning, onContextMenu]);
 
   useEffect(() => {
     if (isPanning || panStarted) {
