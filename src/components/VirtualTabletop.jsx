@@ -48,7 +48,7 @@ function Ping({ x, y, color }) {
 
 export default function VirtualTabletop() {
   // 1) Single Source of Truth - Replace useState with useStateWithHistory
-  const [gameState, setGameState, updateGameState, undoGameState, historyInfo] = useStateWithHistory({
+  const [gameState, updateGameState, undoGameState, historyInfo] = useStateWithHistory({
     isHexGrid: false,
     tokens: [],
     scale: 1,
@@ -59,7 +59,9 @@ export default function VirtualTabletop() {
       console.log('[DEBUG] Undid to state:', prevState);
     }
   });
+
   const { isHexGrid, tokens, scale, position } = gameState;
+
 
   // 2) Load & Save from campaignManager
   const { saveState, loadState } = useCampaignManager('default-campaign');
@@ -193,40 +195,38 @@ export default function VirtualTabletop() {
   }, [dimensions, isHexGrid, gridConfig]);
 
 // Token drag
-const { startDrag } = useTokenDrag({
-  scale: gameState.scale,
-  getSnappedPosition,
-  onDragMove: (tokenId, newPos, isFinal = false) => {
-    console.log('[DEBUG] onDragMove triggered for', tokenId, '=>', newPos);
-    if (!isFinal) {
-      // Use direct state updates for intermediate moves
-      setGameState(prev => ({
-        ...prev,
-        tokens: prev.tokens.map(t =>
-          t.id === tokenId ? { ...t, position: newPos } : t
-        )
-      }));
-    } else {
-      // Use history-tracked updates for final positions
-      updateGameState(prev => ({
-        ...prev,
-        tokens: prev.tokens.map(t =>
-          t.id === tokenId ? { ...t, position: newPos } : t
-        )
-      }));
+  // Token drag - Update the hook usage
+  const { startDrag } = useTokenDrag({
+    scale: gameState.scale,
+    getSnappedPosition,
+    onDragMove: (tokenId, newPos, isFinal = false) => {
+      console.log('[DEBUG] onDragMove triggered for', tokenId, '=>', newPos);
+      if (!isFinal) {
+        // Use direct state update for intermediate moves
+        setGameState(prev => ({
+          ...prev,
+          tokens: prev.tokens.map(t =>
+            t.id === tokenId ? { ...t, position: newPos } : t
+          )
+        }));
+      } else {
+        // Use history-tracked update for final position
+        updateGameState(prev => ({
+          ...prev,
+          tokens: prev.tokens.map(t =>
+            t.id === tokenId ? { ...t, position: newPos } : t
+          )
+        }));
+      }
+    },
+    onDragEnd: (tokenId) => {
+      // Get current position and add it to history
+      const token = gameState.tokens.find(t => t.id === tokenId);
+      if (token) {
+        onDragMove(tokenId, token.position, true);
+      }
     }
-  },
-  onDragEnd: (tokenId, finalPos) => {
-    if (finalPos) {
-      updateGameState(prev => ({
-        ...prev,
-        tokens: prev.tokens.map(t =>
-          t.id === tokenId ? { ...t, position: finalPos } : t
-        )
-      }));
-    }
-  }
-});
+  });
 
 
 
