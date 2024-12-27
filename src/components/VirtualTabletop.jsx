@@ -225,31 +225,31 @@ export default function VirtualTabletop() {
     onDeleteTokens: handleDeleteTokens
   });
 
-  // 8) PING LOGIC (New)
-  // --------------------------------------------------
+  // 8) PING LOGIC
   const [pings, setPings] = useState([]);
   const pingTimeoutRef = useRef(null);
   const isPingingRef = useRef(false);
+
+  // For the movement threshold approach:
   const mouseDownRef = useRef(null);
 
-  // Example: Each user can eventually pick a color. Hard-code for now:
   const playerColor = '#ff0066'; 
-
   const createPing = useCallback((x, y) => {
-    const newPing = {
-      id: Date.now(),
-      x,
-      y,
-      color: playerColor,
-    };
-
+    const newPing = { id: Date.now(), x, y, color: playerColor };
     setPings(prev => [...prev, newPing]);
-
-    // Remove the ping after 2 seconds
     setTimeout(() => {
-      setPings(prev => prev.filter((p) => p.id !== newPing.id));
+      setPings(prev => prev.filter(p => p.id !== newPing.id));
     }, 2000);
   }, [playerColor]);
+
+  // Clean up ping if mouse is released early
+  const handleMouseUp = useCallback(() => {
+    if (pingTimeoutRef.current) {
+      clearTimeout(pingTimeoutRef.current);
+    }
+    isPingingRef.current = false;
+    mouseDownRef.current = null;   // reset our potential-drag state
+  }, []);
 
   const handleMouseUp = useCallback(() => {
     // If the user releases before the threshold, clear the ping timer
@@ -288,117 +288,107 @@ const handleMouseDown = useCallback((e) => {
   });
 
   // Left-click only
-  if (e.button === 0) {
-    const tokenEl = e.target.closest('.token');
-    const isAdditive = e.metaKey || e.ctrlKey;
+    if (e.button === 0) {
+      const tokenEl = e.target.closest('.token');
+      const isAdditive = e.metaKey || e.ctrlKey;
 
-    if (tokenEl) {
-      // ... same as before (token click logic) ...
-      e.stopPropagation();
-      selectTokenId(tokenEl.id, isAdditive);
-      if (!isAdditive) {
-        const clickedToken = tokens.find(t => t.id === tokenEl.id);
-        if (clickedToken) {
-          const selectedTokens = tokens.filter(t => selectedTokenIds.has(t.id));
-          startDrag(clickedToken, e, selectedTokens);
+      if (tokenEl) {
+        // Handle token selection/drag
+        e.stopPropagation();
+        selectTokenId(tokenEl.id, isAdditive);
+        if (!isAdditive) {
+          const clickedToken = tokens.find(t => t.id === tokenEl.id);
+          if (clickedToken) {
+            const selectedTokens = tokens.filter(t => selectedTokenIds.has(t.id));
+            startDrag(clickedToken, e, selectedTokens);
+          }
         }
-      }
-    } 
-    else {
-      // -----------------------
-      // EMPTY SPACE => Potential Marquee or Ping
-      // -----------------------
-      console.log('[DEBUG-EMPTY] Potential marquee or ping');
+      } else {
+        // Potential marquee or ping
+        console.log('[DEBUG-EMPTY] Potential marquee or ping');
+        e.stopPropagation();
+        e.preventDefault();
 
-      e.stopPropagation();
-      e.preventDefault();
-
-      if (!isAdditive) {
-        clearSelection();
-      }
-
-      // 1) Store initial mouse down info
-      const container = document.getElementById('tabletop-container');
-      const containerRect = container.getBoundingClientRect();
-      const screenX = e.clientX - containerRect.left;
-      const screenY = e.clientY - containerRect.top;
-
-      // Transform to grid coords
-      const gridX = (screenX - position.x) / scale;
-      const gridY = (screenY - position.y) / scale;
-
-      mouseDownRef.current = {
-        startScreenX: screenX,
-        startScreenY: screenY,
-        startGridX: gridX,
-        startGridY: gridY,
-        hasDragged: false
-      };
-
-      // 2) Set a 500ms ping timer
-      isPingingRef.current = true;
-      if (pingTimeoutRef.current) {
-        clearTimeout(pingTimeoutRef.current);
-      }
-      pingTimeoutRef.current = setTimeout(() => {
-        if (isPingingRef.current && mouseDownRef.current && !mouseDownRef.current.hasDragged) {
-          console.log('[DEBUG-PING] Creating ping at:', {
-            gridX: mouseDownRef.current.startGridX,
-            gridY: mouseDownRef.current.startGridY
-          });
-          createPing(mouseDownRef.current.startGridX, mouseDownRef.current.startGridY);
+        if (!isAdditive) {
+          clearSelection();
         }
-      }, 500);
+
+        const container = document.getElementById('tabletop-container');
+        const containerRect = container.getBoundingClientRect();
+        const screenX = e.clientX - containerRect.left;
+        const screenY = e.clientY - containerRect.top;
+
+        const gridX = (screenX - position.x) / scale;
+        const gridY = (screenY - position.y) / scale;
+
+        // Store initial click info
+        mouseDownRef.current = {
+          startScreenX: screenX,
+          startScreenY: screenY,
+          startGridX: gridX,
+          startGridY: gridY,
+          hasDragged: false,
+        };
+
+        // Start a 500ms ping timer
+        isPingingRef.current = true;
+        if (pingTimeoutRef.current) {
+          clearTimeout(pingTimeoutRef.current);
+        }
+        pingTimeoutRef.current = setTimeout(() => {
+          if (isPingingRef.current &&
+              mouseDownRef.current &&
+              !mouseDownRef.current.hasDragged) {
+            console.log('[DEBUG-PING] Creating ping at:', {
+              gridX: mouseDownRef.current.startGridX,
+              gridY: mouseDownRef.current.startGridY
+            });
+            createPing(
+              mouseDownRef.current.startGridX,
+              mouseDownRef.current.startGridY
+            );
+          }
+        }, 500);
+      }
     }
-  }
-}, [
-  clearSelection,
-  selectTokenId,
-  tokens,
-  selectedTokenIds,
-  startDrag,
-  position,
-  scale,
-  createPing
-]);
+  }, [
+    clearSelection,
+    selectTokenId,
+    tokens,
+    selectedTokenIds,
+    startDrag,
+    position,
+    scale,
+    createPing
+  ]);
 
   // somewhere in your code
-const handleMouseMove = useCallback((e) => {
-  // If no left-click in progress, do nothing
-  if (!mouseDownRef.current) return;
+  const handleMouseMove = useCallback((e) => {
+    if (!mouseDownRef.current) return; // no left-click in progress
 
-  // Calculate how far the user moved from initial screen coords
-  const dx = e.clientX - mouseDownRef.current.startScreenX;
-  const dy = e.clientY - mouseDownRef.current.startScreenY;
-  const distance = Math.sqrt(dx * dx + dy * dy);
+    const dx = e.clientX - mouseDownRef.current.startScreenX;
+    const dy = e.clientY - mouseDownRef.current.startScreenY;
+    const distance = Math.sqrt(dx*dx + dy*dy);
 
-  // We pick 5px as a small threshold
-  if (!mouseDownRef.current.hasDragged && distance > 5) {
-    console.log('[DEBUG] Movement threshold => startMarquee + cancel ping');
+    if (!mouseDownRef.current.hasDragged && distance > 5) {
+      console.log('[DEBUG] Movement threshold => startMarquee + cancel ping');
 
-    // Cancel any ping
-    if (pingTimeoutRef.current) {
-      clearTimeout(pingTimeoutRef.current);
-      pingTimeoutRef.current = null;
+      // Cancel ping
+      if (pingTimeoutRef.current) {
+        clearTimeout(pingTimeoutRef.current);
+        pingTimeoutRef.current = null;
+      }
+      isPingingRef.current = false;
+
+      // Start marquee
+      startMarquee(e);
+      mouseDownRef.current.hasDragged = true; 
     }
-    isPingingRef.current = false;
+  }, [startMarquee]);
 
-    // Now call your marquee function
-    startMarquee(e);  // we no longer need a cancelPing param
-    mouseDownRef.current.hasDragged = true; 
-  }
-
-  // If marquee is started, your useTokenSelection hook's onMouseMove 
-  // will handle drawing the marquee. 
-  // Or you can keep some logic here if you want
-}, [startMarquee]);
-
-
-  
   const handleContextMenu = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
-
     const tokenEl = e.target.closest('.token');
     showMenu(e, { 
       type: tokenEl ? 'token' : 'grid'
@@ -420,86 +410,67 @@ const handleMouseMove = useCallback((e) => {
   }, []);
 
   // 11) Render
-return (
-  <>
-    <Controls onZoomIn={onZoomIn} onZoomOut={onZoomOut} />
-    <div className="tabletop-wrapper" style={{ width: '100%', height: '100%' }}>
-      <ZoomableContainer
-        containerId="tabletop-container"
-        scale={scale}
-        position={position}
-        setScale={(val) =>
-          setGameState(prev => ({
-            ...prev,
-            scale: val
-          }))
-        }
-        setPosition={(val) =>
-          setGameState(prev => ({
-            ...prev,
-            position: val
-          }))
-        }
-        minScale={MIN_SCALE}
-        maxScale={MAX_SCALE}
-        zoomFactor={ZOOM_FACTOR}
-        onContextMenu={handleContextMenu}
-        gridWidth={totalWidth}       // <-- pass computed width
-        gridHeight={totalHeight}     // <-- pass computed height
-      >
-      <div
-        id="tabletop"
-        className={isHexGrid ? 'hex-grid' : 'square-grid'}
-        onMouseDown={(e) => {
-          console.log('[DEBUG-TABLETOP] Tabletop mousedown:', {
-            button: e.button,
-            target: e.target.className,
-            tagName: e.target.tagName
-          });
-          handleMouseDown(e);
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-        }}
-        onContextMenu={handleContextMenu}
-        onMouseUp={handleMouseUp}
-        style={{ 
-          width: '100%', 
-          height: '100%', 
-          position: 'relative',
-          userSelect: 'none'
-        }}
-      >
-          <Grid
-            isHexGrid={isHexGrid}
-            rows={dimensions.rows}
-            cols={dimensions.cols}
-            squareSize={gridConfig.squareSize}
-            hexSize={gridConfig.hexSize}
-            hexWidth={gridConfig.hexWidth}
-            hexHeight={gridConfig.hexHeight}
-          />
-          {tokens.map(token => (
-            <Token
-              key={token.id}
-              {...token}
-              isSelected={selectedTokenIds.has(token.id)}
-              onClick={(e) => e.stopPropagation()}
+  return (
+    <>
+      <Controls onZoomIn={onZoomIn} onZoomOut={onZoomOut} />
+      <div className="tabletop-wrapper" style={{ width: '100%', height: '100%' }}>
+        <ZoomableContainer
+          containerId="tabletop-container"
+          scale={scale}
+          position={position}
+          setScale={val => setGameState(prev => ({ ...prev, scale: val }))}
+          setPosition={val => setGameState(prev => ({ ...prev, position: val }))}
+          minScale={MIN_SCALE}
+          maxScale={MAX_SCALE}
+          zoomFactor={ZOOM_FACTOR}
+          onContextMenu={handleContextMenu}
+          gridWidth={totalWidth}
+          gridHeight={totalHeight}
+        >
+          <div
+            id="tabletop"
+            className={isHexGrid ? 'hex-grid' : 'square-grid'}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onContextMenu={handleContextMenu}
+            style={{ 
+              width: '100%', 
+              height: '100%', 
+              position: 'relative',
+              userSelect: 'none'
+            }}
+          >
+            <Grid
+              isHexGrid={isHexGrid}
+              rows={dimensions.rows}
+              cols={dimensions.cols}
+              squareSize={gridConfig.squareSize}
+              hexSize={gridConfig.hexSize}
+              hexWidth={gridConfig.hexWidth}
+              hexHeight={gridConfig.hexHeight}
             />
-          ))}
-          {pings.map(ping => (
-            <Ping
-              key={ping.id}
-              x={ping.x}
-              y={ping.y}
-              color={ping.color}
-            />
-          ))}
-        </div>
-      </ZoomableContainer>
-      <Sidebar isHexGrid={isHexGrid} onToggleGrid={onToggleGrid} />
-      <ChatBox />
-    </div>
-  </>
-);
+            {tokens.map(token => (
+              <Token
+                key={token.id}
+                {...token}
+                isSelected={selectedTokenIds.has(token.id)}
+                onClick={(e) => e.stopPropagation()}
+              />
+            ))}
+            {pings.map(ping => (
+              <Ping
+                key={ping.id}
+                x={ping.x}
+                y={ping.y}
+                color={ping.color}
+              />
+            ))}
+          </div>
+        </ZoomableContainer>
+        <Sidebar isHexGrid={isHexGrid} onToggleGrid={onToggleGrid} />
+        <ChatBox />
+      </div>
+    </>
+  );
 }
