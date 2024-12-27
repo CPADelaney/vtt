@@ -53,67 +53,71 @@ export function ZoomableContainer({
     handleWheelEnd();
   }, [handleWheel, handleWheelEnd]);
   
-  const handleMouseDown = useCallback((e) => {
-    if (e.button !== 2) return;
-    
-    const isToken = e.target.closest('.token');
-    if (isToken) return;
-    
-    e.preventDefault();
-    e.stopPropagation();
+const handleMouseDown = useCallback((e) => {
+  if (e.button !== 2) return;
   
-    startPosRef.current = { x: e.clientX, y: e.clientY };
-    hasMovedRef.current = false;
-    setIsPanning(true);
-    setLastPos({ x: e.clientX, y: e.clientY });
-  }, []);
-
-  const handleMouseMove = useCallback((e) => {
-    if (!isPanning) return;
+  const isToken = e.target.closest('.token');
+  if (isToken) return;
   
-    const dx = e.clientX - lastPos.x;
-    const dy = e.clientY - lastPos.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    
-    if (distance > 3) {
-      hasMovedRef.current = true;
-      document.body.style.cursor = 'grabbing';
-      
-      setPosition({
-        x: positionRef.current.x + dx,
-        y: positionRef.current.y + dy
-      });
-  
-      // Update last position after movement
-      setLastPos({ x: e.clientX, y: e.clientY });
-    }
-  }, [isPanning, lastPos, setPosition]);
-
-  const handleMouseUp = useCallback((e) => {
-    if (hasMovedRef.current) {
-      // We want to prevent the NEXT context menu, not an immediate one
-      const cleanup = () => {
-        window.removeEventListener('mousedown', cleanup);
-        hasMovedRef.current = false;
-      };
-      window.addEventListener('mousedown', cleanup, { once: true });
-    }
-    
-    setIsPanning(false);
-    document.body.style.cursor = '';
-    startPosRef.current = null;
-  }, []);
-
-const handleContextMenu = useCallback((e) => {
   e.preventDefault();
   e.stopPropagation();
 
-  // Only block if we're currently panning or just finished panning
+  startPosRef.current = { x: e.clientX, y: e.clientY };
+  hasMovedRef.current = false;
+  setIsPanning(true);
+  setLastPos({ x: e.clientX, y: e.clientY });
+}, []);
+
+const handleMouseMove = useCallback((e) => {
+  if (!isPanning) return;
+
+  const dx = e.clientX - lastPos.x;
+  const dy = e.clientY - lastPos.y;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  
+  if (distance > 3) {
+    hasMovedRef.current = true;
+    document.body.style.cursor = 'grabbing';
+    
+    setPosition({
+      x: positionRef.current.x + dx,
+      y: positionRef.current.y + dy
+    });
+  }
+  
+  setLastPos({ x: e.clientX, y: e.clientY });
+}, [isPanning, lastPos, setPosition]);
+
+const handleMouseUp = useCallback((e) => {
+  // Block the context menu completely if we were panning
+  if (hasMovedRef.current) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Force block the upcoming context menu
+    window.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    }, { capture: true, once: true });
+  }
+  
+  hasMovedRef.current = false;
+  setIsPanning(false);
+  document.body.style.cursor = '';
+  startPosRef.current = null;
+}, []);
+
+const handleContextMenu = useCallback((e) => {
   if (isPanning || hasMovedRef.current) {
+    e.preventDefault();
+    e.stopPropagation();
     return;
   }
 
-  if (onContextMenu) {
+  // Only show menu if we haven't moved
+  if (onContextMenu && !hasMovedRef.current) {
+    e.preventDefault();
+    e.stopPropagation();
     onContextMenu(e);
   }
 }, [isPanning, onContextMenu]);
