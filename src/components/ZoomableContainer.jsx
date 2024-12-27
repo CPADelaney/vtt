@@ -54,7 +54,7 @@ export function ZoomableContainer({
   }, [handleWheel, handleWheelEnd]);
   
 const handleMouseDown = useCallback((e) => {
-  // Only handle right-click, let left clicks pass through
+  // Only handle right-click
   if (e.button !== 2) return;
   
   const isToken = e.target.closest('.token');
@@ -96,16 +96,21 @@ const handleMouseMove = useCallback((e) => {
     setLastPos({ x: e.clientX, y: e.clientY });
   }
 }, [isPanning, lastPos, panStarted, setPosition]);
-
+  
 const handleMouseUp = useCallback((e) => {
-  if (panStarted) {
+  if (panStarted || isPanning) {
     e.preventDefault();
     e.stopPropagation();
+    if (isPanning) {
+      // If we were actually panning, ensure we block the upcoming context menu
+      didPanRef.current = true;
+    }
   }
   setPanStarted(false);
   setIsPanning(false);
   document.body.style.cursor = '';
-}, [panStarted]);
+}, [panStarted, isPanning]);
+
 
   const stopPanning = useCallback(() => {
     setPanStarted(false);
@@ -120,10 +125,12 @@ const handleContextMenu = useCallback((e) => {
   e.preventDefault();
   e.stopPropagation();
 
-  // If we did any panning at all, don't show the menu
-  if (didPanRef.current) {
+  // If we did any panning during this right-click sequence, don't show menu
+  if (didPanRef.current || isPanning) {
     console.log('[DEBUG] Suppressing context menu after pan');
-    didPanRef.current = false;
+    setTimeout(() => {
+      didPanRef.current = false;  // Reset after the context menu event has passed
+    }, 0);
     return;
   }
 
@@ -131,8 +138,7 @@ const handleContextMenu = useCallback((e) => {
   if (onContextMenu) {
     onContextMenu(e);
   }
-}, [onContextMenu]);
-  
+}, [isPanning, onContextMenu]);
   const containerStyle = {
     width: '100%',
     height: '100%',
