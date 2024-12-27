@@ -8,6 +8,7 @@ import { useContextMenu } from '../hooks/useContextMenu';
 import { useGridSnapping } from '../hooks/useGridSnapping';
 import { useCampaignManager } from '../hooks/useCampaignManager';
 import { useAutoSave } from '../hooks/useAutoSave';
+import { useStateWithHistory } from '../hooks/useStateWithHistory'; // Add this import
 
 // Components
 import { ZoomableContainer } from './ZoomableContainer';
@@ -46,12 +47,17 @@ function Ping({ x, y, color }) {
 }
 
 export default function VirtualTabletop() {
-  // 1) Single Source of Truth
-  const [gameState, setGameState] = useState({
+  // 1) Single Source of Truth - Replace useState with useStateWithHistory
+  const [gameState, updateGameState, undoGameState, historyInfo] = useStateWithHistory({
     isHexGrid: false,
     tokens: [],
     scale: 1,
     position: { x: 0, y: 0 },
+  }, {
+    maxHistory: 50,
+    onUndo: (prevState) => {
+      console.log('[DEBUG] Undid to state:', prevState);
+    }
   });
 
   const { isHexGrid, tokens, scale, position } = gameState;
@@ -62,14 +68,15 @@ export default function VirtualTabletop() {
   // 3) Token selection and deletion
   const { selectedTokenIds, selectTokenId, clearSelection, startMarquee } = useTokenSelection();
 
+  // Update all setGameState calls to use updateGameState
   const handleDeleteTokens = useCallback(() => {
     console.log('[DEBUG] Deleting tokens', Array.from(selectedTokenIds));
-    setGameState(prev => ({
+    updateGameState(prev => ({
       ...prev,
       tokens: prev.tokens.filter(t => !selectedTokenIds.has(t.id))
     }));
     clearSelection();
-  }, [selectedTokenIds, clearSelection]);
+  }, [selectedTokenIds, clearSelection, updateGameState]);
 
   // Add keyboard shortcuts for deletion
   useEffect(() => {
@@ -186,21 +193,39 @@ export default function VirtualTabletop() {
     }
   }, [dimensions, isHexGrid, gridConfig]);
 
-  // Token drag
   const { startDrag } = useTokenDrag({
     scale: gameState.scale,
     getSnappedPosition,
-    onDragMove: (tokenId, newPos) => {
+    onDragMove: (tokenId, newPos, isFinal = false) => {
       console.log('[DEBUG] onDragMove triggered for', tokenId, '=>', newPos);
-      setGameState(prev => ({
-        ...prev,
-        tokens: prev.tokens.map(t =>
-          t.id === tokenId ? { ...t, position: newPos } : t
-        )
-      }));
+      if (!isFinal) {
+        // Use direct state update for intermediate moves
+        setGameState(prev => ({
+          ...prev,
+          tokens: prev.tokens.map(t =>
+            t.id === tokenId ? { ...t, position: newPos } : t
+          )
+        }));
+      } else {
+        // Use history-tracked update for final position
+        updateGameState(prev => ({
+          ...prev,
+          tokens: prev.tokens.map(t =>
+            t.id === tokenId ? { ...t, position: newPos } : t
+          )
+        }));
+      }
     },
-    onDragEnd: _.noop
+    onDragEnd: (tokenId) => {
+      // Get current position and add it to history
+      const token = gameState.tokens.find(t => t.id === tokenId);
+      if (token) {
+        onDragMove(tokenId, token.position, true);
+      }
+    }
   });
+
+
 
   const handleAddToken = useCallback((e) => {
     const container = document.getElementById('tabletop-container');
@@ -214,14 +239,7 @@ export default function VirtualTabletop() {
     
     const snappedPos = getSnappedPosition(gridX, gridY);
     
-    console.log('[DEBUG] Adding token at', {
-      screen: { x: e.clientX, y: e.clientY },
-      container: { x: containerRect.left, y: containerRect.top },
-      transformed: { x: gridX, y: gridY },
-      snapped: snappedPos
-    });
-  
-    setGameState(prev => ({
+    updateGameState(prev => ({
       ...prev,
       tokens: [
         ...prev.tokens,
@@ -232,7 +250,7 @@ export default function VirtualTabletop() {
         }
       ]
     }));
-  }, [getSnappedPosition, position, scale]);
+  }, [getSnappedPosition, position, scale, updateGameState]);
 
   const { showMenu } = useContextMenu({
     onAddToken: handleAddToken,
@@ -266,7 +284,7 @@ export default function VirtualTabletop() {
   // Zoom and mouse logic
   const onZoomIn = () => {
     console.log('[DEBUG] onZoomIn called');
-    setGameState(prev => ({
+    updateGameState(prev => ({
       ...prev,
       scale: Math.min(prev.scale * 1.1, MAX_SCALE)
     }));
@@ -274,7 +292,7 @@ export default function VirtualTabletop() {
 
   const onZoomOut = () => {
     console.log('[DEBUG] onZoomOut called');
-    setGameState(prev => ({
+    updateGameState(prev => ({
       ...prev,
       scale: Math.max(prev.scale * 0.9, MIN_SCALE)
     }));
@@ -391,7 +409,7 @@ export default function VirtualTabletop() {
   }, [showMenu]);
 
   const onToggleGrid = () => {
-    setGameState(prev => ({
+    updateGameState(prev => ({
       ...prev,
       isHexGrid: !prev.isHexGrid
     }));
@@ -406,7 +424,7 @@ export default function VirtualTabletop() {
 
 
   // 11) Render
-return (
+  return (
     <>
       <Controls onZoomIn={onZoomIn} onZoomOut={onZoomOut} />
       <div className="tabletop-wrapper" style={{ width: '100%', height: '100%' }}>
@@ -414,8 +432,8 @@ return (
           containerId="tabletop-container"
           scale={scale}
           position={position}
-          setScale={val => setGameState(prev => ({ ...prev, scale: val }))}
-          setPosition={val => setGameState(prev => ({ ...prev, position: val }))}
+          setScale={val => updateGameState(prev => ({ ...prev, scale: val }))}
+          setPosition={val => updateGameState(prev => ({ ...prev, position: val }))}
           minScale={MIN_SCALE}
           maxScale={MAX_SCALE}
           zoomFactor={ZOOM_FACTOR}
