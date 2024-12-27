@@ -286,7 +286,8 @@ const handleMouseDown = useCallback((e) => {
     className: e.target.className
   });
 
-  if (e.button === 0) { // Left click
+  // Left-click only
+  if (e.button === 0) {
     const tokenEl = e.target.closest('.token');
     const isAdditive = e.metaKey || e.ctrlKey;
 
@@ -304,10 +305,25 @@ const handleMouseDown = useCallback((e) => {
       }
     } else {
       console.log('[DEBUG-EMPTY] Empty space clicked, starting marquee/ping');
-      if (!isAdditive) clearSelection();
-      startMarquee(e);
+      
+      // If not additive, clear selection first
+      if (!isAdditive) {
+        clearSelection();
+      }
 
-      // Start ping timer
+      // 1) Define a helper to cancel ping
+      const cancelPing = () => {
+        if (pingTimeoutRef.current) {
+          clearTimeout(pingTimeoutRef.current);
+          pingTimeoutRef.current = null;
+        }
+        isPingingRef.current = false;
+      };
+
+      // 2) Start marquee selection, passing the cancel function
+      startMarquee(e, cancelPing);
+
+      // 3) Simultaneously, start a ping timer
       isPingingRef.current = true;
       const container = document.getElementById('tabletop-container');
       const containerRect = container.getBoundingClientRect();
@@ -316,10 +332,12 @@ const handleMouseDown = useCallback((e) => {
       const gridX = (screenX - position.x) / scale;
       const gridY = (screenY - position.y) / scale;
 
+      // Clear any old pending ping
       if (pingTimeoutRef.current) {
         clearTimeout(pingTimeoutRef.current);
       }
 
+      // After 500ms, if still "pinging," actually create the ping
       pingTimeoutRef.current = setTimeout(() => {
         if (isPingingRef.current) {
           console.log('[DEBUG-PING] Creating ping at:', { gridX, gridY });
@@ -329,17 +347,16 @@ const handleMouseDown = useCallback((e) => {
     }
   }
 }, [
-  clearSelection, 
-  selectTokenId, 
-  tokens, 
-  selectedTokenIds, 
-  startDrag, 
+  clearSelection,
+  selectTokenId,
+  tokens,
+  selectedTokenIds,
+  startDrag,
   startMarquee,
-  position, 
-  scale, 
+  position,
+  scale,
   createPing
 ]);
-
   const handleContextMenu = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
