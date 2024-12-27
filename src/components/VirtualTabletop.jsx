@@ -45,7 +45,6 @@ function Ping({ x, y, color }) {
   );
 }
 
-
 export default function VirtualTabletop() {
   // 1) Single Source of Truth
   const [gameState, setGameState] = useState({
@@ -60,6 +59,43 @@ export default function VirtualTabletop() {
 
   // 2) Load & Save from campaignManager
   const { saveState, loadState } = useCampaignManager('default-campaign');
+
+  // 3) Token selection
+  const { selectedTokenIds, selectTokenId, clearSelection, startMarquee } =
+    useTokenSelection();
+
+  // 4) Context menu setup
+  const handleDeleteTokens = useCallback(() => {
+    console.log('[DEBUG] Deleting tokens', Array.from(selectedTokenIds));
+    setGameState(prev => ({
+      ...prev,
+      tokens: prev.tokens.filter(t => !selectedTokenIds.has(t.id))
+    }));
+    clearSelection();
+  }, [selectedTokenIds, clearSelection]);
+
+  // Add keyboard shortcuts (after state declarations but before other effects)
+  useEffect(() => {
+    function handleKeyDown(e) {
+      // Only handle if no input elements are focused
+      if (document.activeElement.tagName === 'INPUT' || 
+          document.activeElement.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      // Check if Delete or Backspace was pressed and there are selected tokens
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedTokenIds.size > 0) {
+        // Prevent default browser behavior (like browser back on Backspace)
+        e.preventDefault();
+        
+        console.log('[DEBUG] Delete/Backspace pressed with selected tokens:', Array.from(selectedTokenIds));
+        handleDeleteTokens();
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedTokenIds, handleDeleteTokens]);
 
   // Load entire state on mount
   useEffect(() => {
