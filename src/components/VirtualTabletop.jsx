@@ -376,19 +376,26 @@ return (
         onContextMenu={handleContextMenu}
         // Remove onMouseDown from here
       >
-        <div
-          id="tabletop"
-          className={isHexGrid ? 'hex-grid' : 'square-grid'}
-          onMouseDown={handleMouseDown}  // Add it here instead
-          onContextMenu={handleContextMenu}
-          onMouseUp={handleMouseUp}
-          style={{ 
-            width: '100%', 
-            height: '100%', 
-            position: 'relative',
-            userSelect: 'none'
-          }}
-        >
+      <div
+        id="tabletop"
+        className={isHexGrid ? 'hex-grid' : 'square-grid'}
+        onMouseDown={(e) => {
+          console.log('[DEBUG-TABLETOP] Tabletop mousedown:', {
+            button: e.button,
+            target: e.target.className,
+            tagName: e.target.tagName
+          });
+          handleMouseDown(e);
+        }}
+        onContextMenu={handleContextMenu}
+        onMouseUp={handleMouseUp}
+        style={{ 
+          width: '100%', 
+          height: '100%', 
+          position: 'relative',
+          userSelect: 'none'
+        }}
+      >
           <Grid
             isHexGrid={isHexGrid}
             rows={dimensions.rows}
