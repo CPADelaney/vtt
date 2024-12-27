@@ -155,12 +155,12 @@ const handleContextMenu = useCallback((e) => {
     pointerEvents: isPanning ? 'none' : 'auto'
   };
 
-  return (
+return (
     <div
       id={containerId}
       style={{
         ...containerStyle,
-        pointerEvents: 'auto'  // Add this
+        pointerEvents: 'auto'
       }}
       onWheel={onWheel}
       onMouseDown={(e) => {
@@ -173,6 +173,16 @@ const handleContextMenu = useCallback((e) => {
         
         if (e.button === 2) {  // Only handle right clicks
           handleMouseDown(e);
+        }
+      }}
+      onMouseMove={(e) => {
+        if (e.button === 2 || panStarted) {
+          handleMouseMove(e);
+        }
+      }}
+      onMouseUp={(e) => {
+        if (e.button === 2 || panStarted) {
+          handleMouseUp(e);
         }
       }}
       onContextMenu={handleContextMenu}
