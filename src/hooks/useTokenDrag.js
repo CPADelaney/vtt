@@ -1,5 +1,3 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-
 export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd }) {
   const [dragState, setDragState] = useState(null);
   const isDraggingRef = useRef(false);
@@ -42,7 +40,6 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
       dragState.tokenIds.forEach(tokenId => {
         const startPos = dragState.tokenStartPositions.get(tokenId);
         if (!startPos) return;
-
         const newX = startPos.x + dx;
         const newY = startPos.y + dy;
         
@@ -50,33 +47,22 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
         const { x: snappedX, y: snappedY } = getSnappedPosition(newX, newY);
         
         // Update position through callback
-        onDragMove?.(tokenId, { x: snappedX, y: snappedY }, false);
+        onDragMove?.(tokenId, { x: snappedX, y: snappedY }, false); // Pass false to indicate this is not the final position
       });
     }
 
-    function onMouseUp(e) {
+    function onMouseUp() {
       if (!isDraggingRef.current) return;
 
-      // Calculate final positions
-      dragState.tokenIds.forEach(tokenId => {
-        const dx = (e.clientX - dragState.startMouseX) / scale;
-        const dy = (e.clientY - dragState.startMouseY) / scale;
-        const startPos = dragState.tokenStartPositions.get(tokenId);
-        
-        if (startPos) {
-          const finalPos = getSnappedPosition(
-            startPos.x + dx,
-            startPos.y + dy
-          );
-          
-          // Call final move with the isFinal flag
-          onDragMove?.(tokenId, finalPos, true);
-          // Call drag end with the final position
-          onDragEnd?.(tokenId, finalPos);
-        }
-      });
-
       isDraggingRef.current = false;
+      
+      // Call onDragEnd for each token
+      if (onDragEnd) {
+        dragState.tokenIds.forEach(tokenId => {
+          onDragEnd(tokenId);
+        });
+      }
+
       setDragState(null);
     }
 
