@@ -180,30 +180,29 @@ export function ZoomableContainer({
     transformOrigin: '0 0',
     pointerEvents: isPanning ? 'none' : 'auto'
   };
-
-return (
-  <div
-    id={containerId}
-    style={containerStyle}
-    onWheel={onWheel}
-    onContextMenu={handleContextMenu}
-  >
-    <div 
-      style={contentStyle}
-      onMouseDown={(e) => {
-        // Only handle right-clicks at this level
-        console.log('[DEBUG-CONTENT] Content div mousedown:', {
-          button: e.button,
-          target: e.target.className
-        });
-        if (e.button === 2) {
-          handleMouseDown(e);
-        }
-      }}
+  
+  return (
+    <div
+      id={containerId}
+      style={containerStyle}
+      onWheel={onWheel}
+      onContextMenu={handleContextMenu}
     >
-      {children}
+      <div 
+        style={contentStyle}
+        onMouseDown={(e) => {
+          // Only handle right-clicks at this level
+          console.log('[DEBUG-CONTENT] Content div mousedown:', {
+            button: e.button,
+            target: e.target.className
+          });
+          if (e.button === 2) {
+            handleMouseDown(e);
+          }
+        }}
+      >
+        {children}
+      </div>
     </div>
-  </div>
-);
-);
+  );
 }
