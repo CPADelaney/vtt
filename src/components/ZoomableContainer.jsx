@@ -145,24 +145,6 @@ export function ZoomableContainer({
     }
   }, [isPanning, onContextMenu]);
 
-
-    
-    const isToken = e.target.closest('.token');
-    console.log('[DEBUG] Context menu check:', {
-      isToken,
-      wasPanning: isPanning,
-      didPan: didPanRef.current
-    });
-    
-    if (isPanning) {
-      setPanStarted(false);
-      return;
-    }
-    
-    // Call the passed in handler
-    onContextMenu?.(e);
-  }, [isPanning, onContextMenu]);
-
   useEffect(() => {
     if (isPanning || panStarted) {
       const onMouseMove = (e) => handleMouseMove(e);
