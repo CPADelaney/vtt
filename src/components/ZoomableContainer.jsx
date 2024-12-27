@@ -33,7 +33,8 @@ export function ZoomableContainer({
   const [isPanning, setIsPanning] = useState(false);
   const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
   const [panStarted, setPanStarted] = useState(false);
-  const didPanRef = useRef(false);
+  const rightClickTimerRef = useRef(null);
+  const hasMovedRef = useRef(false);
   
   // Keep track of current position for panning
   const positionRef = useRef(position);
@@ -53,92 +54,95 @@ export function ZoomableContainer({
     handleWheelEnd();
   }, [handleWheel, handleWheelEnd]);
   
-const handleMouseDown = useCallback((e) => {
-  // Only handle right-click
-  if (e.button !== 2) return;
-  
-  const isToken = e.target.closest('.token');
-  if (isToken) {
-    console.log('[DEBUG] Click on token, letting context menu handle it');
-    return;
-  }
-  
-  e.preventDefault();
-  e.stopPropagation();
-  setPanStarted(true);
-  didPanRef.current = false;
-  setLastPos({ x: e.clientX, y: e.clientY });
-}, []);
-  
-const handleMouseMove = useCallback((e) => {
-  if (!panStarted) return;
-
-  const dx = e.clientX - lastPos.x;
-  const dy = e.clientY - lastPos.y;
-  const distance = Math.sqrt(dx * dx + dy * dy);
-
-  // If we've moved more than a few pixels, start panning
-  if (!isPanning && distance > 3) {
-    setIsPanning(true);
-    document.body.style.cursor = 'grabbing';
-    didPanRef.current = true;
-  }
-
-  if (isPanning) {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleMouseDown = useCallback((e) => {
+    // Only handle right-click
+    if (e.button !== 2) return;
     
-    setPosition({
-      x: positionRef.current.x + dx,
-      y: positionRef.current.y + dy
-    });
-
-    setLastPos({ x: e.clientX, y: e.clientY });
-  }
-}, [isPanning, lastPos, panStarted, setPosition]);
-  
-const handleMouseUp = useCallback((e) => {
-  if (panStarted || isPanning) {
+    const isToken = e.target.closest('.token');
+    if (isToken) {
+      console.log('[DEBUG] Click on token, letting context menu handle it');
+      return;
+    }
+    
     e.preventDefault();
     e.stopPropagation();
-    if (isPanning) {
-      // If we were actually panning, ensure we block the upcoming context menu
-      didPanRef.current = true;
+
+    // Reset movement tracking
+    hasMovedRef.current = false;
+    
+    // Start a short timer
+    if (rightClickTimerRef.current) {
+      clearTimeout(rightClickTimerRef.current);
     }
-  }
-  setPanStarted(false);
-  setIsPanning(false);
-  document.body.style.cursor = '';
-}, [panStarted, isPanning]);
+    rightClickTimerRef.current = setTimeout(() => {
+      // If we haven't moved by now, it's a context menu attempt
+      if (!hasMovedRef.current) {
+        setPanStarted(false);
+        setIsPanning(false);
+      }
+    }, 200);
 
+    setPanStarted(true);
+    setLastPos({ x: e.clientX, y: e.clientY });
+  }, []);
 
-  const stopPanning = useCallback(() => {
+  const handleMouseMove = useCallback((e) => {
+    if (!panStarted) return;
+
+    const dx = e.clientX - lastPos.x;
+    const dy = e.clientY - lastPos.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    // If we've moved more than a few pixels
+    if (distance > 3) {
+      hasMovedRef.current = true;
+      if (!isPanning) {
+        setIsPanning(true);
+        document.body.style.cursor = 'grabbing';
+      }
+      
+      e.preventDefault();
+      e.stopPropagation();
+      
+      setPosition({
+        x: positionRef.current.x + dx,
+        y: positionRef.current.y + dy
+      });
+
+      setLastPos({ x: e.clientX, y: e.clientY });
+    }
+  }, [isPanning, lastPos, panStarted, setPosition]);
+
+  const handleMouseUp = useCallback((e) => {
+    // Clear the timer
+    if (rightClickTimerRef.current) {
+      clearTimeout(rightClickTimerRef.current);
+      rightClickTimerRef.current = null;
+    }
+
+    if (hasMovedRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     setPanStarted(false);
-    if (isPanning) {
-      setIsPanning(false);
-      document.body.style.cursor = '';
-      onPanEnd?.();
+    setIsPanning(false);
+    document.body.style.cursor = '';
+  }, []);
+
+  const handleContextMenu = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Only show menu if we haven't moved
+    if (!hasMovedRef.current && onContextMenu) {
+      onContextMenu(e);
     }
-  }, [isPanning, onPanEnd]);
-  
-const handleContextMenu = useCallback((e) => {
-  e.preventDefault();
-  e.stopPropagation();
 
-  // If we did any panning during this right-click sequence, don't show menu
-  if (didPanRef.current || isPanning) {
-    console.log('[DEBUG] Suppressing context menu after pan');
-    setTimeout(() => {
-      didPanRef.current = false;  // Reset after the context menu event has passed
-    }, 0);
-    return;
-  }
+    // Reset for next interaction
+    hasMovedRef.current = false;
+  }, [onContextMenu]);
 
-  // No panning occurred, show the menu
-  if (onContextMenu) {
-    onContextMenu(e);
-  }
-}, [isPanning, onContextMenu]);
   const containerStyle = {
     width: '100%',
     height: '100%',
@@ -151,17 +155,14 @@ const handleContextMenu = useCallback((e) => {
     position: 'absolute',
     left: 0,
     top: 0,
-
-    // Use the REAL grid dimensions:
     width: gridWidth,
     height: gridHeight,
-
     transform: `translate(${position?.x}px, ${position?.y}px) scale(${scale})`,
     transformOrigin: '0 0',
     pointerEvents: isPanning ? 'none' : 'auto'
   };
 
-return (
+  return (
     <div
       id={containerId}
       style={{
@@ -208,4 +209,4 @@ return (
       </div>
     </div>
   );
-  }
+}
