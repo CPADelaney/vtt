@@ -61,8 +61,7 @@ export function ZoomableContainer({
     
     e.preventDefault();
     e.stopPropagation();
-
-    // Record the exact start position
+  
     startPosRef.current = { x: e.clientX, y: e.clientY };
     hasMovedRef.current = false;
     setIsPanning(true);
@@ -71,11 +70,12 @@ export function ZoomableContainer({
 
   const handleMouseMove = useCallback((e) => {
     if (!isPanning) return;
-
+  
     const dx = e.clientX - lastPos.x;
     const dy = e.clientY - lastPos.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
     
-    if (Math.abs(dx) > 0 || Math.abs(dy) > 0) {
+    if (distance > 3) {
       hasMovedRef.current = true;
       document.body.style.cursor = 'grabbing';
       
@@ -83,25 +83,40 @@ export function ZoomableContainer({
         x: positionRef.current.x + dx,
         y: positionRef.current.y + dy
       });
-
+  
+      // Update last position after movement
       setLastPos({ x: e.clientX, y: e.clientY });
     }
   }, [isPanning, lastPos, setPosition]);
 
   const handleMouseUp = useCallback((e) => {
+    if (hasMovedRef.current) {
+      // We want to prevent the NEXT context menu, not an immediate one
+      const cleanup = () => {
+        window.removeEventListener('mousedown', cleanup);
+        hasMovedRef.current = false;
+      };
+      window.addEventListener('mousedown', cleanup, { once: true });
+    }
+    
     setIsPanning(false);
     document.body.style.cursor = '';
     startPosRef.current = null;
   }, []);
 
-  const handleContextMenu = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
+const handleContextMenu = useCallback((e) => {
+  e.preventDefault();
+  e.stopPropagation();
 
-    if (!hasMovedRef.current && onContextMenu) {
-      onContextMenu(e);
-    }
-  }, [onContextMenu]);
+  // Only block if we're currently panning or just finished panning
+  if (isPanning || hasMovedRef.current) {
+    return;
+  }
+
+  if (onContextMenu) {
+    onContextMenu(e);
+  }
+}, [isPanning, onContextMenu]);
 
   // Global event listeners for panning
   useEffect(() => {
