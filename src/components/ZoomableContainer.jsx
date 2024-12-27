@@ -54,51 +54,39 @@ export function ZoomableContainer({
   }, [handleWheel, handleWheelEnd]);
   
 const handleMouseDown = useCallback((e) => {
-  // Only handle right-click
+  // Only handle right-click, let left clicks pass through
   if (e.button !== 2) return;
   
-  // If clicking on a token, let context menu handle it
   const isToken = e.target.closest('.token');
   if (isToken) {
-    setPanStarted(false);
+    console.log('[DEBUG] Click on token, letting context menu handle it');
     return;
   }
   
   e.preventDefault();
   e.stopPropagation();
-  
   setPanStarted(true);
   didPanRef.current = false;
-
-  // Set a flag to start panning if mouse moves within timeout
-  const panTimeout = setTimeout(() => {
-    if (panStarted && !didPanRef.current) {
-      setPanStarted(false);
-    }
-  }, 150);
-
-  // Clean up timeout if component unmounts
-  return () => clearTimeout(panTimeout);
-}, [panStarted]);
+  setLastPos({ x: e.clientX, y: e.clientY });
+}, []);
+  
 const handleMouseMove = useCallback((e) => {
   if (!panStarted) return;
 
-  if (!isPanning) {
+  const dx = e.clientX - lastPos.x;
+  const dy = e.clientY - lastPos.y;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+
+  // If we've moved more than a few pixels, start panning
+  if (!isPanning && distance > 3) {
     setIsPanning(true);
-    setLastPos({ x: e.clientX, y: e.clientY });
     document.body.style.cursor = 'grabbing';
+    didPanRef.current = true;
   }
 
   if (isPanning) {
     e.preventDefault();
     e.stopPropagation();
-
-    const dx = e.clientX - lastPos.x;
-    const dy = e.clientY - lastPos.y;
-
-    if (dx !== 0 || dy !== 0) {
-      didPanRef.current = true;
-    }
     
     setPosition({
       x: positionRef.current.x + dx,
@@ -108,6 +96,16 @@ const handleMouseMove = useCallback((e) => {
     setLastPos({ x: e.clientX, y: e.clientY });
   }
 }, [isPanning, lastPos, panStarted, setPosition]);
+
+const handleMouseUp = useCallback((e) => {
+  if (panStarted) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  setPanStarted(false);
+  setIsPanning(false);
+  document.body.style.cursor = '';
+}, [panStarted]);
 
   const stopPanning = useCallback(() => {
     setPanStarted(false);
@@ -122,20 +120,19 @@ const handleContextMenu = useCallback((e) => {
   e.preventDefault();
   e.stopPropagation();
 
-  // Don't show context menu if we panned
-  if (didPanRef.current || isPanning) {
+  // If we did any panning at all, don't show the menu
+  if (didPanRef.current) {
     console.log('[DEBUG] Suppressing context menu after pan');
     didPanRef.current = false;
     return;
   }
 
-  // If no panning occurred, show the context menu
-  const isToken = e.target.closest('.token');
+  // No panning occurred, show the menu
   if (onContextMenu) {
     onContextMenu(e);
   }
-}, [isPanning, onContextMenu]);
-
+}, [onContextMenu]);
+  
   const containerStyle = {
     width: '100%',
     height: '100%',
