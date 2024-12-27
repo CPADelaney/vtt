@@ -233,15 +233,15 @@ const { startDrag } = useTokenDrag({
   const handleAddToken = useCallback((e) => {
     const container = document.getElementById('tabletop-container');
     const containerRect = container.getBoundingClientRect();
-    
+
     const screenX = e.clientX - containerRect.left;
     const screenY = e.clientY - containerRect.top;
-    
+
     const gridX = (screenX - position.x) / scale;
     const gridY = (screenY - position.y) / scale;
-    
+
     const snappedPos = getSnappedPosition(gridX, gridY);
-    
+
     updateGameState(prev => ({
       ...prev,
       tokens: [
@@ -300,7 +300,7 @@ const { startDrag } = useTokenDrag({
       scale: Math.max(prev.scale * 0.9, MIN_SCALE)
     }));
   };
-  
+
   const handleMouseDown = useCallback((e) => {
     console.log('[DEBUG-TABLETOP] MouseDown event:', {
       button: e.button,
@@ -319,7 +319,7 @@ const { startDrag } = useTokenDrag({
         e.stopPropagation();
         const clickedToken = tokens.find(t => t.id === tokenEl.id);
         const wasSelected = selectedTokenIds.has(tokenEl.id);
-        
+
         if (wasSelected && !isAdditive) {
           const selectedTokens = tokens.filter(t => selectedTokenIds.has(t.id));
           startDrag(clickedToken, e, selectedTokens);
