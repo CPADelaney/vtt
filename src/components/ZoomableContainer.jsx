@@ -68,6 +68,24 @@ const handleMouseDown = useCallback((e) => {
   setLastPos({ x: e.clientX, y: e.clientY });
 }, []);
 
+useEffect(() => {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const handleContainerWheel = (e) => {
+    if (container.contains(e.target)) {
+      e.preventDefault();
+      onWheel(e);
+    }
+  };
+
+  container.addEventListener('wheel', handleContainerWheel, { passive: false });
+  
+  return () => {
+    container.removeEventListener('wheel', handleContainerWheel);
+  };
+}, [containerId, onWheel]);
+
 const handleMouseMove = useCallback((e) => {
   if (!isPanning) return;
 
@@ -178,13 +196,6 @@ return (
         ...containerStyle,
         pointerEvents: 'auto'
       }}
-      onWheel={(e) => {
-        // Only handle if it's within our container
-        if (e.currentTarget.contains(e.target)) {
-          e.preventDefault();
-          onWheel(e);
-        }
-      }}
       onMouseDown={(e) => {
         console.log('[DEBUG-CONTAINER] Container mousedown:', {
           button: e.button,
@@ -219,19 +230,8 @@ return (
         }
       }}
     >
-      <div 
-        style={contentStyle}
-        onMouseDown={(e) => {
-          console.log('[DEBUG-CONTENT] Content div mousedown:', {
-            button: e.button,
-            target: e.target.className,
-            tagName: e.target.tagName,
-            path: e.nativeEvent.composedPath().map(el => el.id || el.className || el.tagName).join(' -> ')
-          });
-        }}
-      >
+      <div style={contentStyle} onMouseDown={/* ... */}>
         {children}
       </div>
     </div>
-  );
-}
+);
