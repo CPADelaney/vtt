@@ -1,32 +1,40 @@
-// useCampaignManager.js
-import { useEffect, useCallback, useMemo, useRef } from 'react';
+// hooks/useCampaignManager.js
+import { useCallback, useMemo, useRef } from 'react';
 
 export function useCampaignManager(campaignId = 'default-campaign') {
   // Keep track of the most recent state
   const lastSavedStateRef = useRef(null);
-
+  
   /**
    * saveState: accepts the **entire** game state object and writes it to localStorage.
    */
   const saveState = useCallback((fullState) => {
     try {
-      // Skip save if state hasn't changed
-      if (lastSavedStateRef.current && 
-          JSON.stringify(lastSavedStateRef.current) === JSON.stringify(fullState)) {
-        return;
-      }
-
+      console.log('[DEBUG] Attempting to save state...');
+      
       // Ensure we add a timestamp if not present
       const stateToStore = {
         ...fullState,
         timestamp: fullState.timestamp || Date.now()
       };
 
+      // Skip save if state hasn't meaningfully changed
+      // Note: we compare after adding timestamp to avoid unnecessary saves
+      if (lastSavedStateRef.current) {
+        const currentStr = JSON.stringify(stateToStore);
+        const lastStr = JSON.stringify(lastSavedStateRef.current);
+        if (currentStr === lastStr) {
+          console.log('[DEBUG] State unchanged, skipping save');
+          return;
+        }
+      }
+
+      // Save to localStorage and update reference
       localStorage.setItem(`vtt-state-${campaignId}`, JSON.stringify(stateToStore));
       lastSavedStateRef.current = stateToStore;
 
       console.log(
-        `Campaign '${campaignId}' saved at`,
+        `[DEBUG] Campaign '${campaignId}' saved at`,
         new Date().toLocaleTimeString()
       );
     } catch (error) {
@@ -44,8 +52,9 @@ export function useCampaignManager(campaignId = 'default-campaign') {
 
       const loaded = JSON.parse(savedJSON);
       console.log(
-        `Campaign '${campaignId}' loaded at`,
-        new Date(loaded.timestamp).toLocaleTimeString()
+        `[DEBUG] Campaign '${campaignId}' loaded at`,
+        new Date(loaded.timestamp).toLocaleTimeString(),
+        loaded
       );
 
       lastSavedStateRef.current = loaded;
