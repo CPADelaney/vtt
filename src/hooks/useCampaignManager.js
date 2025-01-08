@@ -1,18 +1,30 @@
 // useCampaignManager.js
-import { useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useCallback, useMemo, useRef } from 'react';
 
 export function useCampaignManager(campaignId = 'default-campaign') {
+  // Keep track of the most recent state
+  const lastSavedStateRef = useRef(null);
+
   /**
    * saveState: accepts the **entire** game state object and writes it to localStorage.
    */
   const saveState = useCallback((fullState) => {
     try {
+      // Skip save if state hasn't changed
+      if (lastSavedStateRef.current && 
+          JSON.stringify(lastSavedStateRef.current) === JSON.stringify(fullState)) {
+        return;
+      }
+
       // Ensure we add a timestamp if not present
       const stateToStore = {
         ...fullState,
         timestamp: fullState.timestamp || Date.now()
       };
+
       localStorage.setItem(`vtt-state-${campaignId}`, JSON.stringify(stateToStore));
+      lastSavedStateRef.current = stateToStore;
+
       console.log(
         `Campaign '${campaignId}' saved at`,
         new Date().toLocaleTimeString()
@@ -36,24 +48,13 @@ export function useCampaignManager(campaignId = 'default-campaign') {
         new Date(loaded.timestamp).toLocaleTimeString()
       );
 
-      // loaded should be { isHexGrid, tokens, scale, position, timestamp, ... }
+      lastSavedStateRef.current = loaded;
       return loaded;
     } catch (error) {
       console.error('Failed to load campaign state:', error);
       return null;
     }
   }, [campaignId]);
-
-  /**
-   * Optional effect for auto-save every X seconds
-   */
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // e.g. if you want a timed "saveState(currentGameState)" call
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   return useMemo(() => ({
     saveState,
