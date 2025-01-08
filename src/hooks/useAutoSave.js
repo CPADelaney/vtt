@@ -1,5 +1,5 @@
 // hooks/useAutoSave.js
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import _ from 'lodash';
 
 /**
@@ -12,21 +12,25 @@ import _ from 'lodash';
  * @param {number} debounceMs - How many ms of inactivity before saving
  */
 export function useAutoSave(gameState, saveFn, debounceMs = 1000) {
-  const debouncedSave = useMemo(
-    () =>
-      _.debounce((currentState) => {
-        console.log('[DEBUG] useAutoSave => saving gameState...');
-        saveFn(currentState);
-      }, debounceMs),
-    [saveFn, debounceMs]
-  );
+  // Create a debounced save function
+  const debouncedSave = useRef(
+    _.debounce((currentState) => {
+      console.log('[DEBUG] useAutoSave => saving gameState...');
+      saveFn(currentState);
+    }, debounceMs)
+  ).current;
 
+  // Set up the effect to call the debounced save
   useEffect(() => {
     if (!gameState) return;
-    // Any change to gameState triggers a debounced save
+    
     debouncedSave(gameState);
-
-    // Cleanup on effect re-run or unmount
-    return () => debouncedSave.cancel();
   }, [gameState, debouncedSave]);
+
+  // Clean up the debounced function on unmount
+  useEffect(() => {
+    return () => {
+      debouncedSave.cancel();
+    };
+  }, [debouncedSave]);
 }
