@@ -60,6 +60,7 @@ export default function VirtualTabletop() {
     }
   });
   const { isHexGrid, tokens, scale, position } = gameState;
+  
 
   // 2) Load & Save from campaignManager
   const { saveState, loadState } = useCampaignManager('default-campaign');
@@ -76,6 +77,8 @@ export default function VirtualTabletop() {
     }));
     clearSelection();
   }, [selectedTokenIds, clearSelection, updateGameState]);
+
+  const initialLoadDoneRef = useRef(false);
 
   // Add keyboard shortcuts for deletion
   useEffect(() => {
@@ -101,13 +104,17 @@ export default function VirtualTabletop() {
 
   // Load entire state on mount
   useEffect(() => {
+    if (initialLoadDoneRef.current) return; // Skip if we've already done initial load
+  
     console.log('[DEBUG] Loading campaign state on mount...');
     const loaded = loadState();
     if (loaded) {
       console.log('[DEBUG] Loaded fullState:', loaded);
-      updateGameState(loaded); // Use the history-tracked update instead
+      updateGameState(loaded);
+      initialLoadDoneRef.current = true; // Mark initial load as done
     } else {
       console.log('[DEBUG] No saved state found... using defaults');
+      initialLoadDoneRef.current = true; // Mark initial load as done even with defaults
     }
   }, [loadState, updateGameState]);
 
