@@ -230,7 +230,17 @@ return (
         }
       }}
     >
-      <div style={contentStyle} onMouseDown={/* ... */}>
+      <div 
+        style={contentStyle}
+        onMouseDown={(e) => {
+          console.log('[DEBUG-CONTENT] Content div mousedown:', {
+            button: e.button,
+            target: e.target.className,
+            tagName: e.target.tagName,
+            path: e.nativeEvent.composedPath().map(el => el.id || el.className || el.tagName).join(' -> ')
+          });
+        }}
+      >
         {children}
       </div>
     </div>
