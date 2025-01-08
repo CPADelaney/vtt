@@ -179,9 +179,11 @@ return (
         pointerEvents: 'auto'
       }}
       onWheel={(e) => {
-        // Prevent default scroll behavior
-        e.preventDefault();
-        onWheel(e);
+        // Only handle if it's within our container
+        if (e.currentTarget.contains(e.target)) {
+          e.preventDefault();
+          onWheel(e);
+        }
       }}
       onMouseDown={(e) => {
         console.log('[DEBUG-CONTAINER] Container mousedown:', {
