@@ -104,19 +104,19 @@ export default function VirtualTabletop() {
 
   // Load entire state on mount
   useEffect(() => {
-    if (initialLoadDoneRef.current) return; // Skip if we've already done initial load
+    if (initialLoadDoneRef.current) return;
   
     console.log('[DEBUG] Loading campaign state on mount...');
     const loaded = loadState();
     if (loaded) {
       console.log('[DEBUG] Loaded fullState:', loaded);
       updateGameState(loaded);
-      initialLoadDoneRef.current = true; // Mark initial load as done
+      initialLoadDoneRef.current = true;
     } else {
       console.log('[DEBUG] No saved state found... using defaults');
-      initialLoadDoneRef.current = true; // Mark initial load as done even with defaults
+      initialLoadDoneRef.current = true;
     }
-  }, [loadState, updateGameState]);
+  }, [loadState, updateGameState, initialLoadDoneRef]);
 
   // Auto-save entire gameState, debounced 2s
   const persistGameState = useCallback((full) => {
@@ -427,11 +427,22 @@ const { startDrag } = useTokenDrag({
 
   // Prevent default wheel scroll
   useEffect(() => {
-    const preventDefault = e => e.preventDefault();
-    document.addEventListener('wheel', preventDefault, { passive: false });
-    return () => document.removeEventListener('wheel', preventDefault);
+    const container = document.getElementById('tabletop-container');
+    if (!container) return;
+  
+    const preventDefault = e => {
+      // Only prevent default if the event is within our container
+      if (e.target.closest('#tabletop-container')) {
+        e.preventDefault();
+      }
+    };
+    
+    container.addEventListener('wheel', preventDefault, { passive: false });
+    
+    return () => {
+      container.removeEventListener('wheel', preventDefault, { passive: false });
+    };
   }, []);
-
 
   // 11) Render
   return (
