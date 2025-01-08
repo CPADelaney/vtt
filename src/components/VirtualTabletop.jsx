@@ -105,11 +105,11 @@ export default function VirtualTabletop() {
     const loaded = loadState();
     if (loaded) {
       console.log('[DEBUG] Loaded fullState:', loaded);
-      setGameState(loaded);
+      updateGameState(loaded); // Use the history-tracked update instead
     } else {
       console.log('[DEBUG] No saved state found... using defaults');
     }
-  }, [loadState]);
+  }, [loadState, updateGameState]);
 
   // Auto-save entire gameState, debounced 2s
   const persistGameState = useCallback((full) => {
