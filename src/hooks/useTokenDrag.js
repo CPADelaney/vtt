@@ -32,9 +32,6 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
     if (!dragState) return;
 
     function onMouseMove(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      
       if (!isDraggingRef.current) return;
 
       // Calculate deltas from the initial mouse position
@@ -45,6 +42,7 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
       dragState.tokenIds.forEach(tokenId => {
         const startPos = dragState.tokenStartPositions.get(tokenId);
         if (!startPos) return;
+        
         const newX = startPos.x + dx;
         const newY = startPos.y + dy;
         
@@ -57,11 +55,8 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
     }
 
     function onMouseUp(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      
       if (!isDraggingRef.current) return;
-      
+
       // Get final positions
       dragState.tokenIds.forEach(tokenId => {
         const startPos = dragState.tokenStartPositions.get(tokenId);
@@ -84,13 +79,13 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
       setDragState(null);
     }
 
-    // Use capture phase to ensure we get the events first
-    document.addEventListener('mousemove', onMouseMove, { capture: true });
-    document.addEventListener('mouseup', onMouseUp, { capture: true });
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
     
     return () => {
-      document.removeEventListener('mousemove', onMouseMove, { capture: true });
-      document.removeEventListener('mouseup', onMouseUp, { capture: true });
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      
       // Cleanup if component unmounts during drag
       if (isDraggingRef.current) {
         isDraggingRef.current = false;
