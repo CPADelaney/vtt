@@ -13,11 +13,10 @@ export function useZoomToMouse({
 }) {
   const handleWheel = useCallback(
     (e) => {
-      e.preventDefault();
-      
+      // Only handle if it's within our container
       const container = document.getElementById(containerId);
-      if (!container) return;
-
+      if (!container || !container.contains(e.target)) return;
+      
       const rect = container.getBoundingClientRect();
       
       // Ensure we have valid position values
