@@ -152,13 +152,6 @@ const handleContextMenu = useCallback((e) => {
     }
   }, [isPanning, handleMouseMove, handleMouseUp]);
 
-  // Prevent default wheel scroll
-  useEffect(() => {
-    const preventDefault = e => e.preventDefault();
-    document.addEventListener('wheel', preventDefault, { passive: false });
-    return () => document.removeEventListener('wheel', preventDefault);
-  }, []);
-
   const containerStyle = {
     width: '100%',
     height: '100%',
@@ -185,7 +178,11 @@ return (
         ...containerStyle,
         pointerEvents: 'auto'
       }}
-      onWheel={onWheel}
+      onWheel={(e) => {
+        // Prevent default scroll behavior
+        e.preventDefault();
+        onWheel(e);
+      }}
       onMouseDown={(e) => {
         console.log('[DEBUG-CONTAINER] Container mousedown:', {
           button: e.button,
