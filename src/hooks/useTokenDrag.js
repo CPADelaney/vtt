@@ -9,6 +9,7 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
       initialToken,
       selectedCount: selectedTokens.length
     });
+    
     // Store initial positions for all selected tokens
     const tokenStartPositions = new Map();
     selectedTokens.forEach(token => {
@@ -17,6 +18,7 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
         y: token.position.y
       });
     });
+
     isDraggingRef.current = true;
     setDragState({
       tokenIds: selectedTokens.map(t => t.id),
@@ -30,6 +32,9 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
     if (!dragState) return;
 
     function onMouseMove(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
       if (!isDraggingRef.current) return;
 
       // Calculate deltas from the initial mouse position
@@ -51,38 +56,46 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
       });
     }
 
-    function onMouseUp() {
+    function onMouseUp(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
       if (!isDraggingRef.current) return;
       
-      isDraggingRef.current = false;
-
       // Get final positions
       dragState.tokenIds.forEach(tokenId => {
-        const dx = (window.event.clientX - dragState.startMouseX) / scale;
-        const dy = (window.event.clientY - dragState.startMouseY) / scale;
         const startPos = dragState.tokenStartPositions.get(tokenId);
+        if (!startPos) return;
         
-        if (startPos) {
-          const { x: snappedX, y: snappedY } = getSnappedPosition(
-            startPos.x + dx,
-            startPos.y + dy
-          );
-          // Final update with isFinal flag
-          onDragMove?.(tokenId, { x: snappedX, y: snappedY }, true);
-        }
-
+        const dx = (e.clientX - dragState.startMouseX) / scale;
+        const dy = (e.clientY - dragState.startMouseY) / scale;
+        
+        const { x: snappedX, y: snappedY } = getSnappedPosition(
+          startPos.x + dx,
+          startPos.y + dy
+        );
+        
+        // Final update with isFinal flag
+        onDragMove?.(tokenId, { x: snappedX, y: snappedY }, true);
         onDragEnd?.(tokenId);
       });
 
+      isDraggingRef.current = false;
       setDragState(null);
     }
 
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
+    // Use capture phase to ensure we get the events first
+    document.addEventListener('mousemove', onMouseMove, { capture: true });
+    document.addEventListener('mouseup', onMouseUp, { capture: true });
     
     return () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
+      document.removeEventListener('mousemove', onMouseMove, { capture: true });
+      document.removeEventListener('mouseup', onMouseUp, { capture: true });
+      // Cleanup if component unmounts during drag
+      if (isDraggingRef.current) {
+        isDraggingRef.current = false;
+        setDragState(null);
+      }
     };
   }, [dragState, scale, getSnappedPosition, onDragMove, onDragEnd]);
 
