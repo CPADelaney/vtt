@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, Swords } from 'lucide-react';
 
-export const Sidebar = ({ isHexGrid, onToggleGrid }) => {
+export default function Sidebar({ isHexGrid, onToggleGrid }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [inCombat, setInCombat] = useState(false);
 
