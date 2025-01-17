@@ -15,8 +15,6 @@ import { ZoomableContainer } from './ZoomableContainer';
 import { Grid } from './Grid';
 import { Token } from './Token';
 import { Controls } from './Controls';
-import { Sidebar } from './Sidebar';
-import { ChatBox } from './ChatBox';
 
 // Constants
 const MIN_SCALE = 0.3;
@@ -518,8 +516,6 @@ const { startDrag } = useTokenDrag({
             ))}
           </div>
         </ZoomableContainer>
-        <Sidebar isHexGrid={isHexGrid} onToggleGrid={onToggleGrid} />
-        <ChatBox />
       </div>
     </>
   );
