@@ -48,7 +48,7 @@ function Ping({ x, y, color }) {
 
 export default function VirtualTabletop() {
   // 1) Single Source of Truth - Replace useState with useStateWithHistory
-  const [gameState, setGameState, updateGameState, undoGameState, historyInfo] = useStateWithHistory({
+  const [gameState, setGameState, updateGameState, undoGameState, redoGameState, historyInfo] = useStateWithHistory({
     isHexGrid: false,
     tokens: [],
     scale: 1,
@@ -68,6 +68,14 @@ export default function VirtualTabletop() {
   }
   undoGameState();
 };
+
+  function handleRedo() {
+  if (!historyInfo.canRedo) {
+    console.log('[DEBUG] No more states to redo.');
+    return;
+  }
+  redoGameState();
+}
 
   // 2) Load & Save from campaignManager
   const { saveState, loadState } = useCampaignManager('default-campaign');
