@@ -5,11 +5,14 @@ import ToolsBar from './components/ToolsBar';     // We'll create ToolsBar.jsx
 import { Sidebar } from './components/Sidebar';
 import '../css/styles.css';
 
+export default function App() {
+
+  const [isHexGrid, setIsHexGrid] = useState(false);
+
   function onToggleGrid() {
     setIsHexGrid(prev => !prev);
   }
 
-export default function App() {
   return (
     <div className="app-layout">
       {/* LEFT COLUMN (tools): 60px wide /}
