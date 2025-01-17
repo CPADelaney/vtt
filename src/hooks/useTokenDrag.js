@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 
 export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd }) {
-  const [dragState, setDragState] = useState(null);
+  // Use ref for drag state to prevent unnecessary re-renders
+  const dragStateRef = useRef(null);
   const isDraggingRef = useRef(false);
 
   const startDrag = useCallback((initialToken, e, selectedTokens) => {
@@ -21,14 +22,16 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
       });
     });
 
-    isDraggingRef.current = true;
-    setDragState({
+    const dragState = {
       tokenIds: selectedTokens.map(t => t.id),
       startMouseX: e.clientX,
       startMouseY: e.clientY,
       tokenStartPositions,
       initialTimestamp: Date.now()
-    });
+    };
+
+    isDraggingRef.current = true;
+    dragStateRef.current = dragState;
 
     // Prevent text selection during drag
     document.body.style.userSelect = 'none';
@@ -40,19 +43,14 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
     });
   }, [scale]);
 
+  // Set up event handlers once, use refs to access current state
   useEffect(() => {
-    if (!dragState) {
-      console.log('[DEBUG] No drag state, skipping event binding');
-      return;
-    }
-
-    console.log('[DEBUG] Setting up drag event listeners');
-
     function onMouseMove(e) {
-      if (!isDraggingRef.current) {
-        console.log('[DEBUG] Mouse move ignored - not dragging');
+      if (!isDraggingRef.current || !dragStateRef.current) {
         return;
       }
+
+      const dragState = dragStateRef.current;
 
       console.log('[DEBUG] Processing mouse move:', {
         current: { x: e.clientX, y: e.clientY },
@@ -85,13 +83,15 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
     }
 
     function onMouseUp(e) {
+      if (!isDraggingRef.current || !dragStateRef.current) return;
+
+      const dragState = dragStateRef.current;
+
       console.log('[DEBUG] Mouse up event received:', {
         isDragging: isDraggingRef.current,
         finalPos: { x: e.clientX, y: e.clientY },
         dragDuration: Date.now() - dragState.initialTimestamp
       });
-
-      if (!isDraggingRef.current) return;
 
       // Calculate final positions
       dragState.tokenIds.forEach(tokenId => {
@@ -113,12 +113,8 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
 
       // Reset drag state
       isDraggingRef.current = false;
-      setDragState(null);
+      dragStateRef.current = null;
       document.body.style.userSelect = '';
-
-      // Prevent any default behavior
-      e.preventDefault();
-      e.stopPropagation();
     }
 
     // Listen for escape key to cancel drag
@@ -126,7 +122,7 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
       if (e.key === 'Escape' && isDraggingRef.current) {
         console.log('[DEBUG] Drag cancelled via Escape key');
         isDraggingRef.current = false;
-        setDragState(null);
+        dragStateRef.current = null;
         document.body.style.userSelect = '';
       }
     }
@@ -140,19 +136,11 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
       window.removeEventListener('mousemove', onMouseMove, { capture: true });
       window.removeEventListener('mouseup', onMouseUp, { capture: true });
       window.removeEventListener('keydown', onKeyDown, { capture: true });
-      
-      // Cleanup if component unmounts during drag
-      if (isDraggingRef.current) {
-        console.log('[DEBUG] Cleaning up drag state on unmount');
-        isDraggingRef.current = false;
-        setDragState(null);
-        document.body.style.userSelect = '';
-      }
     };
-  }, [dragState, scale, getSnappedPosition, onDragMove, onDragEnd]);
+  }, [scale, getSnappedPosition, onDragMove, onDragEnd]); // Only depend on stable props
 
   return {
     startDrag,
-    isDragging: !!dragState
+    isDragging: isDraggingRef.current
   };
 }
