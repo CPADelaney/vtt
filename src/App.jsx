@@ -17,7 +17,7 @@ export default function App() {
       </div>
       {/ RIGHT COLUMN (chat, DM Tools): 350px wide */}
       <div className="right-sidebar">
-        <Sidebar />
+        <Sidebar isHexGrid={isHexGrid} onToggleGrid={onToggleGrid} />
       </div>
     </div>
   );
