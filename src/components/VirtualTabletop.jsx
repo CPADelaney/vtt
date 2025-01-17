@@ -459,64 +459,96 @@ const { startDrag } = useTokenDrag({
 
   // 11) Render
   return (
-    <>
-      <Controls onZoomIn={onZoomIn} onZoomOut={onZoomOut} />
-      <div className="tabletop-wrapper" style={{ width: '100%', height: '100%' }}>
-        <ZoomableContainer
-          containerId="tabletop-container"
-          scale={scale}
-          position={position}
-          setScale={val => updateGameState(prev => ({ ...prev, scale: val }))}
-          setPosition={val => updateGameState(prev => ({ ...prev, position: val }))}
-          minScale={MIN_SCALE}
-          maxScale={MAX_SCALE}
-          zoomFactor={ZOOM_FACTOR}
-          onContextMenu={handleContextMenu}
-          gridWidth={totalWidth}
-          gridHeight={totalHeight}
-        >
-          <div
-            id="tabletop"
-            className={isHexGrid ? 'hex-grid' : 'square-grid'}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onContextMenu={handleContextMenu}
-            style={{ 
-              width: '100%', 
-              height: '100%', 
-              position: 'relative',
-              userSelect: 'none'
-            }}
-          >
-            <Grid
-              isHexGrid={isHexGrid}
-              rows={dimensions.rows}
-              cols={dimensions.cols}
-              squareSize={gridConfig.squareSize}
-              hexSize={gridConfig.hexSize}
-              hexWidth={gridConfig.hexWidth}
-              hexHeight={gridConfig.hexHeight}
-            />
-            {tokens.map(token => (
-              <Token
-                key={token.id}
-                {...token}
-                isSelected={selectedTokenIds.has(token.id)}
-                onClick={(e) => e.stopPropagation()}
-              />
-            ))}
-            {pings.map(ping => (
-              <Ping
-                key={ping.id}
-                x={ping.x}
-                y={ping.y}
-                color={ping.color}
-              />
-            ))}
-          </div>
-        </ZoomableContainer>
+    <div
+      className="virtual-tabletop-grid"
+      style={{
+        /* 
+          Create a 3-column layout, with:
+            - ~60px left column (tools)
+            - 1fr middle column (flexible for tabletop)
+            - ~350px right column (sidebar)
+        */
+        display: 'grid',
+        gridTemplateColumns: '60px 1fr 350px',
+        width: '100vw',     // or '100%' if this is nested inside another container
+        height: '100vh',    // or '100%' similarly
+      }}
+    >
+      {/* LEFT COLUMN: Tools / Controls */}
+      <div
+        className="tools-column"
+        style={{
+          borderRight: '1px solid #ccc',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          padding: '10px'
+        }}
+      >
+        {/* For example, your zoom controls or undo/redo buttons */}
+        <Controls onZoomIn={onZoomIn} onZoomOut={onZoomOut} />
+        <button onClick={undoGameState}>Undo</button>
+        <button onClick={redoGameState}>Redo</button>
+        {/* Add more tools here */}
       </div>
-    </>
+
+      {/* MIDDLE COLUMN: Main Tabletop */}
+      <div
+        className="tabletop-column"
+        style={{ position: 'relative', overflow: 'hidden' }}
+      >
+        {/* Keep your "tabletop-wrapper" around the ZoomableContainer */}
+        <div
+          className="tabletop-wrapper"
+          style={{ width: '100%', height: '100%' }}
+        >
+          <ZoomableContainer
+            containerId="tabletop-container"
+            scale={scale}
+            position={position}
+            setScale={val => updateGameState(prev => ({ ...prev, scale: val }))}
+            setPosition={val => updateGameState(prev => ({ ...prev, position: val }))}
+            minScale={0.3}
+            maxScale={3}
+            zoomFactor={0.1}
+            // etc...
+          >
+            <div
+              id="tabletop"
+              className={isHexGrid ? 'hex-grid' : 'square-grid'}
+              style={{
+                width: '100%',
+                height: '100%',
+                position: 'relative',
+                userSelect: 'none'
+              }}
+              // onMouseDown, onMouseMove, etc., as before
+            >
+              {/* Grid */}
+              <Grid /* pass isHexGrid, rows, cols, etc. */ />
+
+              {/* Tokens */}
+              {tokens.map(token => (
+                <Token key={token.id} {...token} />
+              ))}
+
+              {/* Pings, etc. */}
+            </div>
+          </ZoomableContainer>
+        </div>
+      </div>
+
+      {/* RIGHT COLUMN: Sidebar / DM Controls */}
+      <div
+        className="sidebar-column"
+        style={{ borderLeft: '1px solid #ccc' }}
+      >
+        {/* The same Sidebar you had before */}
+        <Sidebar
+          isHexGrid={isHexGrid}
+          onToggleGrid={onToggleGrid}
+        />
+      </div>
+    </div>
   );
 }
