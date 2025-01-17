@@ -15,7 +15,7 @@ import { ZoomableContainer } from './ZoomableContainer';
 import { Grid } from './Grid';
 import { Token } from './Token';
 import { Controls } from './Controls';
-import Sidebar from './Sidebar';
+import { Sidebar } from './Sidebar';
 import { ChatBox } from './ChatBox';
 
 // Constants
