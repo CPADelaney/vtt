@@ -517,8 +517,8 @@ const { startDrag } = useTokenDrag({
               />
             ))}
           </div>
-        </ZoomableContainer>
         <Sidebar isHexGrid={isHexGrid} onToggleGrid={onToggleGrid} />
+        </ZoomableContainer>
         <ChatBox />
       </div>
     </>
