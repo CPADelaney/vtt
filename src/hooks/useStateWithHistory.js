@@ -84,20 +84,19 @@ export function useStateWithHistory(initialState, options = {}) {
   /**
    * redo - go forward one state in history (Ctrl+Y)
    */
-  const redo = useCallback(() => {
+  function redo() {
     if (currentIndex < history.length - 1) {
       isUndoingOrRedoingRef.current = true;
       const nextState = history[currentIndex + 1];
       setState(nextState);
       setCurrentIndex(currentIndex + 1);
-      onRedo(nextState);
+      onRedo?.(nextState);
       isUndoingOrRedoingRef.current = false;
     } else {
-      // no next state
       console.log('[DEBUG] Nothing to redo.');
-      onRedo(undefined);
+      onRedo?.(undefined);
     }
-  }, [currentIndex, history, onRedo]);
+  }
 
   // Optional: add a global keybinding for Ctrl+Z => undo, Ctrl+Y => redo
   useEffect(() => {
