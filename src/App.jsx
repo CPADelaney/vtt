@@ -17,7 +17,6 @@ export default function App() {
       </div>
       {/* RIGHT COLUMN (chat): 350px wide */}
       <div className="right-sidebar">
-        <ChatBox />
       </div>
     </div>
   );
