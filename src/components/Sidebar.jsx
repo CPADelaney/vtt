@@ -1,4 +1,4 @@
-// src/components/Sidebar.jsx
+//src/components/Sidebar.jsx
 
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, Swords } from 'lucide-react';
@@ -7,6 +7,15 @@ export const Sidebar = ({ isHexGrid, onToggleGrid }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [inCombat, setInCombat] = useState(false);
 
+    const handleGridToggle = () => {
+    console.log('[DEBUG] Current grid type:', isHexGrid ? 'hex' : 'square');
+    console.log('[DEBUG] onToggleGrid is defined:', !!onToggleGrid);
+    if (onToggleGrid) {
+      onToggleGrid();
+      console.log('[DEBUG] Grid toggle called, new type should be:', !isHexGrid ? 'hex' : 'square');
+    }
+  };
+  
   return (
     <div
       className={`shadow-lg bg-white transition-all duration-300 flex ${
@@ -37,7 +46,6 @@ export const Sidebar = ({ isHexGrid, onToggleGrid }) => {
             DM Controls
           </h2>
         </div>
-
         <div className="p-4 space-y-4">
           {/* Combat Toggle */}
           <button
@@ -50,10 +58,10 @@ export const Sidebar = ({ isHexGrid, onToggleGrid }) => {
           >
             {inCombat ? 'End Combat' : 'Start Combat'}
           </button>
-
+          
           {/* Grid Toggle */}
           <button
-            onClick={onToggleGrid}
+            onClick={handleGridToggle}
             className="w-full font-bold py-2 px-4 rounded transition-colors bg-gray-300 hover:bg-gray-400 text-black"
           >
             {isHexGrid ? 'Switch to Square Grid' : 'Switch to Hex Grid'}
