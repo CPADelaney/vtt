@@ -18,7 +18,7 @@ export default function Sidebar({ isHexGrid, onToggleGrid }) {
     
     onToggleGrid();
   };
-    
+     
   return (
     <div
       className={`shadow-lg bg-white transition-all duration-300 flex ${
