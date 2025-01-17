@@ -57,6 +57,7 @@ export const Sidebar = ({ isHexGrid, onToggleGrid }) => {
             className="w-full font-bold py-2 px-4 rounded transition-colors bg-gray-300 hover:bg-gray-400 text-black"
           >
             {isHexGrid ? 'Switch to Square Grid' : 'Switch to Hex Grid'}
+            console.log('[DEBUG-SIDEBAR]', { isHexGrid, onToggleGrid });
           </button>
         </div>
       </div>
