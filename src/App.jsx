@@ -4,6 +4,11 @@ import VirtualTabletop from './components/VirtualTabletop';
 import ToolsBar from './components/ToolsBar';     // We'll create ToolsBar.jsx
 import { Sidebar } from './components/Sidebar';
 import '../css/styles.css';
+
+  function onToggleGrid() {
+    setIsHexGrid(prev => !prev);
+  }
+
 export default function App() {
   return (
     <div className="app-layout">
