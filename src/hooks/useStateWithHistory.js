@@ -3,7 +3,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 export function useStateWithHistory(initialState, options = {}) {
   const { 
     maxHistory = 50,
-    onUndo = () => {} 
+    onUndo = () => {}
   } = options;
 
   // Core state
@@ -25,16 +25,22 @@ export function useStateWithHistory(initialState, options = {}) {
       const newState = typeof updater === 'function' ? updater(prev) : updater;
       
       setHistory(prevHistory => {
-        const historySoFar = prevHistory.slice(0, currentIndex + 1);
-        const newHistory = [...historySoFar, newState];
+        // slice up to the current index => discard all "future" states
+        const truncatedHistory = prevHistory.slice(0, currentIndex + 1);
+        // push new one
+        const newHistory = [...truncatedHistory, newState];
+        
+        // if we exceed maxHistory, remove the oldest
         if (newHistory.length > maxHistory) {
           newHistory.shift();
-          setCurrentIndex(prev => prev - 1);
+        } else {
+          // only increment currentIndex if we didn't shift
+          setCurrentIndex(truncatedHistory.length);
         }
+        
         return newHistory;
       });
       
-      setCurrentIndex(prev => Math.min(prev + 1, maxHistory - 1));
       return newState;
     });
   }, [currentIndex, maxHistory]);
@@ -43,15 +49,19 @@ export function useStateWithHistory(initialState, options = {}) {
   const undo = useCallback(() => {
     if (currentIndex > 0) {
       isUndoingRef.current = true;
-      const previousState = history[currentIndex - 1];
-      setState(previousState);
-      setCurrentIndex(prev => prev - 1);
-      onUndo(previousState);
+      const prevState = history[currentIndex - 1];
+      setState(prevState);
+      setCurrentIndex(currentIndex - 1);
+      onUndo(prevState);
       isUndoingRef.current = false;
+    } else {
+      // No more states to revert to
+      console.log('[DEBUG] Nothing to undo — at earliest history state.');
+      onUndo(undefined);
     }
   }, [currentIndex, history, onUndo]);
 
-  // Add keyboard shortcut
+  // Add keyboard shortcut for Ctrl+Z / Cmd+Z
   useEffect(() => {
     function handleKeyDown(e) {
       if (document.activeElement.tagName === 'INPUT' || 
@@ -59,7 +69,7 @@ export function useStateWithHistory(initialState, options = {}) {
         return;
       }
 
-      if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
         e.preventDefault();
         undo();
       }
@@ -69,9 +79,10 @@ export function useStateWithHistory(initialState, options = {}) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [undo]);
 
+  // Expose helpful data
   return [
     state, 
-    setDirectState, // Direct updates
+    setDirectState, // Direct updates => not in history
     updateState,    // History-tracked updates
     undo,
     {
