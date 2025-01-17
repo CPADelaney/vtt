@@ -60,7 +60,14 @@ export default function VirtualTabletop() {
     }
   });
   const { isHexGrid, tokens, scale, position } = gameState;
-  
+
+  const handleUndo = () => {
+  if (!historyInfo.canUndo) {
+    console.log('[DEBUG] No more states to undo.');
+    return;
+  }
+  undoGameState();
+};
 
   // 2) Load & Save from campaignManager
   const { saveState, loadState } = useCampaignManager('default-campaign');
