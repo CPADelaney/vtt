@@ -157,17 +157,6 @@ marqueeEl.style.cssText = `
    - Main content (tabletop)
    - Right area (DM Tools, Chat, etc.)
 */
-.app-layout {
-  display: grid;
-  /* Three columns: left sidebar, main content, right area */
-  grid-template-columns: 300px 1fr 400px;
-  grid-template-rows: 100%;
-  grid-template-areas: "left-sidebar main-content right-area";
-
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden; /* no scrollbars on the root layout */
-}
 
 /* Left sidebar area */
 .left-sidebar {
