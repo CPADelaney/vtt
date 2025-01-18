@@ -264,6 +264,18 @@ marqueeEl.style.cssText = `
   }
 }
 
+/* The main resizer handle in SplitPane */
+.Resizer {
+  background: #ccc;
+  cursor: col-resize;
+  width: 4px;     /* The grab area thickness */
+  /* or a little pattern, border, etc. */
+}
+
+.Resizer:hover {
+  background: #999;
+}
+
 .ping {
   position: absolute;
   width: 20px;
