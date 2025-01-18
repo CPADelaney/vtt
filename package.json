@@ -10,6 +10,7 @@
     "react-dom": "^18.2.0",
     "lucide-react": "^0.268.0",
     "lodash": "^4.17.21"
+    "react-split-pane": "^2.0.6"
   },
   "devDependencies": {
     "vite": "^4.3.9",
