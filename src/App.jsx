@@ -27,10 +27,6 @@ export default function App() {
       <div style={{ position: 'relative', overflow: 'hidden' }}>
         <VirtualTabletop />
       </div>
-
-      {/* RIGHT COLUMN (chat, DM Tools): 350px wide */}
-      <div style={{ borderLeft: '1px solid #ccc' }}>
-      </div>
     </div>
   );
 }
