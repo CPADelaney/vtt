@@ -7,8 +7,6 @@ import { ChatBox } from './components/ChatBox';
 import '../css/styles.css';
 
 export default function App() {
-  // If you’re managing `isHexGrid` at this level, define it:
-
   return (
     <div
       style={{
@@ -23,9 +21,14 @@ export default function App() {
         <ToolsBar />
       </div>
 
-      {/* MIDDLE COLUMN (game area): flexible */}
-      <div style={{ position: 'relative', overflow: 'hidden' }}>
+      {/* Middle => VirtualTabletop (with its own SplitPane inside) */}
+      <div>
         <VirtualTabletop />
+      </div>
+      
+      {/* Right => Some separate panel, e.g. Chat */}
+      <div style={{ borderLeft: '1px solid #ccc' }}>
+        <ChatBox />
       </div>
     </div>
   );
