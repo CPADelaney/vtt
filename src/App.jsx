@@ -8,11 +8,6 @@ import '../css/styles.css';
 
 export default function App() {
   // If you’re managing `isHexGrid` at this level, define it:
-  const [isHexGrid, setIsHexGrid] = useState(false);
-  
-  const onToggleGrid = () => {
-    setIsHexGrid(prev => !prev);
-  };
 
   return (
     <div
