@@ -459,7 +459,8 @@ const { startDrag } = useTokenDrag({
         width: '100%',
         height: '100%',
         display: 'grid',
-        gridTemplateColumns: '1fr 300px',
+        gridTemplateColumns: '70% 30%'
+
       }}
     >
       {/* LEFT: The actual tabletop area */}
