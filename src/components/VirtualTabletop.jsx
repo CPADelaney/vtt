@@ -13,6 +13,7 @@ import { useStateWithHistory } from '../hooks/useStateWithHistory'; // Add this 
 // Components
 import { ZoomableContainer } from './ZoomableContainer';
 import { Grid } from './Grid';
+import { Sidebar } from './Sidebar';
 import { Token } from './Token';
 import { Controls } from './Controls';
 
