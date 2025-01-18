@@ -256,6 +256,14 @@ marqueeEl.style.cssText = `
   background: #eee;
 }
 
+.virtual-tabletop-grid {
+  display: grid;
+  grid-template-columns: 60px 1fr 350px;
+  height: 100vh;
+  width: 100vw;
+}
+
+
 @keyframes pingAnimation {
   0% {
     transform: translate(-50%, -50%) scale(0.3);
