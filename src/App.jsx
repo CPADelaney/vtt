@@ -1,12 +1,19 @@
 // src/App.jsx
-import React from 'react';
+import React, { useState } from 'react';
 import VirtualTabletop from './components/VirtualTabletop';
-import ToolsBar from './components/ToolsBar';     // We'll create ToolsBar.jsx
+import ToolsBar from './components/ToolsBar';
 import { Sidebar } from './components/Sidebar';
-import  { ChatBox }  from './components/ChatBox';
+import { ChatBox } from './components/ChatBox';
 import '../css/styles.css';
 
 export default function App() {
+  // If you’re managing `isHexGrid` at this level, define it:
+  const [isHexGrid, setIsHexGrid] = useState(false);
+  
+  const onToggleGrid = () => {
+    setIsHexGrid(prev => !prev);
+  };
+
   return (
     <div
       style={{
@@ -28,11 +35,11 @@ export default function App() {
 
       {/* RIGHT COLUMN (chat, DM Tools): 350px wide */}
       <div style={{ borderLeft: '1px solid #ccc' }}>
-        <Sidebar 
-        isHexGrid={isHexGrid}
-        onToggleGrid={onToggleGrid}
+        <Sidebar
+          isHexGrid={isHexGrid}
+          onToggleGrid={onToggleGrid}
         />
-        <ChatBox />        
+        <ChatBox />
       </div>
     </div>
   );
