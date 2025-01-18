@@ -488,8 +488,6 @@ const { startDrag } = useTokenDrag({
       >
         {/* For example, your zoom controls or undo/redo buttons */}
         <Controls onZoomIn={onZoomIn} onZoomOut={onZoomOut} />
-        <button onClick={undoGameState}>Undo</button>
-        <button onClick={redoGameState}>Redo</button>
         {/* Add more tools here */}
       </div>
 
@@ -503,17 +501,19 @@ const { startDrag } = useTokenDrag({
           className="tabletop-wrapper"
           style={{ width: '100%', height: '100%' }}
         >
-          <ZoomableContainer
-            containerId="tabletop-container"
-            scale={scale}
-            position={position}
-            setScale={val => updateGameState(prev => ({ ...prev, scale: val }))}
-            setPosition={val => updateGameState(prev => ({ ...prev, position: val }))}
-            minScale={0.3}
-            maxScale={3}
-            zoomFactor={0.1}
-            // etc...
-          >
+            <ZoomableContainer
+              containerId="tabletop-container"
+              scale={scale}
+              position={position}
+              setScale={val => updateGameState(prev => ({ ...prev, scale: val }))}
+              setPosition={val => updateGameState(prev => ({ ...prev, position: val }))}
+              minScale={MIN_SCALE}
+              maxScale={MAX_SCALE}
+              zoomFactor={ZOOM_FACTOR}
+              onContextMenu={handleContextMenu}
+              gridWidth={totalWidth}
+              gridHeight={totalHeight}
+            >
             <div
               id="tabletop"
               className={isHexGrid ? 'hex-grid' : 'square-grid'}
