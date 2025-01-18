@@ -453,9 +453,25 @@ const { startDrag } = useTokenDrag({
 
   // 11) Render
   return (
-    <>
-      <Controls onZoomIn={onZoomIn} onZoomOut={onZoomOut} />
-      <div className="tabletop-wrapper" style={{ width: '100%', height: '100%' }}>
+    // A 2-column layout for the tabletop (left) and the sidebar (right):
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'grid',
+        gridTemplateColumns: '1fr 300px',
+      }}
+    >
+      {/* LEFT: The actual tabletop area */}
+      <div style={{ position: 'relative', overflow: 'hidden' }}>
+        {/* Zoom controls, undo, etc. could go here */}
+        <Controls onZoomIn={onZoomIn} onZoomOut={onZoomOut} />
+
+        {/* The main container for tokens */}
+        <div
+          className="tabletop-wrapper"
+          style={{ width: '100%', height: '100%' }}
+        >
         <ZoomableContainer
           containerId="tabletop-container"
           scale={scale}
@@ -500,17 +516,22 @@ const { startDrag } = useTokenDrag({
                 onClick={(e) => e.stopPropagation()}
               />
             ))}
-            {pings.map(ping => (
-              <Ping
-                key={ping.id}
-                x={ping.x}
-                y={ping.y}
-                color={ping.color}
-              />
-            ))}
-          </div>
-        </ZoomableContainer>
+              {/* Pings */}
+              {pings.map(ping => (
+                <Ping key={ping.id} x={ping.x} y={ping.y} color={ping.color} />
+              ))}
+            </div>
+          </ZoomableContainer>
+        </div>
       </div>
-    </>
+
+      {/* RIGHT: The Sidebar with grid toggle, etc. */}
+      <div style={{ borderLeft: '1px solid #ccc' }}>
+        <Sidebar
+          isHexGrid={isHexGrid}
+          onToggleGrid={onToggleGrid}
+        />
+      </div>
+    </div>
   );
 }
