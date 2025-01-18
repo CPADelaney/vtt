@@ -11,6 +11,8 @@ import { useGridSnapping } from '../hooks/useGridSnapping';
 import { useCampaignManager } from '../hooks/useCampaignManager';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { useStateWithHistory } from '../hooks/useStateWithHistory'; // Add this import
+import SplitPane from 'react-split-pane';
+import 'react-split-pane/style.css';
 
 // Components
 import { ZoomableContainer } from './ZoomableContainer';
