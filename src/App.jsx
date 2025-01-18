@@ -30,7 +30,6 @@ export default function App() {
 
       {/* RIGHT COLUMN (chat, DM Tools): 350px wide */}
       <div style={{ borderLeft: '1px solid #ccc' }}>
-        <Sidebar />
         <ChatBox />
       </div>
     </div>
