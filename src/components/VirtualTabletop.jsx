@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import SplitPane from 'react-split-pane';  
+import 'react-split-pane/style.css';       
 import _ from 'lodash';
 
 // Hooks
@@ -453,16 +455,18 @@ const { startDrag } = useTokenDrag({
 
   // 11) Render
   return (
-    // A 2-column layout for the tabletop (left) and the sidebar (right):
-    <div
-      style={{
-        width: '100%',
-        height: '100%',
-        display: 'grid',
-        gridTemplateColumns: '70% 30%'
-
-      }}
-    >
+    <div style={{ width: '100%', height: '100%' }}>
+      {/* 
+        SplitPane can do horizontal or vertical splits.
+        We'll do a vertical split so we have [left | right].
+      */}
+      <SplitPane
+        split="vertical"
+        defaultSize={700}   // The initial width (in px) of the LEFT area
+        minSize={400}       // The user can't drag it smaller than 400px
+        maxSize={1000}      // The user can't drag it larger than 1000px
+        style={{ height: '100%' }}
+      >
       {/* LEFT: The actual tabletop area */}
       <div style={{ position: 'relative', overflow: 'hidden' }}>
         {/* Zoom controls, undo, etc. could go here */}
@@ -533,6 +537,7 @@ const { startDrag } = useTokenDrag({
           onToggleGrid={onToggleGrid}
         />
       </div>
-    </div>
-  );
+    </SplitPane>
+  </div>
+);
 }
