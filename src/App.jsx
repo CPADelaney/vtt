@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'; // Adde
 // npm install @rexxars/react-split-pane
 import { SplitPane } from '@rexxars/react-split-pane'; // Corrected: Use named import for SplitPane
 // RE-ADDED: import '@rexxars/react-split-pane/dist/resizer.css'; // This import is necessary for SplitPane styling/sizing
-import '@rexxars/react-split-pane/dist/resizer.css'; // Re-adding SplitPane CSS import
+// REMOVED: import '@rexxars/react-split-pane/dist/resizer.css'; // This import causes the build error. Styles are in styles.css.
 
 import VirtualTabletop from './components/VirtualTabletop';
 import ToolsBar from './components/ToolsBar';
