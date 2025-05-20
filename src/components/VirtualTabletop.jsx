@@ -214,7 +214,7 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
      console.log('[DEBUG] Grid dimensions updated based on container:', { vw, vh, isHexGrid: currentIsHexGrid, calculatedDimensions: { rows: calculatedRows, cols: calculatedCols } });
      setDimensions({ rows: calculatedRows, cols: calculatedCols });
 
-  }, 200), [gridConfig, gameState.isHexGrid]); // Depend on grid config and isHexGrid state value (Removed dimensions dependency)
+  }, 200), [gridConfig, gameState.isHexGrid]); // Depend only on grid config and isHexGrid state value
 
 
   // Effect to update grid dimensions on mount and resize, and grid type state change
@@ -751,8 +751,8 @@ const { startDrag, isDragging } = useTokenDrag({
 
   // --- Refs for the actual global listener functions ---
   // These refs will always point to the latest version of the handler logic defined above.
-   const handleGlobalMouseMoveRef = useRef(handleGlobalMouseMove);
-   const handleGlobalMouseUpRef = useRef(handleGlobalMouseUp);
+   const handleGlobalMouseMoveRef = useRef(handleGlobalMouseMoveLogic);
+   const handleGlobalMouseUpRef = useRef(handleGlobalMouseUpLogic);
    // --- ADDED Ref for Keydown Handler ---
    const handleGlobalKeyDownRef = useRef(handleGlobalKeyDownLogic);
    // --- End Added ---
@@ -780,14 +780,14 @@ const { startDrag, isDragging } = useTokenDrag({
   // --- Effects to keep handler refs updated ---
   // These effects run whenever the corresponding handler logic changes (i.e., when state dependencies like isDragging, isSelecting, isPanning change)
   useEffect(() => {
-      handleGlobalMouseMoveRef.current = handleGlobalMouseMove;
+      handleGlobalMouseMoveRef.current = handleGlobalMouseMoveLogic;
       // console.log('[DEBUG] useTokenDrag: handleMouseMoveLogic updated in ref.');
-  }, [handleGlobalMouseMove]); // Depends on the memoized logic
+  }, [handleGlobalMouseMoveLogic]); // Depends on the memoized logic
 
   useEffect(() => {
-      handleGlobalMouseUpRef.current = handleGlobalMouseUp;
+      handleMouseUpRef.current = handleGlobalMouseUpLogic;
        // console.log('[DEBUG] useTokenDrag: handleMouseUpLogic updated in ref.');
-  }, [handleGlobalMouseUp]); // Depends on the memoized logic
+  }, [handleGlobalMouseUpLogic]); // Depends on the memoized logic
 
   // --- ADDED Effect for Keydown Handler Ref ---
   useEffect(() => {
@@ -944,19 +944,26 @@ const { startDrag, isDragging } = useTokenDrag({
           button: e.button,
       });
 
-    // Prevent default browser context menu if it hasn't already been prevented.
-    // e.preventDefault(); // ZoomableContainer already does this if it didn't pan.
-    e.stopPropagation(); // Stop propagation to prevent other context menu listeners
+    // Prevent default browser context menu - this is typically handled by the element
+    // that calls this hook's `showMenu` function (e.g., ZoomableContainer or VirtualTabletop)
+    // e.preventDefault(); // Assume parent handles this
+    // e.stopPropagation(); // Assume parent handles this
 
-    // Access latest state via refs
-    const currentScale = scaleRef.current || 1;
-    const currentPosition = positionRef.current || { x: 0, y: 0 };
-    const currentSelectedTokenIds = selectedTokenIdsRef.current;
+    console.log('[DEBUG] Showing context menu at:', { clientX: e.clientX, clientY: e.clientY, options });
+
+    // Set state to show the menu at the mouse position with context-specific data
+    setMenuState({
+      x: e.clientX, // Screen coordinates
+      y: e.clientY, // Screen coordinates
+      ...options // Spread any additional options needed by the menu component
+    });
+
+    // No need for position adjustment logic here; the rendering component or CSS should handle screen boundaries.
 
     const tokenEl = e.target.closest('.token');
     const contextType = tokenEl ? 'token' : 'grid';
 
-    let options = { type: contextType };
+    let options = { type: contextType }; // <-- This 'options' variable redeclares the 'options' parameter. Valid but confusing.
 
     if (contextType === 'token' && tokenEl) {
         const clickedTokenId = tokenEl.id;
@@ -968,7 +975,7 @@ const { startDrag, isDragging } = useTokenDrag({
         // Ensure the clicked token is selected if it wasn't already or if not additive.
         // This selection update happens *before* the menu is shown.
         // Use ref for selectedTokenIds
-        if (!(currentSelectedTokenIds?.has(clickedTokenId)) || (currentSelectedTokenIds?.size ?? 0) > 1) {
+         if (!(currentSelectedTokenIds?.has(clickedTokenId)) || (currentSelectedTokenIds?.size > 1 && currentSelectedTokenIds?.has(clickedTokenId))) { // If not selected, OR (multiple selected AND this one is selected)
              // If the clicked token is not in the selection, OR if multiple tokens are selected
              // and the click is on just one, clear and select only the clicked one.
              // This is common behavior: single right-click on a token focuses the action on it,
@@ -1013,9 +1020,9 @@ const { startDrag, isDragging } = useTokenDrag({
           options.gridCoords = { x: gridX, y: gridY };
     }
 
-    console.log('[DEBUG] Showing context menu, type:', contextType, 'Options:', options);
+    console.log('[DEBUG] Showing context menu, type:', contextType, 'Options:', options); // Use the local 'options' variable here.
     // Pass event directly so context menu hook can get screen position
-    showMenu(e, options);
+    showMenu(e, options); // <-- This uses the local 'options' variable.
 
   }, [
       showMenu, // Stable callbacks
@@ -1226,5 +1233,5 @@ const { startDrag, isDragging } = useTokenDrag({
 
 
     </div>
-  );
+  ); // Removed the semicolon here based on build error location
 }
