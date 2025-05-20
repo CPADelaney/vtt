@@ -518,81 +518,10 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
         setIsPanning, // --- ADDED Dependency ---
         handleGlobalMouseMoveRef, handleGlobalMouseUpRef, handleGlobalKeyDownRef // --- MODIFIED Dependency: Used refs for cleanup calls ---
     ]); // Dependencies for handleGlobalMouseUp
+    }); // <-- ADDED this closing brace and parenthesis to close the useCallback call.
 
 
-    // Define a global keydown handler for cancelling interactions (Escape key)
-    const handleGlobalKeyDownLogic = useCallback((e) => { // Renamed to Logic for consistency
-        if (e.key === 'Escape') {
-             console.log('[DEBUG] Escape key pressed globally in VT.');
-             // Check if any interaction that can be cancelled is currently active
-             if (isDragging) { // Check drag state from hook
-                 console.log('[DEBUG] Drag active, useTokenDrag should handle Escape.');
-                 // useTokenDrag hook attaches its OWN Escape handler during drag.
-                 // We rely on it handling the Escape key and its own cleanup.
-                 // Prevent default/stop prop defensively here just in case hook doesn't.
-                  e.preventDefault();
-                  e.stopPropagation();
-             } else if (isSelecting) { // Check selecting state from hook
-                 console.log('[DEBUG] Marquee active, cancelling via useTokenSelection.');
-                 e.preventDefault();
-                 e.stopPropagation(); // Stop propagation
-
-                  // Call the cancel function exposed by useTokenSelection using stable ref
-                 cancelMarqueeRef.current?.(); // Use ref!
-
-                 // Also clean up VT's local interaction state/listeners
-                 // This is needed because the marquee mousemove/mouseup are global,
-                 // and the keydown needs to also stop the process initiated by mousedown.
-                 // (Although cancelMarquee also removes its move/up listeners, VT's mousedown also added them)
-                 if (initialMouseDownPosRef.current || interactionStartedRef.current) {
-                     initialMouseDownPosRef.current = null;
-                     interactionStartedRef.current = false;
-                     // Remove the temporary mouse listeners added in handleMouseDown using stable refs
-                     document.removeEventListener('mousemove', handleGlobalMouseMoveRef.current, { capture: true });
-                     document.removeEventListener('mouseup', handleGlobalMouseUpRef.current, { capture: true });
-                     document.removeEventListener('keydown', handleGlobalKeyDownRef.current, { capture: true });
-                     console.log('[DEBUG] Cleared interaction refs and removed temporary mouse/keydown listeners.'); // --- MODIFIED Log ---
-                 }
-
-             } else if (isPanning) { // --- ADDED Pan Cancel Logic ---
-                 console.log('[DEBUG] Pan active, cancelling.');
-                 e.preventDefault();
-                 e.stopPropagation(); // Stop propagation
-
-                 // Reset local pan state and refs
-                 setIsPanning(false);
-                 panStartMousePosRef.current = { x: 0, y: 0 };
-                 panStartVTStatePosRef.current = { x: 0, y: 0 };
-
-                 // Restore default cursor
-                 document.body.style.cursor = '';
-
-                 // Also clean up VT's local interaction state/listeners if they were added
-                 if (initialMouseDownPosRef.current || interactionStartedRef.current) {
-                     initialMouseDownPosRef.current = null;
-                     interactionStartedRef.current = false;
-                     // Remove the temporary mouse listeners added in handleMouseDown using stable refs
-                     document.removeEventListener('mousemove', handleGlobalMouseMoveRef.current, { capture: true });
-                     document.removeEventListener('mouseup', handleGlobalMouseUpRef.current, { capture: true });
-                     document.removeEventListener('keydown', handleGlobalKeyDownRef.current, { capture: true });
-                     console.log('[DEBUG] Cleared interaction refs and removed temporary mouse/keydown listeners.'); // --- MODIFIED Log ---
-                 }
-                 // --- End Added ---
-
-             }
-             // If neither isDragging nor isSelecting nor isPanning, let the Escape event propagate for other uses.
-        }
-    }, [
-        isDragging, // State flag from hook
-        isSelecting, // State flag from hook
-        isPanning, // --- ADDED State ---
-        setIsPanning, // --- ADDED Dependency ---
-        cancelMarqueeRef, // Stable hook function ref
-        handleGlobalMouseMoveRef, handleGlobalMouseUpRef, handleGlobalKeyDownRef // --- MODIFIED Dependency: Needed for cleanup listener refs ---
-    ]); // Dependencies for handleGlobalKeyDownLogic
-
-
-  // --- Refs for the actual global listener functions ---
+  // --- Refs for the actual listener functions ---
   // These refs will always point to the latest version of the handler logic defined above.
    const handleGlobalMouseMoveRef = useRef(handleGlobalMouseMoveLogic);
    const handleGlobalMouseUpRef = useRef(handleGlobalMouseUpLogic);
@@ -601,6 +530,7 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
    // --- End Added ---
    // Ref for cancelMarquee for use in cleanup/keydown
    const cancelMarqueeRef = useRef(cancelMarquee);
+
 
   // --- MODIFIED: Combine refs for select/clear functions from useTokenSelection ---
    const selectionHandlersRef = useRef({
@@ -628,6 +558,7 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
   }, [handleGlobalMouseMoveLogic]); // Depends on the memoized logic
 
   useEffect(() => {
+      // Corrected: This should update handleMouseUpRef, not handleMouseUpRef.current
       handleMouseUpRef.current = handleGlobalMouseUpLogic;
        // console.log('[DEBUG] useTokenDrag: handleMouseUpLogic updated in ref.');
   }, [handleGlobalMouseUpLogic]); // Depends on the memoized logic
