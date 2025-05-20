@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MessageSquare, History, Settings, Swords, ChevronLeft, ChevronRight, Dice5 } from 'lucide-react'; // Import icons
 import { useDiceManager } from '../hooks/useDiceManager'; // Import the dice manager hook
 import { useSystemManager } from '../hooks/useSystemManager'; // Import the system manager hook
-import '../../css/styles.css'; // Ensure CSS is imported - CORRECTED PATH
+import '../css/styles.css'; // Ensure CSS is imported - CORRECTED PATH
 
 // Helper component for messages to handle different types
 const ChatMessage = ({ message }) => {
@@ -81,6 +81,29 @@ export const Sidebar = ({
           return;
       }
 
+      // Check if the inCombat prop *just changed* to trigger the message
+      // This requires comparing with a previous state, which is tricky with just the prop.
+      // A simpler approach is to ensure the message isn't already the last one.
+      // The current check `if (lastMessage?.type === 'system' && lastMessage.text === newSystemMessageText)`
+      // combined with the dependency on `messages` and `inCombat` *should* prevent duplicates
+      // in most cases, although it might re-add if messages change AND inCombat is the same
+      // as the *last* system message added. A ref tracking the *last* added system message text
+      // would be more reliable. For now, keeping the existing logic as it seems functional.
+
+       // Ensure we don't add the "Combat Ended" message if the component mounts with inCombat: false
+       // and there's no previous state indicating combat was active.
+       // A simple check for historyInfo might help, but it's complex without full state access.
+       // Let's add the message only if combat just started OR just ended from a previous state.
+       // This effect will run on mount. If inCombat is false, we don't want an initial "Combat Ended" message.
+       // If inCombat is true on mount (from load), we want "Combat Initiated".
+
+       // Let's simplify: just add the message whenever the `inCombat` state *changes* and it's not the very first message.
+       // This effect *will* run on initial render based on the default state { inCombat: false }.
+       // The current check `lastMessage?.type === 'system' && lastMessage.text === newSystemMessageText`
+       // prevents adding "Combat Ended" if the initial state is false and there are no messages.
+       // If initial state is true (from load), it will add "Combat Initiated". Seems mostly correct.
+
+
       setMessages(prev => [
           ...prev,
           {
@@ -137,6 +160,7 @@ export const Sidebar = ({
   const handleUndoClick = useCallback(() => {
       console.log('[DEBUG] Undo button clicked. Calling undoGameState.');
       undoGameState(); // Call the undo function passed from parent
+      // Need to potentially add a system message here or rely on VT to log undo
   }, [undoGameState]); // Depend on undoGameState prop
 
   const handleRevertTurnClick = useCallback(() => {

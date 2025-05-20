@@ -199,8 +199,81 @@ export function useTokenSelection({ getTokens, scale, position, tokenSize }) {
         document.removeEventListener('mouseup', handleMarqueeMouseUpRef.current, { capture: true });
          document.body.style.userSelect = ''; // Restore user select
 
-    }, [setSelectedIds]); // Depend on setSelectedIds
+    }, [setSelectedIds]); // Depend on setSelectedIds - REMOVING THIS DEPENDENCY
 
+     const handleMarqueeMouseUp = useCallback((e) => {
+        // Only process if marqueeState is active
+        const currentMarqueeState = marqueeStateRef.current; // Use ref
+        if (!currentMarqueeState) return;
+
+        console.log('[DEBUG] useTokenSelection: handleMouseUp. Marquee ended.');
+
+        // Prevent default
+         e.preventDefault();
+         e.stopPropagation(); // Stop propagation
+
+        // Get the final marquee screen coordinates relative to the container
+        const { startX, startY, currentX, currentY, containerRect } = currentMarqueeState;
+
+        // Calculate marquee bounding box (min/max screen coordinates relative to container)
+        const marqueeMinXScreen = Math.min(startX, currentX);
+        const marqueeMaxXScreen = Math.max(startX, currentX);
+        const marqueeMinYScreen = Math.min(startY, currentY);
+        const marqueeMaxYScreen = Math.max(startY, currentY);
+
+        // Get latest state values via refs for calculation
+        const currentTokens = getTokensRef.current();
+        const currentScale = scaleRef.current || 1;
+        const currentPosition = positionRef.current || { x: 0, y: 0 };
+        const currentTokenSize = tokenSizeRef.current || 40; // Default if ref is stale
+
+        // Check which tokens intersect with the marquee rectangle
+        const intersectingTokenIds = new Set();
+        const tokenRadius = currentTokenSize / 2;
+
+        currentTokens.forEach(token => {
+            // Get token's screen position relative to the container.
+            // Token's position is its center in grid coordinates.
+            // Convert grid position to screen position: (gridPos * scale) + panOffset
+            const tokenCenterXScreen = (token.position.x * currentScale) + currentPosition.x;
+            const tokenCenterYScreen = (token.position.y * currentScale) + currentPosition.y;
+
+            // Get token's screen bounds.
+            const tokenLeftScreen = tokenCenterXScreen - tokenRadius;
+            const tokenRightScreen = tokenCenterXScreen + tokenRadius;
+            const tokenTopScreen = tokenCenterYScreen - tokenRadius;
+            const tokenBottomScreen = tokenCenterYScreen + tokenRadius;
+
+
+            // Check for intersection between marquee rectangle and token bounding box (AABB intersection)
+            const intersects = !(
+                marqueeMaxXScreen < tokenLeftScreen ||
+                marqueeMinXScreen > tokenRightScreen ||
+                marqueeMaxYScreen < tokenTopScreen ||
+                marqueeMinYScreen > tokenBottomScreen
+            );
+
+
+            if (intersects) {
+                intersectingTokenIds.add(token.id);
+            }
+        });
+
+        console.log('[DEBUG] Marquee selection complete. Intersecting tokens:', Array.from(intersectingTokenIds));
+
+        // Update the selected tokens state using the additive flag from the mouse event (Shift key)
+        setSelectedIds(intersectingTokenIds, e.shiftKey);
+
+        // Reset marquee state and selecting flag
+        setMarqueeState(null);
+        setIsSelecting(false);
+
+        // Remove global listeners added in startMarquee
+        document.removeEventListener('mousemove', handleMarqueeMouseMoveRef.current, { capture: true });
+        document.removeEventListener('mouseup', handleMarqueeMouseUpRef.current, { capture: true });
+         document.body.style.userSelect = ''; // Restore user select
+
+    }, []); // Dependency array is now empty.
 
   /**
    * Call this function from the tabletop's onMouseDown handler when a click

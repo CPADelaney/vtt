@@ -12,8 +12,8 @@ import { useCampaignManager } from '../hooks/useCampaignManager';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { useStateWithHistory } from '../hooks/useStateWithHistory';
 import { useZoomToMouse } from '../hooks/useZoomToMouse';
-import { useDiceManager } from '../hooks/useDiceManager'; // Needed for Sidebar
-import { useSystemManager } from '../hooks/useSystemManager'; // Needed for Sidebar
+import { useDiceManager } from '../hooks/useDiceManager'; // Needed for Sidebar - although Sidebar is not rendered here
+import { useSystemManager } from '../hooks/useSystemManager'; // Needed for Sidebar - although Sidebar is not rendered here
 
 // Components
 import { ZoomableContainer } from './ZoomableContainer';
@@ -22,8 +22,9 @@ import { Token } from './Token';
 import { Controls } from './Controls';
 import { Ping } from './Ping';
 import { Marquee } from './Marquee'; // Use dedicated Marquee file
-import { Sidebar } from './Sidebar'; // Import Sidebar to render here
-import '../../css/styles.css'; // Corrected import path for VirtualTabletop.jsx
+import { Sidebar } from './Sidebar'; // Import Sidebar - Note: Sidebar is rendered by App.jsx's SplitPane, not here.
+import { ContextMenu } from './ContextMenu'; // Import ContextMenu
+import '../css/styles.css'; // Corrected import path for VirtualTabletop.jsx
 
 // Constants
 const MIN_SCALE = 0.3;
@@ -35,52 +36,8 @@ const DRAG_THRESHOLD = 5; // Pixels mouse must move to cancel ping/start drag/ma
 const TOKEN_VISUAL_SIZE = 40; // Matches CSS .token width/height
 
 
-// Context Menu component (moved to its own file or kept here)
-// Keeping it here for now, but ideally move to ContextMenu.jsx
-// NOTE: This definition is redundant if ContextMenu is imported from './ContextMenu',
-// which it is. Removing this duplicate definition would be a good future cleanup.
-// For now, keeping it as is to strictly address the import error only.
-const ContextMenu = ({ menuState, hideMenu, onAddToken, onDeleteTokens }) => {
-    if (!menuState) return null;
-
-    // Determine options based on the menu type ('token' or 'grid')
-    const menuItems = [];
-    if (menuState.type === 'token') {
-        // Ensure tokenIds is an array, even if it was just one ID
-        const tokenIds = Array.isArray(menuState.tokenIds) ? menuState.tokenIds : (menuState.tokenIds ? [menuState.tokenIds] : []);
-        if (tokenIds.length > 0) {
-            menuItems.push({ label: `Delete Token${tokenIds.length > 1 ? 's' : ''}`, action: () => onDeleteTokens(tokenIds) }); // Pass token IDs
-        }
-        // Add other token-specific options here (e.g., Edit, Copy, Change HP)
-    } else { // type === 'grid'
-        menuItems.push({ label: 'Add Token Here', action: () => onAddToken(menuState.gridCoords) }); // Pass grid coords
-        // Add other grid/map options here (e.g., Add Image, Draw Shape)
-    }
-
-    if (menuItems.length === 0) return null; // Don't render empty menu
-
-    return (
-        <div
-            className="context-menu" // Use CSS class
-            style={{ left: menuState.x, top: menuState.y }}
-            onContextMenu={e => e.preventDefault()} // Prevent nested context menus
-        >
-            {menuItems.map((item, index) => (
-                <div
-                    key={index}
-                    className="context-menu-item" // Use CSS class
-                    onClick={(e) => {
-                        e.stopPropagation(); // Stop click from propagating to tabletop/window
-                        item.action(); // Execute the action
-                        hideMenu(); // Hide the menu after action
-                    }}
-                >
-                    {item.label}
-                </div>
-            ))}
-        </div>
-    );
-};
+// Removed duplicate ContextMenu component definition.
+// It is imported from './ContextMenu' at the top.
 
 
 // VirtualTabletop component is now responsible for managing its state
@@ -120,7 +77,7 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
 
 
   // Callbacks to toggle grid type and combat status, updating gameState
-  // These are passed to the Sidebar
+  // These are passed to the Sidebar (although sidebar prop passing from App is not fully functional yet)
   const onToggleGrid = useCallback(() => {
     updateGameState(prev => ({ ...prev, isHexGrid: !prev.isHexGrid }));
   }, [updateGameState]);
@@ -311,7 +268,8 @@ const { startDrag, isDragging } = useTokenDrag({
       clearSelection,
       startMarquee,
       marqueeState,
-      isSelecting // Expose isSelecting flag from hook state
+      isSelecting, // Expose isSelecting flag from hook state
+      setSelectedTokenIds, // Needed for cleanup effect within VT
     } = useTokenSelection({
     getTokens: useCallback(() => gameState.tokens, [gameState.tokens]), // Pass function to get tokens
     scale, // Pass scale from state
@@ -323,24 +281,6 @@ const { startDrag, isDragging } = useTokenDrag({
   // The onDeleteTokens callback below modifies gameState, which triggers this effect.
   // This is a safeguard; ideally, selection hook should handle this based on token list changes.
   useEffect(() => {
-       // Check if any selected token ID no longer exists in the current tokens list
-       const currentTokenIds = new Set(tokens.map(t => t.id));
-       const selectionNeedsCleanup = Array.from(selectedTokenIds).some(id => !currentTokenIds.has(id));
-
-       if (selectionNeedsCleanup) {
-            console.log('[DEBUG] Selected token(s) removed, cleaning up selection.');
-            // Filter the selection set to only include existing tokens
-            const newSelection = new Set(Array.from(selectedTokenIds).filter(id => currentTokenIds.has(id)));
-            // Update selection state via the hook's setter
-             setSelectedTokenIds(newSelection); // Use the state setter from useTokenSelection
-       }
-  }, [tokens, selectedTokenIds]); // Depend on tokens list and selected ids set
-   // NOTE: Adding setSelectedTokenIds to dependency array here might be unnecessary or cause issues
-   // React guarantees setState setters are stable and shouldn't be in deps.
-   // Removing setSelectedTokenIds from this deps array. The effect should trigger when `tokens` changes,
-   // and the `selectedTokenIds` state it accesses *within* the callback will be the state at that time.
-   // The dependency should likely just be `tokens`.
-   useEffect(() => {
        const currentTokenIds = new Set(tokens.map(t => t.id));
        const selectionNeedsCleanup = Array.from(selectedTokenIds).some(id => !currentTokenIds.has(id));
 
@@ -524,7 +464,7 @@ const { startDrag, isDragging } = useTokenDrag({
 
   }, [
       hideMenu, // Depend on hideMenu callback
-      tokens, // Needed to find clicked token details if dragging starts
+      tokens, // Needed to find clicked token details if dragging starts - actually not needed here, only in startDrag
       selectTokenId, // Needed to update selection immediately on token click
       clearSelection, // Needed to clear selection on background click
       startDrag, // Hook callback to start drag
@@ -561,7 +501,9 @@ const { startDrag, isDragging } = useTokenDrag({
                 console.log('[DEBUG] Starting token drag via mousemove threshold.');
                 // Pass the currently *selected* tokens to useTokenDrag.
                 // This allows dragging multiple tokens if the clicked one was selected.
-                const tokensToDrag = tokens.filter(t => selectedTokenIds.has(t.id));
+                // IMPORTANT: Access the LATEST `selectedTokenIds` state via its ref
+                const tokensToDrag = tokens.filter(t => selectedTokenIdsRef.current.has(t.id)); // Use ref here!
+
                 if (tokensToDrag.length === 0) {
                     // This edge case could happen if the clicked token ID is stale in state, or other bugs
                     console.warn('[DEBUG] No selected tokens found for drag start, cancelling interaction.');
@@ -604,11 +546,12 @@ const { startDrag, isDragging } = useTokenDrag({
        // which are attached once startDrag/startMarquee are called.
 
   }, [
-      tokens, selectedTokenIds, // Needed for startDrag
+      tokens, // Need tokens list to filter for drag
       startDrag, // Hook callback
       startMarquee, // Hook callback
       isDragging, isSelecting, // State values from hooks
       // Note: initialMouseDownPosRef and interactionStartedRef are accessed via closure/current
+      selectedTokenIdsRef, // Need ref to access latest selection state in callback
   ]);
 
    // Global mouseup handler (attached on mousedown)
@@ -699,22 +642,25 @@ const { startDrag, isDragging } = useTokenDrag({
 
     let options = { type: contextType };
 
+    // Access latest selected tokens state via ref
+    const currentSelectedTokenIds = selectedTokenIdsRef.current;
+
     if (contextType === 'token' && tokenEl) {
         const clickedTokenId = tokenEl.id;
         // If right-clicked token is *already* in the current selection, offer actions on the *entire selection*.
         // Otherwise, select only this token and offer actions on just this one.
-        const tokenIdsToOperateOn = selectedTokenIds.has(clickedTokenId) ? Array.from(selectedTokenIds) : [clickedTokenId];
+        const tokenIdsToOperateOn = currentSelectedTokenIds.has(clickedTokenId) ? Array.from(currentSelectedTokenIds) : [clickedTokenId];
 
         // Ensure the clicked token is selected if it wasn't already or if not additive.
         // This selection update happens *before* the menu is shown.
-        if (!selectedTokenIds.has(clickedTokenId) || selectedTokenIds.size > 1) {
+        if (!currentSelectedTokenIds.has(clickedTokenId) || currentSelectedTokenIds.size > 1) {
              // If the clicked token is not in the selection, OR if multiple tokens are selected
              // and the click is on just one, clear and select only the clicked one.
              // This is common behavior: single right-click on a token focuses the action on it,
              // unless the right-click is part of a multi-selection action.
              // Let's simplify: If you right-click a selected token, act on selection. If you right-click
              // an *unselected* token, select it and act on it.
-             if (!selectedTokenIds.has(clickedTokenId)) {
+             if (!currentSelectedTokenIds.has(clickedTokenId)) { // Use ref
                  clearSelection(); // Clear existing
                  selectTokenId(clickedTokenId, false); // Select just this one non-additively
              }
@@ -736,8 +682,12 @@ const { startDrag, isDragging } = useTokenDrag({
          // Convert screen coordinates to grid coordinates relative to grid origin (0,0)
           const screenX = e.clientX - containerRect.left;
           const screenY = e.clientY - containerRect.top;
-          const gridX = (screenX - position.x) / scale;
-          const gridY = (screenY - position.y) / scale;
+          // Access latest position and scale via refs
+          const currentScale = scaleRef.current || 1;
+          const currentPosition = positionRef.current || { x: 0, y: 0 };
+
+          const gridX = (screenX - currentPosition.x) / currentScale;
+          const gridY = (screenY - currentPosition.y) / currentScale;
 
           options.gridCoords = { x: gridX, y: gridY };
     }
@@ -746,7 +696,13 @@ const { startDrag, isDragging } = useTokenDrag({
     // Pass event directly so context menu hook can get screen position
     showMenu(e, options);
 
-  }, [showMenu, clearSelection, selectTokenId, selectedTokenIds, position, scale]); // Added selection state/handlers, position, scale as dependencies
+  }, [
+      showMenu, clearSelection, selectTokenId,
+      // Dependencies needed for calculations/logic inside:
+      // scale, position, selectedTokenIds are now accessed via refs.
+      // Need callbacks as dependencies:
+      selectedTokenIdsRef, scaleRef, positionRef // Add refs here
+   ]); // Added refs as dependencies
 
 
    // Handlers for zoom buttons (passed to Controls component)
@@ -797,56 +753,11 @@ const { startDrag, isDragging } = useTokenDrag({
       {/* Controls overlay (Zoom, Undo, etc.) - Positioned fixed or absolute within this wrapper */}
       <Controls onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} /> {/* Undo handled by Sidebar */}
 
-      {/* Sidebar - Rendered here as part of VT's content area */}
-      {/* Position Sidebar absolutely within this container or manage layout with flex/grid */}
-       <div className="right-sidebar-in-vt" style={{
-           position: 'absolute',
-           top: 0,
-           right: 0,
-           bottom: 0,
-           zIndex: 1001, // Ensure sidebar is above tabletop content
-           width: '350px', // Or manage width with state/SplitPane
-           // Add styling for the sidebar itself (background, border, etc.)
-       }}>
-           {/*
-            // Sidebar expects props like isHexGrid, inCombat, historyInfo, undoGameState, etc.
-            // These are available from the gameState, updateGameState, undoGameState, historyInfo
-            // returned by useStateWithHistory.
-            // Passing these props down directly to Sidebar rendered within VT:
-           */}
-           <Sidebar
-              isHexGrid={isHexGrid} // Pass state from VT's gameState
-              onToggleGrid={onToggleGrid} // Pass toggle function defined here
-              inCombat={inCombat} // Pass state from VT's gameState
-              onToggleCombat={onToggleCombat} // Pass toggle function defined here
-              undoGameState={undoGameState} // Pass undo function from hook
-              historyInfo={historyInfo} // Pass history info object from hook
-              // Add other props Sidebar might need (e.g., redoGameState, tokens for character sheets etc.)
-           />
-       </div>
-        {/* Add CSS for .right-sidebar-in-vt in styles.css if needed */}
-        {/* Note: This means the SplitPane in App.jsx now splits the ToolsBar from the entire VT+Sidebar area. */}
-        {/* To make the Sidebar itself resizable, it must be a sibling of the main VT area, managed by App's SplitPane. */}
-        {/* Reverting Sidebar back to App.jsx, will need to pass props from VT -> App -> Sidebar. */}
-        {/* This requires VT to expose state/setters which is non-standard. Let's stick to the original App/Sidebar SplitPane and adjust prop passing. */}
-        {/* VirtualTabletop needs to return/expose the state and history info to its parent (App) so App can pass it to the Sidebar sibling. */}
-        {/* A render prop or React Context is the standard way. Let's use render prop for simplicity in this example. */}
-        {/* VirtualTabletop component signature needs to change: `({ renderSidebar })` and then call `renderSidebar({ isHexGrid, inCombat, historyInfo, undoGameState, onToggleGrid, onToggleCombat })` */}
-        {/* And App.jsx needs to pass `<VirtualTabletop renderSidebar={(sidebarProps) => <Sidebar {...sidebarProps} />} />` */}
-        {/* This significantly changes App.jsx. Let's assume for THIS revision that state is managed locally in VT and NOT passed out to Sidebar via App. */}
-        {/* Sidebar needs to be moved back to App.jsx's SplitPane. The props it needs *must* be passed down. */}
-        {/* Simplest approach for props: Pass needed state values (isHexGrid, inCombat, historyInfo) and callbacks (undoGameState, onToggleGrid, onToggleCombat) directly from VirtualTabletop's state/hook returns as props *when App renders Sidebar*. This implies App *calls into* VirtualTabletop to get this state, which is bad practice. OR, Sidebar subscribes to VTT state via a global object/context (like the init.jsx bridge attempted). OR, state is lifted higher. */}
-
-        {/* Okay, let's revert VirtualTabletop.jsx to its original state regarding *rendering* Sidebar (i.e., Sidebar is NOT rendered inside VT). */}
-        {/* I will focus fixes on the mouse handling and hook coordination *within* VirtualTabletop, and the duplicate Marquee. */}
-        {/* The state management issue (VT -> App -> Sidebar) will be noted as an area for improvement needing significant refactoring (Context API is recommended). */}
-
-        {/*
-         // Reverting Sidebar back to App.jsx's SplitPane structure.
-         // The state flow issue (VT -> App -> Sidebar) needs a proper pattern like Context or a higher state manager.
-         // For now, leaving the state management within VT as is and noting the Sidebar prop issue.
-         // The Sidebar component definition imported above is the one expected to be used by App.jsx's SplitPane structure.
-        */}
+      {/* Sidebar is NOT rendered here to maintain App.jsx SplitPane structure */}
+      {/* It will need state passed down from App.jsx */}
+      {/* Note: The props expected by Sidebar (isHexGrid, inCombat, historyInfo, etc.) */}
+      {/* are available here in VirtualTabletop's state/hook returns. Passing them */}
+      {/* up to App and then down to Sidebar is the structural challenge. */}
 
 
       {/* The main container for panning and zooming */}
@@ -871,7 +782,7 @@ const { startDrag, isDragging } = useTokenDrag({
         {/* Content INSIDE the zoomable container */}
         {/* Attach core mouse handlers to the tabletop div */}
         <div
-          id="tabletop"
+          id="tabletop" // Give the content div the id expected by other components/hooks
           className={isHexGrid ? 'hex-grid' : 'square-grid'} // Use state value
           onMouseDown={handleMouseDown} // Our central mousedown handler
           // Global mousemove/mouseup are attached/managed by handlers/hooks
@@ -888,7 +799,8 @@ const { startDrag, isDragging } = useTokenDrag({
             // Disable pointer events on the tabletop div while dragging/selecting to prevent conflicts
             // Mouse events are handled by global listeners attached to document.body
             // This ensures events aren't blocked by elements inside #tabletop (except tokens handled by `closest`)
-            pointerEvents: (isDragging || isSelecting) ? 'none' : 'auto',
+            // pointerEvents: (isDragging || isSelecting) ? 'none' : 'auto', // This was potentially interfering
+             pointerEvents: 'auto', // Let mouse handlers determine behavior instead of blocking
           }}
         >
           {/* Grid layer */}
@@ -942,8 +854,6 @@ const { startDrag, isDragging } = useTokenDrag({
         {/* Context Menu component, rendered if menuState is active */}
         {/* This component is rendered using the definition above or imported */}
         {/* NOTE: The ContextMenu component is imported from './ContextMenu' at the top. */}
-        {/* This local definition here is redundant and should be removed in a future cleanup pass. */}
-        {/* For now, leaving it as is to strictly address the import error only. */}
         <ContextMenu
              menuState={menuState}
              hideMenu={hideMenu} // Pass hide function from hook

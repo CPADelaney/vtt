@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import '../../css/styles.css'; // Corrected import path to resolve build error
+import '../css/styles.css'; // Corrected import path to resolve build error
 
 export const Ping = ({ x, y, color = '#ff4444', onComplete }) => {
   const [opacity, setOpacity] = useState(1); // Not strictly needed with CSS animation, but kept for potential JS animation variations

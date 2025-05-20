@@ -1,5 +1,5 @@
 import React from 'react';
-import '../../css/styles.css'; // Corrected import path
+import '../css/styles.css'; // Corrected import path
 
 /**
  * Renders the context menu component.
