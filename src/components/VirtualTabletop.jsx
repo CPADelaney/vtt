@@ -12,8 +12,8 @@ import { useCampaignManager } from '../hooks/useCampaignManager';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { useStateWithHistory } from '../hooks/useStateWithHistory';
 import { useZoomToMouse } from '../hooks/useZoomToMouse';
-import { useDiceManager } from '../hooks/useDiceManager'; // Needed for Sidebar - although Sidebar is not rendered here
-import { useSystemManager } from '../hooks/useSystemManager'; // Needed for Sidebar - although Sidebar is not rendered here
+// import { useDiceManager } from '../hooks/useDiceManager'; // Needed for Sidebar - although Sidebar is not rendered here
+// import { useSystemManager } from '../hooks/useSystemManager'; // Needed for Sidebar - although Sidebar is not rendered here
 
 // Components
 import { ZoomableContainer } from './ZoomableContainer';
@@ -22,7 +22,7 @@ import { Token } from './Token';
 import { Controls } from './Controls';
 import { Ping } from './Ping';
 import { Marquee } from './Marquee'; // Use dedicated Marquee file
-import { Sidebar } from './Sidebar'; // Import Sidebar - Note: Sidebar is rendered by App.jsx's SplitPane, not here.
+// import { Sidebar } from './Sidebar'; // Import Sidebar - Note: Sidebar is rendered by App.jsx's SplitPane, not here.
 import { ContextMenu } from './ContextMenu'; // Import ContextMenu
 import '../../css/styles.css'; // Corrected import path for VirtualTabletop.jsx
 
@@ -371,8 +371,8 @@ const { startDrag, isDragging } = useTokenDrag({
         ...prev,
         tokens: prev.tokens.filter(t => !tokenIds.includes(t.id)) // Filter based on passed IDs
       }));
-      clearSelection(); // Clear selection of deleted tokens
-    }, [updateGameState, clearSelection]);
+       // No need to clear selection here, the useEffect above handles it based on tokens list change
+    }, [updateGameState]);
 
 
   // PING LOGIC
@@ -440,13 +440,15 @@ const { startDrag, isDragging } = useTokenDrag({
                  const currentMouseX = e.clientX;
                  const currentMouseY = e.clientY;
                  const startMouseX = panStartMousePosRef.current.x;
+                 // --- MODIFIED: Corrected typo in pan calculation ---
                  const startMouseY = panStartMousePosRef.current.y;
+                 // --- END MODIFIED ---
                  const startVTStateX = panStartVTStatePosRef.current.x;
                  const startVTStateY = panStartVTStatePosRef.current.y;
 
                  // Calculate mouse movement delta in screen coordinates
                  const dxScreen = currentMouseX - startMouseX;
-                 const dyScreen = currentMouseY - startStartY; // Typo: Should be panStartMousePosRef.current.y
+                 const dyScreen = currentMouseY - startMouseY; // Corrected variable
 
                  // Access the latest scale via ref
                  const currentScale = scaleRef.current || 1;
@@ -757,10 +759,22 @@ const { startDrag, isDragging } = useTokenDrag({
    // Ref for cancelMarquee for use in cleanup/keydown
    const cancelMarqueeRef = useRef(cancelMarquee);
 
-  // --- MODIFIED: Refs for select/clear functions from useTokenSelection ---
-   const selectTokenIdRef = useRef(selectTokenId);
-   const clearSelectionRef = useRef(clearSelection);
-  // --- END MODIFIED ---
+  // --- MODIFIED: Combine refs for select/clear functions from useTokenSelection ---
+   const selectionHandlersRef = useRef({
+       selectTokenId: () => console.warn("selectTokenId not ready in ref"),
+       clearSelection: () => console.warn("clearSelection not ready in ref")
+   });
+
+   // Effect to update the combined ref with latest handlers from useTokenSelection
+   useEffect(() => {
+       console.log('[DEBUG] Updating selectionHandlersRef with latest functions.');
+       selectionHandlersRef.current = {
+           selectTokenId: selectTokenId,
+           clearSelection: clearSelection,
+       };
+       // No dependency on selectionHandlersRef itself here, that would be circular.
+   }, [selectTokenId, clearSelection]); // Depend on the latest functions from the hook
+   // --- END MODIFIED ---
 
 
   // --- Effects to keep handler refs updated ---
@@ -786,16 +800,6 @@ const { startDrag, isDragging } = useTokenDrag({
    useEffect(() => {
        cancelMarqueeRef.current = cancelMarquee;
    }, [cancelMarquee]);
-
-   // --- MODIFIED: Effects to keep select/clear refs updated ---
-   useEffect(() => {
-       selectTokenIdRef.current = selectTokenId;
-   }, [selectTokenId]);
-
-   useEffect(() => {
-       clearSelectionRef.current = clearSelection;
-   }, [clearSelection]);
-   // --- END MODIFIED ---
 
 
   // --- Unified Mouse Event Handling on Tabletop (#tabletop div) ---
@@ -884,15 +888,17 @@ const { startDrag, isDragging } = useTokenDrag({
         // Handle selection update on token click
         // If not additive, clear existing selection first
         if (!isAdditiveSelection) {
-            // --- MODIFIED: Call clearSelection via ref ---
-            clearSelectionRef.current?.(); // Use the stable hook function via ref
+            // --- MODIFIED: Call clearSelection via combined ref ---
+            console.log('[DEBUG] Non-additive selection, attempting selectionHandlersRef.current.clearSelection?.()');
+            selectionHandlersRef.current.clearSelection?.(); // Access via combined ref
             // --- END MODIFIED ---
         }
         // Always select/toggle the clicked token
-        // --- MODIFIED: Call selectTokenId via ref ---
-        selectTokenIdRef.current?.(clickedTokenId, isAdditiveSelection); // Use the stable hook function via ref
+        // --- MODIFIED: Call selectTokenId via combined ref ---
+        console.log('[DEBUG] Attempting selectionHandlersRef.current.selectTokenId?.() for:', clickedTokenId);
+        selectionHandlersRef.current.selectTokenId?.(clickedTokenId, false); // Access via combined ref
         // --- END MODIFIED ---
-        // THIS IS LINE ~289 in the original file (line numbers shifted due to modifications)
+        // THIS WAS APPROXIMATELY LINE 571 in the original file
     } else if (!clickedTokenId && e.button === 0) { // Left click on background
         console.log('[DEBUG] Mousedown (Left) on background.');
         // Don't prevent default yet - need to distinguish click vs marquee drag based on threshold in mousemove.
@@ -920,63 +926,6 @@ const { startDrag, isDragging } = useTokenDrag({
      document.addEventListener('keydown', handleGlobalKeyDownRef.current, { capture: true });
       console.log('[DEBUG] Attached temporary global mousemove, mouseup, keydown listeners.');
      // --- End Added ---
-
-
-  }, [ // <-- Dependency array for handleMouseDown
-      hideMenu, // Used directly
-      // --- MODIFIED Dependencies: Removed clearSelection, selectTokenId ---
-      isDragging, // Used directly
-      isSelecting, // Used directly
-      isPanning, // --- ADDED State ---
-      handleGlobalMouseMoveRef, // Stable ref
-      handleGlobalMouseUpRef, // Stable ref
-      handleGlobalKeyDownRef, // --- ADDED Stable ref ---
-      // --- MODIFIED Dependencies: Added refs for clearSelection, selectTokenId ---
-      selectTokenIdRef,
-      clearSelectionRef,
-      // --- END MODIFIED ---
-       // startDrag, startMarquee are used inside the *global* mousemove handler, not directly here.
-       // tokens, selectedTokenIdsRef, scaleRef, positionRef are also used inside global handlers via refs.
-       // setIsPanning, panStartMousePosRef, panStartVTStatePosRef are used inside global handlers.
-  ]); // Closing parenthesis follows bracket
-
-
-   // Attach the global Escape listener ONLY when an interaction might be cancellable
-   // This listener calls handleGlobalKeyDown which checks isSelecting and calls cancelMarquee.
-   // --- REMOVED the effect managing keydown listener here ---
-   // The keydown listener is now added and removed alongside mousemove/mouseup
-   // in handleMouseDown/handleGlobalMouseUp for simplicity.
-   // The handleGlobalKeyDownLogic still uses the state flags (isSelecting, isDragging, isPanning)
-   // to determine if it should cancel anything.
-   /*
-  useEffect(() => {
-      // Check if any interaction that can be cancelled by Escape is currently active
-      // Currently, only marquee cancellation is handled by VT's handleGlobalKeyDownLogic.
-      // Drag cancellation is handled internally by useTokenDrag's own keydown listener.
-      // Pan cancellation is now handled by VT's handleGlobalKeyDownLogic.
-      const isAnyCancellableInteractionActive = isSelecting || isPanning; // --- ADDED isPanning ---
-
-      // Access latest state of the handler ref
-      const handlerRef = handleGlobalKeyDownRef.current;
-
-      if (isAnyCancellableInteractionActive) {
-          console.log('[DEBUG] Attaching global Escape listener for marquee/pan.'); // --- Updated Log ---
-           // Use the stable reference to the handler
-           document.addEventListener('keydown', handlerRef, { capture: true });
-      } else {
-           console.log('[DEBUG] Removing global Escape listener for marquee/pan.'); // --- Updated Log ---
-            // Use the stable reference to the handler
-           document.removeEventListener('keydown', handlerRef, { capture: true });
-      }
-
-      // Cleanup: Always ensure listener is removed on unmount
-      return () => {
-           console.log('[DEBUG] VirtualTabletop unmounting, removing global Escape listener.');
-            // Use the stable reference to the handler
-           document.removeEventListener('keydown', handlerRef, { capture: true });
-      };
-  }, [isSelecting, isPanning, handleGlobalKeyDownRef]); // Re-run when state flags change OR handler ref changes
-  */
 
 
    // Right-click handler for context menu - Called by ZoomableContainer's onContextMenu prop
@@ -1027,11 +976,11 @@ const { startDrag, isDragging } = useTokenDrag({
              // Let's simplify: If you right-click a selected token, act on selection. If you right-click
              // an *unselected* token, select it and act on it.
              if (!currentSelectedTokenIds?.has(clickedTokenId)) { // Use ref
-                 // --- MODIFIED: Call clearSelection via ref ---
-                 clearSelectionRef.current?.(); // Clear existing
+                 // --- MODIFIED: Call clearSelection via combined ref ---
+                 selectionHandlersRef.current.clearSelection?.(); // Clear existing
                  // --- END MODIFIED ---
-                 // --- MODIFIED: Call selectTokenId via ref ---
-                 selectTokenIdRef.current?.(clickedTokenId, false); // Select just this one non-additively
+                 // --- MODIFIED: Call selectTokenId via combined ref ---
+                 selectionHandlersRef.current.selectTokenId?.(clickedTokenId, false); // Select just this one non-additively
                  // --- END MODIFIED ---
              }
              // The tokenIdsToOperateOn logic above already determines whether to act on the single token or the selection.
@@ -1043,8 +992,8 @@ const { startDrag, isDragging } = useTokenDrag({
 
     } else if (contextType === 'grid') {
          // If right-clicked on grid background, clear selection
-         // --- MODIFIED: Call clearSelection via ref ---
-         clearSelectionRef.current?.();
+         // --- MODIFIED: Call clearSelection via combined ref ---
+         selectionHandlersRef.current.clearSelection?.();
          // --- END MODIFIED ---
 
          // Pass grid coordinates to the menu handler for "Add Token"
@@ -1070,12 +1019,11 @@ const { startDrag, isDragging } = useTokenDrag({
 
   }, [
       showMenu, // Stable callbacks
-      // --- MODIFIED Dependencies: Removed clearSelection, selectTokenId ---
+      // --- MODIFIED Dependencies: Removed individual selectTokenIdRef, clearSelectionRef ---
       // Dependencies needed for calculations/logic inside (using refs):
       selectedTokenIdsRef, scaleRef, positionRef,
-      // --- MODIFIED Dependencies: Added refs for clearSelection, selectTokenId ---
-      selectTokenIdRef,
-      clearSelectionRef,
+      // --- MODIFIED Dependencies: Added combined ref ---
+      selectionHandlersRef,
       // --- END MODIFIED ---
    ]);
 
@@ -1103,10 +1051,10 @@ const { startDrag, isDragging } = useTokenDrag({
        console.log('[DEBUG] Calling undo...');
        undoGameState();
        // Clear selection after undo as state structure might have changed significantly
-       // --- MODIFIED: Call clearSelection via ref ---
-       clearSelectionRef.current?.();
+       // --- MODIFIED: Call clearSelection via combined ref ---
+       selectionHandlersRef.current.clearSelection?.();
        // --- END MODIFIED ---
-   }, [undoGameState, clearSelectionRef]); // --- MODIFIED Dependency: Use ref ---
+   }, [undoGameState, selectionHandlersRef]); // --- MODIFIED Dependency: Use combined ref ---
 
 
   // Cleanup initial mousedown ref and temporary global listeners on component unmount
@@ -1129,10 +1077,9 @@ const { startDrag, isDragging } = useTokenDrag({
           // --- ADDED tokensRef Cleanup ---
            tokensRef.current = null;
           // --- END ADDED ---
-          // --- ADDED select/clear refs Cleanup ---
-           selectTokenIdRef.current = null;
-           clearSelectionRef.current = null;
-          // --- END ADDED ---
+          // --- MODIFIED select/clear refs Cleanup ---
+           selectionHandlersRef.current = { selectTokenId: null, clearSelection: null }; // Clear functions in combined ref
+          // --- END MODIFIED ---
 
 
           updateGridDimensions.cancel(); // Cancel debounced function
