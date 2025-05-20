@@ -1,3 +1,4 @@
+```javascript
 // src/components/VirtualTabletop.jsx
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'; // Added useEffect, useCallback, useMemo, useRef
 // Removed SplitPane import - layout handled by App.jsx
@@ -1233,4 +1234,5 @@ const { startDrag, isDragging } = useTokenDrag({
 
     </div>
   ); // Removed the semicolon here based on build error location (Potential Fix)
-}
+}; // Added semicolon back based on build error analysis
+```
