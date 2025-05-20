@@ -24,7 +24,7 @@ import { Ping } from './Ping';
 import { Marquee } from './Marquee'; // Use dedicated Marquee file
 import { Sidebar } from './Sidebar'; // Import Sidebar - Note: Sidebar is rendered by App.jsx's SplitPane, not here.
 import { ContextMenu } from './ContextMenu'; // Import ContextMenu
-import '../css/styles.css'; // Corrected import path for VirtualTabletop.jsx
+import '../../css/styles.css'; // Corrected import path for VirtualTabletop.jsx
 
 // Constants
 const MIN_SCALE = 0.3;
@@ -43,6 +43,14 @@ const TOKEN_VISUAL_SIZE = 40; // Matches CSS .token width/height
 // VirtualTabletop component is now responsible for managing its state
 // and rendering itself along with related UI elements like Sidebar and Controls.
 export default function VirtualTabletop() { // Removed props isHexGrid, onToggleGrid, inCombat, onToggleCombat
+
+  // Refs to hold current state values for use in event handlers without triggering effect re-runs
+  // These are crucial for global event listeners attached once and accessing latest state
+  const scaleRef = useRef(null);
+  const positionRef = useRef(null);
+  const selectedTokenIdsRef = useRef(null); // Add ref for selected tokens
+  // Add other refs for state values accessed in callbacks (isHexGrid, inCombat etc if needed in global handlers)
+
 
   // 1) Single Source of Truth & History
   // gameState now includes isHexGrid and inCombat
@@ -74,6 +82,15 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
 
   // setDirectState bypasses history, useful for ephemeral changes like pan/zoom/intermediate drag
   const setDirectState = setGameState; // Alias for clarity
+
+  // Update refs whenever the corresponding state changes
+  useEffect(() => {
+      scaleRef.current = scale;
+  }, [scale]);
+
+  useEffect(() => {
+      positionRef.current = position;
+  }, [position]);
 
 
   // Callbacks to toggle grid type and combat status, updating gameState
@@ -276,6 +293,12 @@ const { startDrag, isDragging } = useTokenDrag({
     position, // Pass position from state
     tokenSize: TOKEN_VISUAL_SIZE // Pass the token size constant
   });
+
+  // Update ref whenever selectedTokenIds state changes
+  useEffect(() => {
+      selectedTokenIdsRef.current = selectedTokenIds;
+  }, [selectedTokenIds]);
+
 
   // Effect to clear selection if a selected token is deleted via context menu
   // The onDeleteTokens callback below modifies gameState, which triggers this effect.
