@@ -3,7 +3,7 @@ import { useCallback, useEffect } from 'react';
 
 /**
  * Hook to calculate new scale and position for zoom-to-mouse operations.
- * Provides a handler function for 'wheel' events.
+ * Provides a handler function for 'wheel' events and button clicks.
  *
  * @param {object} options
  * @param {string} options.containerId - The ID of the HTML element acting as the zoom container.
@@ -14,6 +14,7 @@ import { useCallback, useEffect } from 'react';
  * @param {number} [options.minScale=0.5] - Minimum allowed scale.
  * @param {number} [options.maxScale=4] - Maximum allowed scale.
  * @param {number} [options.zoomFactor=0.1] - How much scale changes per wheel 'tick'.
+ * @param {boolean} [options.isPanDisabled=false] - If true, wheel zoom is disabled.
  */
 export function useZoomToMouse({
   containerId = 'tabletop-container',
@@ -23,16 +24,29 @@ export function useZoomToMouse({
   setPosition,
   minScale = 0.5,
   maxScale = 4,
-  zoomFactor = 0.1
+  zoomFactor = 0.1,
+  isPanDisabled = false, // Added prop
 }) {
   const handleWheel = useCallback(
     (e) => {
+        // If pan/zoom is disabled by a parent component/state, do nothing
+        if (isPanDisabled) {
+            // Still prevent default/stop propagation if the event target is inside the container
+            // to block browser default zoom/scroll during other interactions.
+            const container = document.getElementById(containerId);
+            if (container && container.contains(e.target)) {
+                 e.preventDefault();
+                 e.stopPropagation();
+            }
+            return; // Exit early if disabled
+        }
+
       // Ensure the event target is within our container
       const container = document.getElementById(containerId);
       // Check if container exists AND if the event originated within it
       if (!container || !container.contains(e.target)) return;
 
-      // Prevent default browser zoom/scroll behavior
+      // Prevent default browser zoom/scroll behavior *only if* not disabled above
       e.preventDefault();
       e.stopPropagation(); // Stop propagation as well
 
@@ -87,17 +101,20 @@ export function useZoomToMouse({
       setScale(newScale);
       setPosition(newPosition);
     },
-    // Dependencies: state values and setters from parent component, and constants
-    [containerId, scale, position, setScale, setPosition, zoomFactor, minScale, maxScale]
+    // Dependencies: state values and setters from parent component, constants, and isPanDisabled flag
+    [containerId, scale, position, setScale, setPosition, zoomFactor, minScale, maxScale, isPanDisabled]
   );
 
 
-  // The handleZoomButtons function is not used by the ZoomableContainer component itself.
-  // It is used by the Controls component (via VirtualTabletop).
-  // It can remain here or be moved to VirtualTabletop/Controls if preferred.
-  // It's fine to keep it here as it uses the same zoom logic.
+  // Handle zoom buttons (zooms towards container center)
   const handleZoomButtons = useCallback(
     (factor) => { // factor is > 1 for zoom in, < 1 for zoom out
+       // If pan/zoom is disabled, buttons should also be disabled/do nothing
+       if (isPanDisabled) {
+           console.log('[DEBUG] Zoom buttons disabled.');
+           return;
+       }
+
       const container = document.getElementById(containerId);
       if (!container) return;
 
@@ -133,8 +150,8 @@ export function useZoomToMouse({
       });
       setScale(newScale); // Update scale after position for potentially smoother rendering (or vice-versa)
     },
-    // Dependencies: state values and setters, and constants
-    [containerId, position, scale, setScale, setPosition, minScale, maxScale]
+    // Dependencies: state values and setters, constants, and isPanDisabled flag
+    [containerId, position, scale, setScale, setPosition, minScale, maxScale, isPanDisabled]
   );
 
 

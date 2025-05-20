@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 // Removed direct DOM manipulation of marquee element
 
 /**
@@ -7,24 +7,43 @@ import { useState, useCallback, useEffect } from 'react';
  * @param {object} options
  * @param {Function} options.getTokens - Function that returns the current array of token objects (e.g., from gameState).
  * @param {number} options.scale - The current zoom scale of the tabletop.
- * @param {object} options.position - The current pan position {x, y} of the tabletop.
- * @param {Function} [options.onSelectTokens] - Optional callback when selection changes (e.g., to update token state if needed).
+ * @param {object} options.position - The current pan position {x, y}.
+ * @param {number} options.tokenSize - The visual size of tokens (for intersection check).
+ * @param {Function} [options.onSelectTokens] - Optional callback when selection changes (removed - selection state managed internally).
  */
-export function useTokenSelection({ getTokens, scale, position, onSelectTokens }) {
+export function useTokenSelection({ getTokens, scale, position, tokenSize }) {
   const [selectedTokenIds, setSelectedTokenIds] = useState(new Set());
   // marqueeState: null when not active, { startX: screenPx, startY: screenPx, currentX: screenPx, currentY: screenPx, containerRect } when active
   const [marqueeState, setMarqueeState] = useState(null);
   const [isSelecting, setIsSelecting] = useState(false); // State to indicate if a marquee selection is in progress
 
+   // Refs for the latest values of props/state used in global listeners
+   const scaleRef = useRef(scale);
+   const positionRef = useRef(position);
+   const getTokensRef = useRef(getTokens);
+   const tokenSizeRef = useRef(tokenSize);
+   const selectedTokenIdsRef = useRef(selectedTokenIds); // Also keep track of selected IDs in ref for check
+   const marqueeStateRef = useRef(marqueeState);
+
+   // Update refs whenever dependencies change
+   useEffect(() => {
+       scaleRef.current = scale;
+       positionRef.current = position;
+       getTokensRef.current = getTokens;
+       tokenSizeRef.current = tokenSize;
+       selectedTokenIdsRef.current = selectedTokenIds;
+       marqueeStateRef.current = marqueeState;
+   }, [scale, position, getTokens, tokenSize, selectedTokenIds, marqueeState]);
+
 
   const clearSelection = useCallback(() => {
     console.log('[DEBUG] Clearing selection.');
     setSelectedTokenIds(new Set());
-    // onSelectTokens?.(new Set(), false); // Notify parent if needed - selection state is managed internally now
-  }, []); // No dependencies needed
+  }, []);
 
 
   // This function is for setting the selection directly (e.g., after marquee or token click)
+  // It handles additive logic internally.
   const setSelectedIds = useCallback((idsToSelect, additive = false) => {
        console.log('[DEBUG] Setting selection:', { tokenIds: Array.from(idsToSelect), additive });
         setSelectedTokenIds(prev => {
@@ -38,10 +57,9 @@ export function useTokenSelection({ getTokens, scale, position, onSelectTokens }
                  newSet = new Set(idsToSelect);
              }
 
-            // onSelectTokens?.(newSet, additive); // Notify parent - selection state managed internally
             return newSet;
         });
-  }, []); // No dependencies needed
+  }, []);
 
 
    // Function to toggle selection of a single token
@@ -65,25 +83,134 @@ export function useTokenSelection({ getTokens, scale, position, onSelectTokens }
       }
 
       console.log('[DEBUG] New selection after single toggle:', Array.from(newSet));
-       // onSelectTokens?.(newSet, additive); // Notify parent - selection state managed internally
 
       return newSet;
     });
-  }, []); // No dependencies needed
+  }, []);
+
+
+    // Handler for document mousemove during marquee
+    // Memoized using ref pattern for adding/removing listeners
+    const handleMarqueeMouseMoveRef = useRef(handleMarqueeMouseMove);
+    useEffect(() => {
+        handleMarqueeMouseMoveRef.current = handleMarqueeMouseMove;
+    }, [handleMarqueeMouseMove]); // Depend on the memoized handler logic
+
+    const handleMarqueeMouseMove = useCallback((e) => {
+        // Only process if marqueeState is active
+        const currentMarqueeState = marqueeStateRef.current; // Use ref
+        if (!currentMarqueeState) return;
+
+        // Prevent default text selection
+         e.preventDefault();
+         e.stopPropagation(); // Stop propagation
+
+        // Update the current mouse position in container coordinates
+        const currentX = e.clientX - currentMarqueeState.containerRect.left;
+        const currentY = e.clientY - currentMarqueeState.containerRect.top;
+
+        // Update marquee state - This will trigger Marquee component re-render
+        // Use functional update form to ensure latest state is used
+        setMarqueeState(prev => ({
+            ...prev,
+            currentX,
+            currentY
+        }));
+
+    }, []); // No dependencies needed if using refs inside
+
+
+    // Handler for document mouseup during marquee
+    // Memoized using ref pattern for adding/removing listeners
+    const handleMarqueeMouseUpRef = useRef(handleMarqueeMouseUp);
+    useEffect(() => {
+        handleMarqueeMouseUpRef.current = handleMarqueeMouseUp;
+    }, [handleMarqueeMouseUp]); // Depend on the memoized handler logic
+
+    const handleMarqueeMouseUp = useCallback((e) => {
+        // Only process if marqueeState is active
+        const currentMarqueeState = marqueeStateRef.current; // Use ref
+        if (!currentMarqueeState) return;
+
+        console.log('[DEBUG] useTokenSelection: handleMouseUp. Marquee ended.');
+
+        // Prevent default
+         e.preventDefault();
+         e.stopPropagation(); // Stop propagation
+
+        // Get the final marquee screen coordinates relative to the container
+        const { startX, startY, currentX, currentY, containerRect } = currentMarqueeState;
+
+        // Calculate marquee bounding box (min/max screen coordinates relative to container)
+        const marqueeMinXScreen = Math.min(startX, currentX);
+        const marqueeMaxXScreen = Math.max(startX, currentX);
+        const marqueeMinYScreen = Math.min(startY, currentY);
+        const marqueeMaxYScreen = Math.max(startY, currentY);
+
+        // Get latest state values via refs for calculation
+        const currentTokens = getTokensRef.current();
+        const currentScale = scaleRef.current || 1;
+        const currentPosition = positionRef.current || { x: 0, y: 0 };
+        const currentTokenSize = tokenSizeRef.current || 40; // Default if ref is stale
+
+        // Check which tokens intersect with the marquee rectangle
+        const intersectingTokenIds = new Set();
+        const tokenRadius = currentTokenSize / 2;
+
+        currentTokens.forEach(token => {
+            // Get token's screen position relative to the container.
+            // Token's position is its center in grid coordinates.
+            // Convert grid position to screen position: (gridPos * scale) + panOffset
+            const tokenCenterXScreen = (token.position.x * currentScale) + currentPosition.x;
+            const tokenCenterYScreen = (token.position.y * currentScale) + currentPosition.y;
+
+            // Get token's screen bounds.
+            const tokenLeftScreen = tokenCenterXScreen - tokenRadius;
+            const tokenRightScreen = tokenCenterXScreen + tokenRadius;
+            const tokenTopScreen = tokenCenterYScreen - tokenRadius;
+            const tokenBottomScreen = tokenCenterYScreen + tokenRadius;
+
+
+            // Check for intersection between marquee rectangle and token bounding box (AABB intersection)
+            const intersects = !(
+                marqueeMaxXScreen < tokenLeftScreen ||
+                marqueeMinXScreen > tokenRightScreen ||
+                marqueeMaxYScreen < tokenTopScreen ||
+                marqueeMinYScreen > tokenBottomScreen
+            );
+
+
+            if (intersects) {
+                intersectingTokenIds.add(token.id);
+            }
+        });
+
+        console.log('[DEBUG] Marquee selection complete. Intersecting tokens:', Array.from(intersectingTokenIds));
+
+        // Update the selected tokens state using the additive flag from the mouse event (Shift key)
+        setSelectedIds(intersectingTokenIds, e.shiftKey);
+
+        // Reset marquee state and selecting flag
+        setMarqueeState(null);
+        setIsSelecting(false);
+
+        // Remove global listeners added in startMarquee
+        document.removeEventListener('mousemove', handleMarqueeMouseMoveRef.current, { capture: true });
+        document.removeEventListener('mouseup', handleMarqueeMouseUpRef.current, { capture: true });
+         document.body.style.userSelect = ''; // Restore user select
+
+    }, [setSelectedIds]); // Depend on setSelectedIds
 
 
   /**
    * Call this function from the tabletop's onMouseDown handler when a click
-   * doesn't hit a token and isn't a right-click (pan/context menu).
-   * It starts the marquee selection process.
+   * doesn't hit a token and isn't a right-click (pan/context menu), and
+   * a drag threshold is met.
    *
-   * @param {MouseEvent} e - The mouse down event.
+   * @param {object} startEvent - The initial mousedown event (or object with clientX/Y).
    */
-  const startMarquee = useCallback((e) => {
-    console.log('[DEBUG] startMarquee called on mouse down.');
-    // Prevent default text selection behavior immediately
-     e.preventDefault();
-     e.stopPropagation(); // Stop propagation so parent listeners don't interfere
+  const startMarquee = useCallback((startEvent) => {
+    console.log('[DEBUG] useTokenSelection: startMarquee called.');
 
     // Get container and verify
     const container = document.getElementById('tabletop-container');
@@ -96,8 +223,8 @@ export function useTokenSelection({ getTokens, scale, position, onSelectTokens }
     const containerRect = container.getBoundingClientRect();
 
     // Store the starting position of the mouse in container coordinates
-    const startX = e.clientX - containerRect.left;
-    const startY = e.clientY - containerRect.top;
+    const startX = startEvent.clientX - containerRect.left;
+    const startY = startEvent.clientY - containerRect.top;
 
     console.log('[DEBUG] Marquee start position (container coords):', { startX, startY });
 
@@ -111,139 +238,53 @@ export function useTokenSelection({ getTokens, scale, position, onSelectTokens }
     });
      setIsSelecting(true); // Set selecting flag
 
+     // Prevent user selection globally while selecting
+     document.body.style.userSelect = 'none';
+
     // Add global mouse move/up listeners managed by this hook
-    // Using { capture: true } to ensure they run before other handlers on the way down
-    document.addEventListener('mousemove', handleMarqueeMouseMove, { capture: true });
-    document.addEventListener('mouseup', handleMarqueeMouseUp, { capture: true });
+    // Using { capture: true } to ensure they run before bubbling handlers
+    document.addEventListener('mousemove', handleMarqueeMouseMoveRef.current, { capture: true });
+    document.addEventListener('mouseup', handleMarqueeMouseUpRef.current, { capture: true });
 
-  }, [/* No dependencies needed for startMarquee itself, state/handlers are stable */]);
-
-
-    // Handler for document mousemove during marquee
-    const handleMarqueeMouseMove = useCallback((e) => {
-        // Only process if marqueeState is active
-        if (!marqueeState) return;
-
-        // Prevent default text selection
-         e.preventDefault();
-         e.stopPropagation(); // Stop propagation
-
-        // Update the current mouse position in container coordinates
-        const currentX = e.clientX - marqueeState.containerRect.left;
-        const currentY = e.clientY - marqueeState.containerRect.top;
-
-        // Update marquee state - This will trigger Marquee component re-render
-        // Use functional update form to ensure latest state is used
-        setMarqueeState(prev => ({
-            ...prev,
-            currentX,
-            currentY
-        }));
-
-    }, [marqueeState]); // Depend on marqueeState to access its values
-
-    // Use useRef for the mouseup handler to avoid re-creating the handler function
-    // every time marqueeState changes, which would cause issues with removing the listener.
-    // The handler logic still needs to access the latest marqueeState, getTokens, etc.
-    // This is a common pattern when global listeners need access to changing state/props.
-    const handleMarqueeMouseUpRef = useRef(handleMarqueeMouseUp); // Ref for the stable handler identity
-    useEffect(() => {
-        // Update the ref whenever the actual handleMarqueeMouseUp logic changes
-        handleMarqueeMouseUpRef.current = handleMarqueeMouseUp;
-    }, [handleMarqueeMouseUp]); // Depend on the logic function
+  }, []); // No dependencies needed for startMarquee itself logic
 
 
-    // Handler for document mouseup during marquee
-    // This function is memoized, but the Ref pattern above ensures the *listener* added/removed is stable.
-    const handleMarqueeMouseUp = useCallback((e) => {
-        // Access the latest marqueeState *via a ref* if needed outside the immediate closure,
-        // but here it's fine as it's used when state is active.
-        if (!marqueeState) return;
+  // Effect to clear selection if a selected token is deleted outside this hook's actions
+  // (e.g., via Context Menu delete). This ensures the selection set stays valid.
+  useEffect(() => {
+       // Get the latest tokens list using the ref
+       const currentTokens = getTokensRef.current();
+       const currentTokenIds = new Set(currentTokens.map(t => t.id));
+       const currentSelectedTokenIds = selectedTokenIdsRef.current; // Use ref for current selection state
 
-        // Prevent default
-         e.preventDefault();
-         e.stopPropagation(); // Stop propagation
+       // Check if any token in the selection set no longer exists in the current tokens list
+       const selectionNeedsCleanup = Array.from(currentSelectedTokenIds).some(id => !currentTokenIds.has(id));
 
-        // Get the final marquee screen coordinates relative to the container
-        const { startX, startY, currentX, currentY, containerRect } = marqueeState;
-
-        // Calculate marquee bounding box (min/max screen coordinates relative to container)
-        const marqueeMinXScreen = Math.min(startX, currentX);
-        const marqueeMaxXScreen = Math.max(startX, currentX);
-        const marqueeMinYScreen = Math.min(startY, currentY);
-        const marqueeMaxYScreen = Math.max(startY, currentY);
-
-        // Check which tokens intersect with the marquee rectangle
-        const tokens = getTokens(); // Get current tokens from the provided function
-        const intersectingTokenIds = new Set();
-
-        tokens.forEach(token => {
-            // Get token's screen position relative to the container.
-            // Token's position is its center in grid coordinates.
-            // Convert grid position to screen position: (gridPos * scale) + panOffset
-            const tokenCenterXScreen = (token.position.x * scale) + position.x;
-            const tokenCenterYScreen = (token.position.y * scale) + position.y;
-
-            // Get token's screen bounds. Assuming token size is based on CSS .token width/height.
-            // Better to get this from a constant or prop if possible, but 40px is in CSS.
-            // A token's "hotspot" or click area might be slightly smaller than the visual.
-            // Let's use the visual size (40px) as the bounding box dimensions.
-            const tokenVisualSize = 40; // From CSS
-            const tokenRadius = tokenVisualSize / 2; // Assuming tokens are round
-
-            const tokenLeftScreen = tokenCenterXScreen - tokenRadius;
-            const tokenRightScreen = tokenCenterXScreen + tokenRadius;
-            const tokenTopScreen = tokenCenterYScreen - tokenRadius;
-            const tokenBottomScreen = tokenCenterYScreen + tokenRadius;
-
-
-            // Check for intersection between marquee rectangle and token bounding box (AABB intersection)
-            // Intersection occurs if !(rectangle A is entirely to the right of rectangle B OR B is entirely to the right of A
-            // OR A is entirely below B OR B is entirely below A)
-            const intersects = !(
-                marqueeMaxXScreen < tokenLeftScreen || // Marquee right edge is left of token left edge
-                marqueeMinXScreen > tokenRightScreen || // Marquee left edge is right of token right edge
-                marqueeMaxYScreen < tokenTopScreen || // Marquee bottom edge is above token top edge
-                marqueeMinYScreen > tokenBottomScreen // Marquee top edge is below token bottom edge
-            );
-
-
-            if (intersects) {
-                intersectingTokenIds.add(token.id);
-            }
-        });
-
-        console.log('[DEBUG] Marquee selection complete. Intersecting tokens:', Array.from(intersectingTokenIds));
-
-        // Update the selected tokens state using the additive flag from the mouse event (Shift key)
-        // This now ADDS to selection if additive=true, instead of toggling.
-        setSelectedIds(intersectingTokenIds, e.shiftKey);
-
-        // Reset marquee state - This will remove the Marquee component
-        setMarqueeState(null);
-        setIsSelecting(false); // Reset selecting flag
-
-        // Remove global listeners attached in startMarquee
-        document.removeEventListener('mousemove', handleMarqueeMouseMove, { capture: true });
-        document.removeEventListener('mouseup', handleMarqueeMouseUpRef.current, { capture: true }); // Use the ref here!
-
-    }, [marqueeState, getTokens, scale, position, setSelectedIds, handleMarqueeMouseMove]); // Depend on marqueeState, getTokens, scale, position, setSelectedIds, handleMarqueeMouseMove
+       if (selectionNeedsCleanup) {
+            console.log('[DEBUG] Selected token(s) removed by external action, cleaning up selection.');
+            // Filter the selection set to only include existing tokens
+            const newSelection = new Set(Array.from(currentSelectedTokenIds).filter(id => currentTokenIds.has(id)));
+            // Update selection state using the setter
+            setSelectedTokenIds(newSelection); // Directly update state managed by this hook
+       }
+  }, [getTokens]); // Depend only on the getTokens function reference (should be stable via useCallback)
+  // Note: React guarantees state setters are stable. selectedTokenIds state change itself
+  // will trigger re-renders where the effect runs again if tokens changed.
+  // The dependency on `getTokens` ensures this cleanup runs if the parent's tokens array reference changes.
 
 
   // Cleanup listeners when component unmounts, just in case mouseup didn't fire correctly
-  // This effect runs once on mount and cleanup runs on unmount.
-  // The listeners added in startMarquee are removed in handleMarqueeMouseUp.
-  // This final cleanup is a safeguard.
   useEffect(() => {
       return () => {
-          // Ensure global listeners are removed on unmount
-           console.log('[DEBUG] useTokenSelection: Hook unmounting, cleaning up listeners.');
-           document.removeEventListener('mousemove', handleMarqueeMouseMove, { capture: true });
-           document.removeEventListener('mouseup', handleMarqueeMouseUpRef.current, { capture: true }); // Use the ref!
+          console.log('[DEBUG] useTokenSelection: Hook unmounting, cleaning up listeners.');
+          // Ensure global listeners are removed on unmount using the stable refs
+           document.removeEventListener('mousemove', handleMarqueeMouseMoveRef.current, { capture: true });
+           document.removeEventListener('mouseup', handleMarqueeMouseUpRef.current, { capture: true });
            setMarqueeState(null); // Ensure marquee state is reset
-           setIsSelecting(false);
+           setIsSelecting(false); // Reset selecting flag
+           document.body.style.userSelect = ''; // Restore user select
       };
-  }, [handleMarqueeMouseMove, handleMarqueeMouseUpRef]); // Depend on stable handler refs
+  }, [handleMarqueeMouseMoveRef, handleMarqueeMouseUpRef]); // Depend on stable handler refs
 
 
   return {
@@ -252,8 +293,7 @@ export function useTokenSelection({ getTokens, scale, position, onSelectTokens }
     clearSelection, // To clear all selections
     startMarquee, // Call this on mouse down for marquee
     marqueeState, // State to render the Marquee component (provides position/size)
-    handleMarqueeMouseMove, // Expose to parent if parent attaches global mousemove listener
-    handleMarqueeMouseUp, // Expose to parent if parent attaches global mouseup listener
     isSelecting, // Boolean flag indicating marquee is active
+    setSelectedTokenIds, // Expose internal setter for the cleanup effect within the hook
   };
 }

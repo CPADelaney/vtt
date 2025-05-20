@@ -19,7 +19,7 @@ const ChatMessage = ({ message }) => {
 
     return (
         <div className={getMessageClass()}>
-            <span className="sender">{message.sender}:</span>
+            {message.sender && <span className="sender">{message.sender}:</span>}
             {message.type === 'roll' ? (
                 <div>
                     <div>{message.original}</div>
@@ -35,39 +35,62 @@ const ChatMessage = ({ message }) => {
 };
 
 export const Sidebar = ({
-  isHexGrid,
-  onToggleGrid,
-  inCombat,
-  onToggleCombat,
-  undoGameState, // Prop from useStateWithHistory history object
-  historyInfo // Prop from useStateWithHistory history object
+  isHexGrid, // Received as prop from parent (VirtualTabletop)
+  onToggleGrid, // Received as prop from parent (VirtualTabletop)
+  inCombat, // Received as prop from parent (VirtualTabletop)
+  onToggleCombat, // Received as prop from parent (VirtualTabletop)
+  undoGameState, // Prop from useStateWithHistory history object (passed from parent)
+  historyInfo // Prop from useStateWithHistory history object (passed from parent)
 }) => {
   const [activeTab, setActiveTab] = useState('dm'); // 'dm', 'chat'
   const [activeChatTab, setActiveChatTab] = useState('messages'); // 'messages', 'combat'
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState([]); // Local state for chat messages
   const [chatInput, setChatInput] = useState('');
 
   const messagesEndRef = useRef(null); // Ref to auto-scroll chat
   const { handleCommand } = useDiceManager('DM'); // Use DiceManager hook (assume DM for now)
   const { getAvailableSystems, setSystem } = useSystemManager(); // Use SystemManager hook
 
-  // Auto-scroll chat messages
+  // Auto-scroll chat messages when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+      // Only scroll if we are on the chat tab
+      if (activeTab === 'chat' && activeChatTab === 'messages') {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }
+  }, [messages, activeTab, activeChatTab]); // Depend on messages and active tabs
 
-  // Effect to add system messages for combat toggle
+  // Auto-scroll combat log when history changes
   useEffect(() => {
+       // Only scroll if we are on the combat log tab
+      if (activeTab === 'chat' && activeChatTab === 'combat') {
+         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }
+  }, [historyInfo?.history.length, activeTab, activeChatTab]); // Depend on history length and active tabs
+
+
+  // Effect to add system messages for combat toggle (triggered by inCombat prop change)
+  useEffect(() => {
+      // Only add message if inCombat prop *actually* changed
+      // Check if messages array is not empty and the last message is different,
+      // or if it's the very first system message.
+      const lastMessage = messages[messages.length - 1];
+      const newSystemMessageText = inCombat ? 'Combat Initiated!' : 'Combat Ended.';
+
+      // Prevent adding duplicate initial messages on load or unnecessary re-adds
+      if (lastMessage?.type === 'system' && lastMessage.text === newSystemMessageText) {
+          return;
+      }
+
       setMessages(prev => [
           ...prev,
           {
               id: Date.now() + Math.random(), // Simple unique ID
               type: 'system',
               sender: 'System',
-              text: inCombat ? 'Combat Initiated!' : 'Combat Ended.'
+              text: newSystemMessageText
           }
       ]);
-  }, [inCombat]);
+  }, [inCombat, messages]); // Depend on inCombat prop and the local messages state for the check
 
 
   const handleMessageSend = useCallback((e) => {
@@ -84,7 +107,7 @@ export const Sidebar = ({
           result = {
               type: 'error',
               text: `Error processing command: ${error.message}`,
-              sender: 'System'
+              sender: 'System' // System errors should come from System
           };
       }
 
@@ -92,7 +115,8 @@ export const Sidebar = ({
           setMessages(prev => [...prev, {
               id: Date.now() + Math.random(), // Ensure unique ID
               ...result,
-              timestamp: Date.now(),
+              timestamp: Date.now(), // Add timestamp if needed later
+              sender: result.sender || 'DM' // Default sender if not provided by command result
           }]);
       }
     }
@@ -105,14 +129,15 @@ export const Sidebar = ({
               id: Date.now() + Math.random(),
               ...result,
               timestamp: Date.now(),
+              sender: result.sender || 'DM'
           }]);
       }
   }, [handleCommand]);
 
   const handleUndoClick = useCallback(() => {
       console.log('[DEBUG] Undo button clicked. Calling undoGameState.');
-      undoGameState(); // Call the undo function passed from App/VT
-  }, [undoGameState]);
+      undoGameState(); // Call the undo function passed from parent
+  }, [undoGameState]); // Depend on undoGameState prop
 
   const handleRevertTurnClick = useCallback(() => {
       // Placeholder for reverting to the start of the current combat turn
@@ -127,8 +152,9 @@ export const Sidebar = ({
       }]);
   }, []); // Add dependencies if combat state/turn logic is added
 
+
   return (
-    <div className="right-sidebar">
+    <div className="right-sidebar"> {/* Keep the main sidebar class */}
       {/* Header/Tabs Area */}
       <div className="sidebar-tabs">
         <button
@@ -161,8 +187,8 @@ export const Sidebar = ({
                             onChange={(e) => setSystem(e.target.value)}
                             // Assuming SystemManager tracks currentSystemId internally
                             // Or lift currentSystemId state up to App/VirtualTabletop
-                            // For now, placeholder value
-                            value="5e" // Replace with actual state if lifted
+                            // For now, placeholder value - SystemManager hook manages this
+                            value={useSystemManager().currentSystemId} // Read value from hook
                         >
                             {getAvailableSystems().map(system => (
                                 <option key={system.id} value={system.id}>
@@ -176,6 +202,7 @@ export const Sidebar = ({
                   <button
                       onClick={onToggleCombat} // Use the function from props
                       className={`w-full btn-combat-${inCombat ? 'end' : 'start'}`}
+                      disabled={!onToggleCombat} // Disable if callback not provided
                   >
                       <Swords size={16} className="inline mr-2" />
                       {inCombat ? 'End Combat' : 'Start Combat'}
@@ -185,6 +212,7 @@ export const Sidebar = ({
                   <button
                       onClick={onToggleGrid} // Use the function from props
                       className="w-full btn-grid-toggle"
+                      disabled={!onToggleGrid} // Disable if callback not provided
                   >
                       {isHexGrid ? 'Switch to Square Grid' : 'Switch to Hex Grid'}
                   </button>
@@ -193,7 +221,7 @@ export const Sidebar = ({
                     <div className="flex justify-around gap-2">
                         <button
                             onClick={handleUndoClick}
-                            disabled={!historyInfo?.canUndo} // Use historyInfo prop
+                            disabled={!historyInfo?.canUndo || !undoGameState} // Use historyInfo prop and check if undo function exists
                             className="flex-1 btn-undo"
                         >
                              <History size={16} className="inline mr-2" />
@@ -236,7 +264,8 @@ export const Sidebar = ({
                         {activeChatTab === 'messages' ? (
                            <div className="chat-messages">
                                {messages.map(msg => (
-                                   <ChatMessage key={msg.id} message={msg} />
+                                   // Use a unique key based on message id, defaulting to index if id is missing
+                                   <ChatMessage key={msg.id || `msg-${messages.indexOf(msg)}`} message={msg} />
                                ))}
                                <div ref={messagesEndRef} /> {/* Scroll target */}
                            </div>
@@ -244,44 +273,45 @@ export const Sidebar = ({
                            <div className="combat-log">
                                 {/* Display action history from useStateWithHistory */}
                                 {historyInfo?.history // Access history from prop
-                                    .flatMap((state, index, arr) => {
-                                        // Add combat log messages between states if combat is active
-                                        if (!state.inCombat || index === 0) return [];
-                                        // This is a simplified view; a real combat log would be more detailed
-                                        // For demonstration, just show state changes
-                                        const prevState = arr[index - 1];
-                                        const changes = [];
-                                        // Example: check if tokens changed positions
-                                        if (JSON.stringify(prevState.tokens) !== JSON.stringify(state.tokens)) {
-                                            changes.push(`Tokens updated`);
-                                        }
-                                        // Example: check if combat status changed
-                                        if (prevState.inCombat !== state.inCombat) {
-                                            changes.push(state.inCombat ? 'Combat Started' : 'Combat Ended');
-                                        }
-                                        // Add more checks for initiative changes, HP changes, etc.
+                                    // Filter out the initial state or states outside combat if desired
+                                    .filter((state, index) => index > 0) // Start from the first actual state change
+                                    .map((state, index, filteredArr) => {
+                                        // This is a simplified log showing state changes
+                                        // A real combat log would track discrete events (moves, rolls, damage)
+                                        const previousState = index > 0 ? filteredArr[index - 1] : historyInfo?.history[0];
 
-                                        if (changes.length > 0) {
-                                            return [{
-                                                id: `history-${index}`,
-                                                type: 'State Change', // Or more specific type based on diff
-                                                timestamp: new Date().toLocaleTimeString(), // Placeholder
-                                                details: changes.join(', ')
-                                            }];
+                                        const changes = [];
+                                        // Simplified diffing - better to log explicit events
+                                        if (previousState && JSON.stringify(previousState.tokens) !== JSON.stringify(state.tokens)) {
+                                            changes.push('Tokens updated (moved/added/removed)');
                                         }
-                                        return [];
-                                    })
-                                    .map(item => (
-                                        <div key={item.id} className="combat-log-item">
-                                            <div>{item.type}</div>
-                                            <div className="text-xs text-gray-600">{item.timestamp}</div>
-                                            {item.details && <div className="text-xs">{item.details}</div>}
-                                        </div>
-                                    ))}
-                                {!inCombat && historyInfo?.history.length === 1 && ( // Check history length > 0
-                                     <div className="text-center text-gray-500 italic">Combat log appears here when combat is active.</div>
+                                        if (previousState && previousState.inCombat !== state.inCombat) {
+                                             changes.push(state.inCombat ? 'Combat Started' : 'Combat Ended');
+                                        }
+                                        // Add checks for other relevant combat state changes (initiative, turn, etc.)
+
+                                        // Only show entries where something *meaningful* changed for the log
+                                        // Or log every state change if that's the desired level of detail
+                                        // For this example, we'll log every history step after the initial state,
+                                        // indicating what *might* have happened.
+                                        // A more robust log would be explicit events.
+                                        const actionDetails = changes.length > 0 ? changes.join(', ') : 'State updated';
+
+
+                                        return (
+                                            <div key={`history-step-${index}`} className="combat-log-item">
+                                                <div>History Step {historyInfo.history.indexOf(state)}</div> {/* Use original index */}
+                                                 {/* Replace with actual event type and details if logging explicit events */}
+                                                <div className="text-xs">{actionDetails}</div>
+                                                 <div className="text-xs text-gray-600">Time (placeholder)</div> {/* Placeholder timestamp */}
+                                            </div>
+                                        );
+                                    })}
+
+                                {!inCombat && (historyInfo?.history.length ?? 0) <= 1 && ( // Check history length
+                                     <div className="text-center text-gray-500 italic">Combat log appears here when combat is active and actions are taken.</div>
                                 )}
-                                 {inCombat && historyInfo?.history.length <= 1 && ( // Check history length > 0
+                                 {inCombat && (historyInfo?.history.length ?? 0) <= 1 && ( // Check history length
                                      <div className="text-center text-gray-500 italic">No actions logged yet this combat.</div>
                                 )}
                                 <div ref={messagesEndRef} /> {/* Scroll target */}

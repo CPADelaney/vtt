@@ -12,12 +12,14 @@ export function ZoomableContainer({
   maxScale = 4,
   zoomFactor = 0.1,
   onZoomEnd,
-  onPanEnd,
+  onPanEnd, // This prop is likely unused now that pan is handled externally
   onContextMenu,
   gridWidth,
   gridHeight,
+  isPanDisabled = false, // New prop: disable pan/zoom events if true
   children
 }) {
+  // Use the useZoomToMouse hook for wheel-based zooming
   const { handleWheel } = useZoomToMouse({
     containerId,
     scale,
@@ -26,220 +28,128 @@ export function ZoomableContainer({
     setPosition,
     minScale,
     maxScale,
-    zoomFactor
+    zoomFactor,
+    isPanDisabled, // Pass the disabled flag to the hook
   });
 
-  // States
-  const [isPanning, setIsPanning] = useState(false);
-  const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
-  const hasMovedRef = useRef(false);
-  const startPosRef = useRef(null);
-  
-  // Keep track of current position for panning
-  const positionRef = useRef(position);
+  // The ZoomableContainer component's main role is now to:
+  // 1. Provide the container element with a known ID.
+  // 2. Apply the transform based on parent-managed scale/position.
+  // 3. Attach the wheel listener (managed by useZoomToMouse hook).
+  // 4. Attach the right-click context menu listener.
+  // 5. Manage pointer events based on `isPanDisabled`.
+
+  // Wheel listener for zooming
+  const handleContainerWheel = useCallback((e) => {
+     // The check for container containment is done inside handleWheel hook
+     // We just call the hook's handler
+     handleWheel(e);
+     // Assuming the hook prevents default if it handles the event
+  }, [handleWheel]);
+
+
+  // Attach wheel listener to the container element
   useEffect(() => {
-    positionRef.current = position;
-  }, [position]);
-
-  const handleWheelEnd = useMemo(() => {
-    return _.debounce(() => {
-      console.log('[DEBUG] wheel ended');
-      onZoomEnd?.();
-    }, 300);
-  }, [onZoomEnd]);
-
-  const onWheel = useCallback((e) => {
-    handleWheel(e);
-    handleWheelEnd();
-  }, [handleWheel, handleWheelEnd]);
-  
-const handleMouseDown = useCallback((e) => {
-  if (e.button !== 2) return;
-  
-  const isToken = e.target.closest('.token');
-  if (isToken) return;
-  
-  e.preventDefault();
-  e.stopPropagation();
-
-  startPosRef.current = { x: e.clientX, y: e.clientY };
-  hasMovedRef.current = false;
-  setIsPanning(true);
-  setLastPos({ x: e.clientX, y: e.clientY });
-}, []);
-
-useEffect(() => {
-  const container = document.getElementById(containerId);
-  if (!container) return;
-
-  const handleContainerWheel = (e) => {
-    if (container.contains(e.target)) {
-      e.preventDefault();
-      onWheel(e);
+    const container = document.getElementById(containerId);
+    if (!container) {
+        console.warn(`[DEBUG] ZoomableContainer: Container element with ID "${containerId}" not found on mount.`);
+        return;
     }
-  };
 
-  container.addEventListener('wheel', handleContainerWheel, { passive: false });
-  
-  return () => {
-    container.removeEventListener('wheel', handleContainerWheel);
-  };
-}, [containerId, onWheel]);
+    // Add the wheel listener
+    // Use { passive: false } to allow preventDefault for custom zooming
+    container.addEventListener('wheel', handleContainerWheel, { passive: false });
 
-const handleMouseMove = useCallback((e) => {
-  if (!isPanning) return;
+    // Cleanup function
+    return () => {
+       console.log(`[DEBUG] ZoomableContainer: Removing wheel listener from "${containerId}".`);
+       container.removeEventListener('wheel', handleContainerWheel);
+    };
+  }, [containerId, handleContainerWheel]); // Depend on containerId and the memoized handler
 
-  const dx = e.clientX - lastPos.x;
-  const dy = e.clientY - lastPos.y;
-  const distance = Math.sqrt(dx * dx + dy * dy);
-  
-  if (distance > 3) {
-    hasMovedRef.current = true;
-    document.body.style.cursor = 'grabbing';
-    
-    setPosition({
-      x: positionRef.current.x + dx,
-      y: positionRef.current.y + dy
-    });
-  }
-  
-  setLastPos({ x: e.clientX, y: e.clientY });
-}, [isPanning, lastPos, setPosition]);
 
-const handleMouseUp = useCallback((e) => {
-  // Block the context menu completely if we were panning
-  if (hasMovedRef.current) {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Force block the upcoming context menu
-    window.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-    }, { capture: true, once: true });
-  }
-  
-  hasMovedRef.current = false;
-  setIsPanning(false);
-  document.body.style.cursor = '';
-  startPosRef.current = null;
-}, []);
+  // Context Menu listener for right-clicking
+  const handleContainerContextMenu = useCallback((e) => {
+      // Call the parent's onContextMenu handler if provided
+      // The parent (VirtualTabletop) is responsible for checking if
+      // a drag/select was active before showing its custom menu.
+      // We prevent the default browser context menu here.
+       e.preventDefault();
+       e.stopPropagation();
+       console.log('[DEBUG-CONTAINER] Context menu triggered on container.');
+       onContextMenu?.(e); // Call the callback passed from the parent
+  }, [onContextMenu]); // Depend on the parent's callback
 
-const handleContextMenu = useCallback((e) => {
-  if (isPanning || hasMovedRef.current) {
-    e.preventDefault();
-    e.stopPropagation();
-    return;
-  }
+   // Attach context menu listener to the container element
+   useEffect(() => {
+       const container = document.getElementById(containerId);
+       if (!container) {
+           console.warn(`[DEBUG] ZoomableContainer: Container element with ID "${containerId}" not found for contextmenu listener.`);
+           return;
+       }
+       // Add the contextmenu listener
+        container.addEventListener('contextmenu', handleContainerContextMenu);
 
-  // Only show menu if we haven't moved
-  if (onContextMenu && !hasMovedRef.current) {
-    e.preventDefault();
-    e.stopPropagation();
-    onContextMenu(e);
-  }
-}, [isPanning, onContextMenu]);
+       // Cleanup function
+        return () => {
+            console.log(`[DEBUG] ZoomableContainer: Removing contextmenu listener from "${containerId}".`);
+            container.removeEventListener('contextmenu', handleContainerContextMenu);
+        };
+   }, [containerId, handleContainerContextMenu]); // Depend on containerId and the memoized handler
 
-  // Global event listeners for panning
-  useEffect(() => {
-    if (isPanning) {
-      const onMouseMove = (e) => {
-        e.preventDefault();
-        handleMouseMove(e);
-      };
-      const onMouseUp = (e) => {
-        e.preventDefault();
-        handleMouseUp(e);
-      };
-      const onKeyDown = (e) => {
-        if (e.key === 'Escape') {
-          handleMouseUp(e);
-        }
-      };
 
-      // Add document-level listeners
-      document.addEventListener('mousemove', onMouseMove, { capture: true });
-      document.addEventListener('mouseup', onMouseUp, { capture: true });
-      document.addEventListener('keydown', onKeyDown, { capture: true });
-
-      return () => {
-        document.removeEventListener('mousemove', onMouseMove, { capture: true });
-        document.removeEventListener('mouseup', onMouseUp, { capture: true });
-        document.removeEventListener('keydown', onKeyDown, { capture: true });
-      };
-    }
-  }, [isPanning, handleMouseMove, handleMouseUp]);
-
+  // Style for the main container element
   const containerStyle = {
     width: '100%',
     height: '100%',
-    overflow: 'hidden',
-    position: 'relative',
-    touchAction: 'none'
+    overflow: 'hidden', // Hide scrollbars
+    position: 'relative', // Needed for absolute positioning of content
+    touchAction: 'none', // Prevent default touch gestures like panning/zooming
+    // Pointer events always 'auto' on the container itself,
+    // allowing mouse events to be captured here before bubbling/capture phases.
+    pointerEvents: 'auto',
   };
 
+  // Style for the content element (the actual tabletop that gets transformed)
   const contentStyle = {
     position: 'absolute',
     left: 0,
     top: 0,
     width: gridWidth,
     height: gridHeight,
-    transform: `translate(${position?.x}px, ${position?.y}px) scale(${scale})`,
-    transformOrigin: '0 0',
-    pointerEvents: isPanning ? 'none' : 'auto'
+    // Apply the transform based on scale and position from parent state
+    transform: `translate(${position?.x || 0}px, ${position?.y || 0}px) scale(${scale || 1})`,
+    transformOrigin: '0 0', // Scale/translate from the top-left corner
+
+    // Disable pointer events on the content *while dragging or selecting*.
+    // This prevents unintended interactions with elements *within* the tabletop
+    // while a drag or marquee started *on* the tabletop is in progress.
+    // Mouse events are handled by global listeners attached to document.body by hooks.
+    // Re-enable pointer events when not dragging/selecting so tokens, grid, etc.,
+    // are interactive for clicks/initial mousedown.
+    pointerEvents: isPanDisabled ? 'none' : 'auto',
   };
+
+    // The onMouseDown on the container div is NOT where the main click/drag/marquee
+    // differentiation happens in the refactored approach. That happens on the
+    // #tabletop div child, handled by VirtualTabletop.
+    // This container's mousedown is primarily for capturing the event early if needed,
+    // but the logic is simpler now. Let's remove the redundant mousedown handler here.
 
 return (
     <div
       id={containerId}
-      style={{
-        ...containerStyle,
-        pointerEvents: 'auto'
-      }}
-      onMouseDown={(e) => {
-        console.log('[DEBUG-CONTAINER] Container mousedown:', {
-          button: e.button,
-          target: e.target.className,
-          tagName: e.target.tagName,
-          path: e.nativeEvent.composedPath().map(el => el.id || el.className || el.tagName).join(' -> ')
-        });
-        
-        if (e.button === 2) {
-          e.preventDefault();  
-          handleMouseDown(e);
-        }
-      }}
-      onMouseMove={(e) => {
-        if (isPanning) {
-          e.preventDefault();
-          e.stopPropagation();
-          handleMouseMove(e);
-        }
-      }}
-      onMouseUp={(e) => {
-        if (isPanning) {
-          e.preventDefault();
-          e.stopPropagation();
-          handleMouseUp(e);
-        }
-      }}
-      onContextMenu={(e) => {
-        e.preventDefault();  // Always prevent default
-        if (!isPanning && !hasMovedRef.current) {
-          handleContextMenu(e);
-        }
-      }}
+      style={containerStyle}
+      // Removed internal mousedown, mousemove, mouseup handlers
+      // Wheel and ContextMenu are handled by useEffect listeners above
     >
-      <div 
+      <div
+        id="tabletop" // Give the content div the id expected by other components/hooks
         style={contentStyle}
-        onMouseDown={(e) => {
-          console.log('[DEBUG-CONTENT] Content div mousedown:', {
-            button: e.button,
-            target: e.target.className,
-            tagName: e.target.tagName,
-            path: e.nativeEvent.composedPath().map(el => el.id || el.className || el.tagName).join(' -> ')
-          });
-        }}
+         // Handlers for drag/marquee initiation and click/ping should be on this #tabletop div
+         // and are managed by the parent component (VirtualTabletop).
+         // We don't need handlers here on the content div itself, as VirtualTabletop
+         // attaches them via its own onMouseDown prop to this div.
       >
         {children}
       </div>
