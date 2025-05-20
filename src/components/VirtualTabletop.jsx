@@ -1,5 +1,5 @@
 // src/components/VirtualTabletop.jsx
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'; // Added useEffect, useCallback, useMemo, useRef
 // Removed SplitPane import - layout handled by App.jsx
 import _ from 'lodash';
 
@@ -414,7 +414,7 @@ const { startDrag, isDragging } = useTokenDrag({
 
 
   // Define handlers using useCallback to get stable references for add/removeEventListener
-   const handleGlobalMouseMove = useCallback((e) => {
+   const handleGlobalMouseMoveLogic = useCallback((e) => { // Renamed to Logic for consistency
         // Only process if a potential interaction was initiated (mousedown occurred)
         const initialPos = initialMouseDownPosRef.current;
         if (!initialPos) return;
@@ -574,7 +574,7 @@ const { startDrag, isDragging } = useTokenDrag({
    ]); // Dependencies for handleGlobalMouseMove
 
 
-    const handleGlobalMouseUp = useCallback((e) => {
+    const handleGlobalMouseUpLogic = useCallback((e) => { // Renamed to Logic for consistency
         console.log('[DEBUG-TABLETOP] handleGlobalMouseUp:', {
           button: e.button,
           target: e.target,
@@ -949,17 +949,6 @@ const { startDrag, isDragging } = useTokenDrag({
     // e.preventDefault(); // Assume parent handles this
     // e.stopPropagation(); // Assume parent handles this
 
-    console.log('[DEBUG] Showing context menu at:', { clientX: e.clientX, clientY: e.clientY, options });
-
-    // Set state to show the menu at the mouse position with context-specific data
-    setMenuState({
-      x: e.clientX, // Screen coordinates
-      y: e.clientY, // Screen coordinates
-      ...options // Spread any additional options needed by the menu component
-    });
-
-    // No need for position adjustment logic here; the rendering component or CSS should handle screen boundaries.
-
     const tokenEl = e.target.closest('.token');
     const contextType = tokenEl ? 'token' : 'grid';
 
@@ -967,6 +956,9 @@ const { startDrag, isDragging } = useTokenDrag({
 
     if (contextType === 'token' && tokenEl) {
         const clickedTokenId = tokenEl.id;
+        // Use ref for selectedTokenIds
+        const currentSelectedTokenIds = selectedTokenIdsRef.current; // Access latest selection state via ref
+
         // If right-clicked token is *already* in the current selection, offer actions on the *entire selection*.
         // Otherwise, select only this token and offer actions on just this one.
         // Use ref for selectedTokenIds
@@ -1005,14 +997,19 @@ const { startDrag, isDragging } = useTokenDrag({
 
          // Pass grid coordinates to the menu handler for "Add Token"
          const container = document.getElementById('tabletop-container');
+         if (!container) {
+            console.warn('[DEBUG] Container not found for context menu grid coordinate calculation.');
+            // Can't calculate grid coords, proceed without them or return? Let's proceed.
+         }
          const containerRect = container.getBoundingClientRect();
 
          // Convert screen coordinates to grid coordinates relative to grid origin (0,0)
           const screenX = e.clientX - containerRect.left;
           const screenY = e.clientY - containerRect.top;
           // Access latest position and scale via refs
-          // const currentScale = scaleRef.current || 1; // Already accessed above
-          // const currentPosition = positionRef.current || { x: 0, y: 0 }; // Already accessed above
+           const currentScale = scaleRef.current || 1; // Use ref
+           const currentPosition = positionRef.current || { x: 0, y: 0 }; // Use ref
+
 
           const gridX = (screenX - currentPosition.x) / currentScale;
           const gridY = (screenY - currentPosition.y) / currentScale;
@@ -1022,7 +1019,9 @@ const { startDrag, isDragging } = useTokenDrag({
 
     console.log('[DEBUG] Showing context menu, type:', contextType, 'Options:', options); // Use the local 'options' variable here.
     // Pass event directly so context menu hook can get screen position
-    showMenu(e, options); // <-- This uses the local 'options' variable.
+    // showMenu(e, options); // <-- This uses the local 'options' variable.
+    // MODIFIED: showMenu expects options object as second arg, not event. Position is taken from event implicitly by hook.
+     showMenu(e, options); // Pass event (for position) and options (for type/data)
 
   }, [
       showMenu, // Stable callbacks
@@ -1233,5 +1232,5 @@ const { startDrag, isDragging } = useTokenDrag({
 
 
     </div>
-  ); // Removed the semicolon here based on build error location
+  ); // Removed the semicolon here based on build error location (Potential Fix)
 }
