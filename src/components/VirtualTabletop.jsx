@@ -166,7 +166,9 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
   });
 
   // Dimensions for dynamic grid layout based on window size and grid type
-  const [dimensions, setDimensions] = useState({ rows: 0, cols: 0 });
+  // --- MODIFIED: Initial dimensions to ensure grid visibility on first render ---
+  const [dimensions, setDimensions] = useState({ rows: 100, cols: 100 }); // Use default non-zero dimensions initially
+  // --- END MODIFIED ---
 
   // Debounced grid dimension update - depends on grid type state and grid config
   const updateGridDimensions = useMemo(() => _.debounce(() => {
@@ -179,26 +181,33 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
     const vw = container.offsetWidth;
     const vh = container.offsetHeight;
 
+    // Ensure we have positive dimensions before calculating rows/cols
+    if (vw <= 0 || vh <= 0) {
+        console.warn('[DEBUG] Container has zero or negative dimensions, skipping grid dimension update.');
+        return;
+    }
+
+
     // Calculate dimensions based on current grid type and container size
     const currentIsHexGrid = gameState.isHexGrid; // Access current state value
     const currentGridConfig = gridConfig; // Access current config
 
+    let calculatedRows, calculatedCols;
+
     if (currentIsHexGrid) {
       const effHeight = currentGridConfig.hexHeight * 0.75;
-      setDimensions({
-        // Add extra rows/cols for panning beyond initial view
-        rows: Math.ceil(vh / effHeight) + 5,
-        cols: Math.ceil(vw / currentGridConfig.hexWidth) + 5
-      });
+      calculatedRows = Math.ceil(vh / effHeight) + 5;
+      calculatedCols = Math.ceil(vw / currentGridConfig.hexWidth) + 5;
+
     } else {
-      setDimensions({
-        // Add extra rows/cols for panning beyond initial view
-        rows: Math.ceil(vh / currentGridConfig.squareSize) + 5,
-        cols: Math.ceil(vw / currentGridConfig.squareSize) + 5
-      });
-     console.log('[DEBUG] Grid dimensions updated based on container:', { vw, vh, isHexGrid: currentIsHexGrid, currentDimensions: dimensions });
+      calculatedRows = Math.ceil(vh / currentGridConfig.squareSize) + 5;
+      calculatedCols = Math.ceil(vw / currentGridConfig.squareSize) + 5;
     }
-  }, 200), [gridConfig, gameState.isHexGrid, dimensions]); // Depend on grid config, isHexGrid state value, and dimensions state
+
+     console.log('[DEBUG] Grid dimensions updated based on container:', { vw, vh, isHexGrid: currentIsHexGrid, calculatedDimensions: { rows: calculatedRows, cols: calculatedCols } });
+     setDimensions({ rows: calculatedRows, cols: calculatedCols });
+
+  }, 200), [gridConfig, gameState.isHexGrid]); // Depend on grid config and isHexGrid state value (Removed dimensions dependency)
 
 
   // Effect to update grid dimensions on mount and resize, and grid type state change
@@ -218,12 +227,21 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
   // Calculate total grid size for ZoomableContainer - depends on dimensions state
   const { totalWidth, totalHeight } = useMemo(() => {
     // Use latest dimensions state here
-    const currentCols = dimensions.cols > 0 ? dimensions.cols : 100; // Fallback
-    const currentRows = dimensions.rows > 0 ? dimensions.rows : 100; // Fallback
+    const currentCols = dimensions.cols;
+    const currentRows = dimensions.rows;
+
+    // Ensure dimensions are valid before calculating total size
+     if (currentCols <= 0 || currentRows <= 0) {
+         // Fallback to a reasonable size if dimensions are invalid,
+         // though the initial state change should prevent this after the first render.
+         console.warn('[DEBUG] Calculating total grid size with invalid dimensions:', dimensions);
+         return { totalWidth: 100 * gridConfig.squareSize, totalHeight: 100 * gridConfig.squareSize };
+     }
+
 
     if (isHexGrid) { // Use state value
        // Account for the extra height from the last row's full hex height
-       const finalHeight = (currentRows - 1) * (gridConfig.hexHeight * 0.75) + gridConfig.hexHeight;
+       const finalHeight = (currentRows > 0 ? currentRows - 1 : 0) * (gridConfig.hexHeight * 0.75) + gridConfig.hexHeight;
        return {
         totalWidth: currentCols * gridConfig.hexWidth, // Simplified, might need adjustment for hex edge
         totalHeight: finalHeight,
@@ -475,7 +493,7 @@ const { startDrag, isDragging } = useTokenDrag({
         setTimeout(() => {
             document.removeEventListener('mousemove', handleGlobalMouseMove, { capture: true }); // Use stable ref
             document.removeEventListener('mouseup', handleGlobalMouseUp, { capture: true });   // Use stable ref
-            // Note: Keydown listener is managed by a separate effect or hook
+            // Note: Keydown listener cleanup is handled by its own effect or handler
              console.log('[DEBUG] Removed temporary global mousemove/mouseup listeners.');
 
             // Clean up local refs related to the interaction cycle
