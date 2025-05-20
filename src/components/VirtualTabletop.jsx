@@ -343,7 +343,7 @@ const { startDrag, isDragging } = useTokenDrag({
         tokens: prev.tokens.filter(t => !tokenIds.includes(t.id)) // Filter based on passed IDs
       }));
       clearSelection(); // Clear selection of deleted tokens
-    }, [updateGameState, clearSelection]); // Depend on updateGameState and clearSelection
+    }, [updateGameState, clearSelection]);
 
 
   // PING LOGIC
@@ -785,7 +785,7 @@ const { startDrag, isDragging } = useTokenDrag({
        setScale: newScale => setDirectState(prev => ({ ...prev, scale: newScale })),
        setPosition: newPosition => setDirectState(prev => ({ ...prev, position: newPosition })),
        minScale: MIN_SCALE,
-       maxScale: MAXScale,
+       maxScale: MAX_SCALE, // Corrected typo here
        zoomFactor: ZOOM_FACTOR,
        isPanDisabled: isDragging || isSelecting, // Pass the disabled flag
    });
@@ -853,7 +853,7 @@ const { startDrag, isDragging } = useTokenDrag({
         setScale={newScale => setDirectState(prev => ({ ...prev, scale: newScale }))}
         setPosition={newPosition => setDirectState(prev => ({ ...prev, position: newPosition }))}
         minScale={MIN_SCALE}
-        maxScale={MAX_SCALE}
+        maxScale={MAX_SCALE} // Corrected typo here
         zoomFactor={ZOOM_FACTOR}
         onContextMenu={handleContextMenu} // Context menu trigger from ZoomableContainer
         gridWidth={totalWidth} // Pass calculated grid size
