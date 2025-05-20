@@ -13,7 +13,7 @@ import { useAutoSave } from '../hooks/useAutoSave';
 import { useStateWithHistory } from '../hooks/useStateWithHistory';
 import { useZoomToMouse } from '../hooks/useZoomToMouse';
 // import { useDiceManager } from '../hooks/useDiceManager'; // Needed for Sidebar - although Sidebar is not rendered here
-// import { useSystemManager } from '../hooks/useSystemManager'; // Needed for Sidebar - although Sidebar is not rendered here
+// import { useSystemManager } from '../hooks/useSystemManager,'; // Needed for Sidebar - although Sidebar is not rendered here
 
 // Components
 import { ZoomableContainer } from './ZoomableContainer';
@@ -1185,4 +1185,4 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
 
     </div>
   );
-};
+}
