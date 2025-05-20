@@ -104,171 +104,14 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
 
   const onToggleCombat = useCallback(() => {
     updateGameState(prev => ({ ...prev, inCombat: !prev.inCombat }));
-  }, [updateGameState]);
+  }, [updateGameState]); // <--- MISSING SEMICOLON WAS HERE
 
-
-  // 2) Load & Save from campaignManager
-  const { saveState, loadState } = useCampaignManager('default-campaign');
-
-  const initialLoadDoneRef = useRef(false);
-
-  // Load entire state on mount
-  useEffect(() => {
-    if (initialLoadDoneRef.current) return;
-
-    console.log('[DEBUG] Loading campaign state on mount...');
-    const loaded = loadState();
-    if (loaded) {
-      console.log('[DEBUG] Loaded fullState:', loaded);
-      // Use setGameState directly to load the state without adding to undo history
-      setGameState(loaded); // Loading should replace the initial state completely
-      initialLoadDoneRef.current = true;
-    } else {
-      console.log('[DEBUG] No saved state found... using defaults');
-      initialLoadDoneRef.current = true;
-    }
-  }, [loadState, setGameState]); // Depend on loadState and setGameState
-
-
-  // Auto-save entire gameState, debounced 2s
-  useAutoSave(gameState, saveState, 2000);
-
-  // Debug watchers (optional, remove for production)
-  const prevGameStateRef = useRef(gameState);
-  useEffect(() => {
-    const prevState = prevGameStateRef.current;
-    // Perform shallow comparisons first for performance
-    if (prevState.tokens !== tokens || prevState.scale !== scale || prevState.position !== position ||
-        prevState.isHexGrid !== isHexGrid || prevState.inCombat !== inCombat) {
-         console.log('[DEBUG] Game state updated:', {
-             tokensCount: tokens.length,
-             scale,
-             position,
-             isHexGrid,
-             inCombat,
-         });
-     }
-     // Deep comparison only if necessary for specific debugging
-     // if (!_.isEqual(prevState.tokens, tokens)) {
-     //    console.log('[DEBUG] Tokens content changed.');
-     // }
-
-     prevGameStateRef.current = gameState; // Keep ref updated
-  }, [gameState]); // Depend on the gameState object itself (shallow comparison by React)
-
-
-  // Grid config (useMemo is good here)
-  const gridConfig = useMemo(() => ({
-    squareSize: DEFAULT_SQUARE_SIZE,
-    hexSize: DEFAULT_HEX_SIZE,
-    hexWidth: Math.sqrt(3) * DEFAULT_HEX_SIZE,
-    hexHeight: DEFAULT_HEX_SIZE * 2
-  }), []);
-
-  // Grid snapping hook - depends on gameState.isHexGrid
-  const { getSnappedPosition } = useGridSnapping({
-    isHexGrid: isHexGrid, // Use state value
-    gridSize: gridConfig.squareSize,
-    hexWidth: gridConfig.hexWidth,
-    hexHeight: gridConfig.hexHeight,
-  });
-
-  // Dimensions for dynamic grid layout based on window size and grid type
-  // --- MODIFIED: Initial dimensions to ensure grid visibility on first render ---
-  const [dimensions, setDimensions] = useState({ rows: 100, cols: 100 }); // Use default non-zero dimensions initially
-  // --- END MODIFIED ---
-
-  // Debounced grid dimension update - depends on grid type state and grid config
-  const updateGridDimensions = useMemo(() => _.debounce(() => {
-    const container = document.getElementById('tabletop-container');
-    if (!container) {
-        console.warn('[DEBUG] #tabletop-container not found for dimension update.');
-        return;
-    }
-    // Use offsetWidth/offsetHeight which include padding/border
-    const vw = container.offsetWidth;
-    const vh = container.offsetHeight;
-
-    // Ensure we have positive dimensions before calculating rows/cols
-    if (vw <= 0 || vh <= 0) {
-        console.warn('[DEBUG] Container has zero or negative dimensions, skipping grid dimension update.');
-        return;
-    }
-
-
-    // Calculate dimensions based on current grid type and container size
-    const currentIsHexGrid = gameState.isHexGrid; // Access current state value
-    const currentGridConfig = gridConfig; // Access current config
-
-    let calculatedRows, calculatedCols;
-
-    if (currentIsHexGrid) {
-      const effHeight = currentGridConfig.hexHeight * 0.75;
-      calculatedRows = Math.ceil(vh / effHeight) + 5;
-      calculatedCols = Math.ceil(vw / currentGridConfig.hexWidth) + 5;
-
-    } else {
-      calculatedRows = Math.ceil(vh / currentGridConfig.squareSize) + 5;
-      calculatedCols = Math.ceil(vw / currentGridConfig.squareSize) + 5;
-    }
-
-     console.log('[DEBUG] Grid dimensions updated based on container:', { vw, vh, isHexGrid: currentIsHexGrid, calculatedDimensions: { rows: calculatedRows, cols: calculatedCols } });
-     setDimensions({ rows: calculatedRows, cols: calculatedCols });
-
-  }, 200), [gridConfig, gameState.isHexGrid]); // Depend only on grid config and isHexGrid state value
-
-
-  // Effect to update grid dimensions on mount and resize, and grid type state change
-  useEffect(() => {
-    console.log('[DEBUG] Attaching resize listener...');
-    updateGridDimensions(); // Initial call
-    window.addEventListener('resize', updateGridDimensions);
-
-    return () => {
-      console.log('[DEBUG] Removing resize listener...');
-      updateGridDimensions.cancel(); // Cancel any pending debounced calls
-      window.removeEventListener('resize', updateGridDimensions);
-    };
-  }, [updateGridDimensions]); // Depend only on the memoized function
-
-
-  // Calculate total grid size for ZoomableContainer - depends on dimensions state
-  const { totalWidth, totalHeight } = useMemo(() => {
-    // Use latest dimensions state here
-    const currentCols = dimensions.cols;
-    const currentRows = dimensions.rows;
-
-    // Ensure dimensions are valid before calculating total size
-     if (currentCols <= 0 || currentRows <= 0) {
-         // Fallback to a reasonable size if dimensions are invalid,
-         // though the initial state change should prevent this after the first render.
-         console.warn('[DEBUG] Calculating total grid size with invalid dimensions:', dimensions);
-         return { totalWidth: 100 * gridConfig.squareSize, totalHeight: 100 * gridConfig.squareSize };
-     }
-
-
-    if (isHexGrid) { // Use state value
-       // Account for the extra height from the last row's full hex height
-       const finalHeight = (currentRows > 0 ? currentRows - 1 : 0) * (gridConfig.hexHeight * 0.75) + gridConfig.hexHeight;
-       return {
-        totalWidth: currentCols * gridConfig.hexWidth, // Simplified, might need adjustment for hex edge
-        totalHeight: finalHeight,
-      };
-    } else {
-      return {
-        totalWidth: currentCols * gridConfig.squareSize,
-        totalHeight: currentRows * gridConfig.squareSize,
-      };
-    }
-  }, [dimensions, isHexGrid, gridConfig]); // Depend on dimensions, isHexGrid state value, and config
-
-
-// Token drag hook - Expose `isDragging` state
-const { startDrag, isDragging } = useTokenDrag({
-  scale: scale, // Pass current scale from state
-  getSnappedPosition, // Pass the snapping function
-  // onDragMove and onDragEnd update gameState directly using setDirectState/updateGameState
-  onDragMove: useCallback((tokenId, newPos) => {
+  // Token drag hook - Expose `isDragging` state
+  const { startDrag, isDragging } = useTokenDrag({
+    scale: scale, // Pass current scale from state
+    getSnappedPosition, // Pass the snapping function
+    // onDragMove and onDragEnd update gameState directly using setDirectState/updateGameState
+    onDragMove: useCallback((tokenId, newPos) => {
      // Callback receives snapped position, update state directly (no history)
      // Ensure position structure is consistent {x, y}
      setDirectState(prev => ({
@@ -1233,6 +1076,6 @@ const { startDrag, isDragging } = useTokenDrag({
 
 
     </div>
-  ); // Removed the semicolon here based on build error location (Potential Fix)
-}; // Added semicolon back based on build error analysis
+  );
+};
 ```
