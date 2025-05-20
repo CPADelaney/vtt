@@ -3,7 +3,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MessageSquare, History, Settings, Swords, ChevronLeft, ChevronRight, Dice5 } from 'lucide-react'; // Import icons
 import { useDiceManager } from '../hooks/useDiceManager'; // Import the dice manager hook
 import { useSystemManager } from '../hooks/useSystemManager'; // Import the system manager hook
-import '../css/styles.css'; // Ensure CSS is imported - CORRECTED PATH
+// Corrected import path: From src/components/ to root needs ../../ then into css/
+import '../../css/styles.css'; // Ensure CSS is imported - CORRECTED PATH
 
 // Helper component for messages to handle different types
 const ChatMessage = ({ message }) => {
