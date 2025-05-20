@@ -441,62 +441,24 @@ const { startDrag, isDragging } = useTokenDrag({
         // Handle selection update on token click
         // If not additive, clear existing selection first
         if (!isAdditiveSelection) {
-            clearSelection(); // Clear selection state managed by useTokenSelection
+            clearSelection(); // This *is* defined, returned by useTokenSelection
         }
         // Always select/toggle the clicked token
-        selectTokenId(clickedTokenId, isAdditiveSelection); // Use the hook's select function
-
-        // We still need the global mousemove/mouseup to detect if this was a drag vs a click.
-        // Global listeners will be added by startDrag if threshold is met.
-        // If threshold is NOT met, the global mouseup will handle it as a click (no drag started).
-        // A token click doesn't trigger ping, so the mouseup click logic needs to account for this.
-
-        // Attaching temporary global listeners here instead of relying solely on hooks' listeners
-        // ensures we capture mousemove/mouseup *before* other potential handlers if needed,
-        // and allows us to implement the threshold logic consistently.
-        document.addEventListener('mousemove', handleGlobalMouseMove, { capture: true });
-        document.addEventListener('mouseup', handleGlobalMouseUp, { capture: true });
-
-
-    } else {
-        // Clicked on background grid
-        console.log('[DEBUG] Mousedown on background.');
-        // Prevent default browser selection box when dragging on background
-        e.preventDefault();
-        // Do NOT stop propagation yet. Let the global mousemove handler below check threshold for marquee.
-        // The global handler attached by startMarquee will stop propagation if marquee starts.
-
-         // Attaching temporary global listeners for background interactions as well.
-         document.addEventListener('mousemove', handleGlobalMouseMove, { capture: true });
-         document.addEventListener('mouseup', handleGlobalMouseUp, { capture: true });
-
-         // If not additive, clear selection on background click *start*
-         if (!isAdditiveSelection) {
-             clearSelection(); // Clear selection state managed by useTokenSelection
-         }
-    }
-
-     // Note: ZoomableContainer's handlers run in the bubbling phase. Attaching our capture
-     // listeners here means they run before ZoomableContainer's bubbling handlers.
-     // If we preventDefault/stopPropagation in our capture handlers based on click target/threshold,
-     // ZoomableContainer won't see the event or will see it stopped.
-     // The logic needs careful testing. For now, we prevent default only IF we identify
-     // it as a potential drag/marquee starter *or* a click we intend to handle.
-     // The initial preventDefault is added above based on target type.
-     // Propagation is stopped later in handleGlobalMouseMove/Up once an interaction is confirmed.
-
-  }, [
-      hideMenu, // Depend on hideMenu callback
-      tokens, // Needed to find clicked token details if dragging starts - actually not needed here, only in startDrag
-      selectTokenId, // Needed to update selection immediately on token click
-      clearSelection, // Needed to clear selection on background click
-      startDrag, // Hook callback to start drag
-      startMarquee, // Hook callback to start marquee
-      isDragging, // Need latest status from hook
-      isSelecting, // Need latest status from hook
-      // Note: createPing is NOT a dependency here; it's called in mouseup.
-      // Note: scale and position are NOT dependencies here; they are used in mouseup to calculate ping pos.
-  ]);
+        selectTokenId(clickedTokenId, isAdditiveSelection); // <<< THIS IS LINE 290, where the error occurs
+// ... rest of handleMouseDown
+    }, [
+        hideMenu, // Depend on hideMenu callback
+        tokens, // Needed to find clicked token details if dragging starts - actually not needed here, only in startDrag
+        // selectTokenId, // Removed dependency - stable function from hook
+        // clearSelection, // Removed dependency - stable function from hook
+        startDrag, // Hook callback to start drag
+        startMarquee, // Hook callback to start marquee
+        isDragging, // Need latest status from hook
+        isSelecting, // Need latest status from hook
+        // Note: createPing is NOT a dependency here; it's called in mouseup.
+        // Note: scale and position are NOT dependencies here; they are used in mouseup to calculate ping pos.
+        selectedTokenIds, // Dependency for selection logic within this handler
+    ]);
 
 
   // Global mousemove handler (attached on mousedown)
