@@ -36,9 +36,10 @@ body {
 }
 
 /* Container for your tabletop, typically 100% of viewport */
+/* Note: Actual sizing is handled by the layout grid in App.jsx */
 #tabletop-container {
-  width: 100vw;
-  height: 100vh;
+  width: 100%; /* Should take 100% of its grid area */
+  height: 100%;
   overflow: hidden;
   background: #f0f0f0;
   position: relative;
@@ -55,41 +56,30 @@ body {
   cursor: grabbing;
 }
 
-/* Base grid cell styles */
+/* Base grid cell styles (used by Grid component) */
 .grid-cell {
   position: absolute;
   box-sizing: border-box;
 }
 
 /* Square grid specific (when isHexGrid = false) */
-.square-grid .grid-cell {
-  width: 50px; /* or gridConfig.squareSize */
-  height: 50px;
-  border: 1px solid #ccc;
-  background: rgba(255, 255, 255, 0.5);
-}
+/* Note: Grid component now draws squares using SVG pattern */
 
 /* Hex grid specific (when isHexGrid = true) */
-.hex-grid .grid-cell {
-  position: absolute;
-}
+/* Note: Grid component now draws hexes using SVG paths */
 
-.hexagon {
-  fill: rgba(255, 255, 255, 0.5);
-  stroke: #ccc;
-  stroke-width: 1px;
-}
 
 /* Token styles */
 .token {
   position: absolute;
-  width: 40px;
-  height: 40px;
+  width: 40px; /* Adjust based on desired token size relative to grid */
+  height: 40px; /* Adjust based on desired token size relative to grid */
   border-radius: 50%;
-  background: red;
-  transform: translate(-50%, -50%);
+  background: red; /* Default placeholder color */
+  transform: translate(-50%, -50%); /* Center the token on its {x,y} point */
   cursor: move;
-  z-index: 100;
+  z-index: 100; /* Ensure tokens are above grid */
+  box-sizing: border-box; /* Include border/padding in size */
 }
 
 .token.selected {
@@ -97,33 +87,28 @@ body {
   outline-offset: 2px;
 }
 
-/* Selection marquee (used by your useTokenSelection) */
-marqueeEl.style.cssText = `
+/* Selection marquee (used by useTokenSelection) */
+.marquee {
   position: absolute;
-  left: ${startX}px;
-  top: ${startY}px;
-  width: 0;
-  height: 0;
   border: 2px solid #3498db;
   background-color: rgba(52, 152, 219, 0.1);
-  pointer-events: none;
-  z-index: 1000;
-`;
+  pointer-events: none; /* Cannot interact with elements under the marquee */
+  z-index: 10000; /* Ensure marquee is on top */
+}
 
 /* Context menu */
 .context-menu {
-  position: fixed;
+  position: fixed; /* Positioning handled by JS */
   background: white;
   border: 1px solid #ccc;
   border-radius: 4px;
   padding: 4px 0;
   box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-  z-index: 9999;  /* Very high z-index */
+  z-index: 9999;
   min-width: 120px;
-  pointer-events: auto;  /* Ensure clicks work */
-  user-select: none;    /* Prevent text selection */
+  pointer-events: auto;
+  user-select: none;
 }
-
 
 .context-menu-item {
   padding: 8px 12px;
@@ -149,56 +134,24 @@ marqueeEl.style.cssText = `
   z-index: 1000;
 }
 
-/* 
+/*
   ----------------------------------------
    3-COLUMN GRID LAYOUT FOR THE ENTIRE APP
   ----------------------------------------
-   - Left sidebar (collapsible or static)
-   - Main content (tabletop)
-   - Right area (DM Tools, Chat, etc.)
 */
 
-/* Left sidebar area */
-.left-sidebar {
-  grid-area: left-sidebar;
-  background-color: #eee;
-  border-right: 1px solid #ccc;
-  overflow-y: auto;
-  transition: width 0.3s ease; /* Smooth collapse/expand if you want */
-}
-
-/* 
-  .collapsed class can be toggled in React to shrink the sidebar.
-  Example usage:
-    .left-sidebar.collapsed {
-      width: 0 !important;
-    }
-*/
-.left-sidebar.collapsed {
-  width: 0 !important;
-}
-
-
-/* 
-   3-COLUMN LAYOUT:
-   - Left (tools): fixed ~60px
-   - Middle (main game area): flexible
-   - Right (chat, DM tools): fixed ~350px
-*/
+/* The main app container uses CSS Grid */
 .app-layout {
   display: grid;
-  grid-template-columns: 60px 1fr 350px; 
-  /* 
-    ^ Left ~60px icons
-         ^ Middle flexible
-               ^ Right 350px 
-  */
+  /* Define grid columns: left toolbar (fixed), main content (flexible), right sidebar (fixed/flexible) */
+  /* This matches the grid-template-columns definition in App.jsx */
+  /* grid-template-columns: 60px 1fr 350px; */ /* Defined in JS */
   grid-template-rows: 100%;
   grid-template-areas: "tools-bar main-content right-sidebar";
 
   width: 100vw;
   height: 100vh;
-  overflow: hidden; /* no scrollbars on the root layout */
+  overflow: hidden; /* Prevent scrollbars on the main layout */
 }
 
 /* Left column: Tools bar (icons, drawing, etc.) */
@@ -208,9 +161,9 @@ marqueeEl.style.cssText = `
   border-right: 1px solid #ccc;
   display: flex;
   flex-direction: column;
-  align-items: center; /* center icons horizontally */
+  align-items: center; /* Center icons horizontally */
   padding-top: 10px;
-  overflow-y: auto;
+  overflow-y: auto; /* Allow scrolling if toolbar is tall */
 }
 
 /* Middle column: the main game area */
@@ -218,17 +171,128 @@ marqueeEl.style.cssText = `
   grid-area: main-content;
   position: relative;
   background: #eaeaea;
-  overflow: hidden;
-  /* or overflow: auto, if you want scrollbars */
+  overflow: hidden; /* The ZoomableContainer handles its own overflow */
 }
 
-/* Right column: Chat, DM Tools, character sheets, etc. */
+/* Right column: Chat, DM Tools, character sheets, etc. Handled by Sidebar */
 .right-sidebar {
   grid-area: right-sidebar;
   background-color: #fff;
   border-left: 1px solid #ccc;
-  overflow-y: auto;
+  overflow-y: auto; /* Allow scrolling within the sidebar */
+  display: flex; /* Use flex for internal layout (collapse button + content) */
+  flex-direction: row-reverse; /* Puts collapse button on the left edge of the sidebar */
+  transition: width 0.3s ease; /* Smooth collapse/expand animation */
 }
+
+.right-sidebar.collapsed {
+  width: 12px !important; /* Adjust width for collapsed state */
+  min-width: 12px !important;
+  flex-direction: row; /* Put button on the right edge when collapsed */
+}
+
+.sidebar-content {
+  flex-grow: 1; /* Content takes remaining space */
+  overflow-y: auto; /* Allow content to scroll */
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* Important for flex layout */
+}
+
+.sidebar-tabs {
+  display: flex;
+  border-bottom: 1px solid #ccc;
+  flex-shrink: 0; /* Don't shrink tabs */
+}
+
+.sidebar-tab-button {
+  flex: 1;
+  padding: 8px 12px;
+  text-align: center;
+  cursor: pointer;
+  border: none;
+  background: none;
+  transition: background-color 0.2s, border-bottom-color 0.2s, color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-tab-button.active {
+  border-bottom: 2px solid #007bff;
+  color: #007bff;
+  background-color: #f0f0f0;
+}
+
+.sidebar-content-area {
+  flex-grow: 1; /* Content fills remaining space */
+  overflow-y: auto;
+  padding: 16px; /* Added padding */
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-messages {
+  flex-grow: 1;
+  overflow-y: auto; /* Chat messages scroll internally */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chat-input-area {
+  flex-shrink: 0; /* Input doesn't shrink */
+  padding-top: 8px;
+  border-top: 1px solid #ccc;
+}
+
+.chat-input-area input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.chat-quick-rolls {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    margin-top: 8px;
+}
+
+.chat-quick-rolls button {
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    background-color: #eee;
+    font-size: 0.8em;
+}
+.chat-quick-rolls button:hover {
+    background-color: #ddd;
+}
+
+
+.combat-log {
+  flex-grow: 1;
+  overflow-y: auto; /* Combat log scrolls internally */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.combat-log-item {
+  padding: 8px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  font-size: 0.9em;
+  border-left: 3px solid #007bff;
+}
+
+.combat-log-item div:first-child {
+  font-weight: bold;
+}
+
 
 /* Example class for icon buttons in left column */
 .tool-icon {
@@ -239,27 +303,22 @@ marqueeEl.style.cssText = `
   background: #fff;
   border-radius: 4px;
   cursor: pointer;
-  /* just an example hover style */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .tool-icon:hover {
   background: #eee;
 }
 
-.virtual-tabletop-grid {
-  display: grid;
-  grid-template-columns: 60px 1fr 350px;
-  height: 100vh;
-  width: 100vw;
-}
-
-
+/* Ping animation */
 @keyframes pingAnimation {
   0% {
-    transform: translate(-50%, -50%) scale(0.3);
+    transform: scale(0.3);
     opacity: 1;
   }
   100% {
-    transform: translate(-50%, -50%) scale(2);
+    transform: scale(2);
     opacity: 0;
   }
 }
@@ -268,23 +327,138 @@ marqueeEl.style.cssText = `
 .Resizer {
   background: #ccc;
   cursor: col-resize;
-  width: 4px;     /* The grab area thickness */
-  /* or a little pattern, border, etc. */
+  width: 4px;
+  z-index: 500; /* Ensure resizer is above tabletop content */
 }
 
 .Resizer:hover {
   background: #999;
 }
 
-.ping {
+/* Ping component styles */
+.ping-container {
   position: absolute;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  pointer-events: none;
+  pointer-events: none; /* Cannot interact with pings */
   will-change: transform, opacity;
+}
+
+.ping-outer {
+  position: absolute;
+  width: 60px; /* Size of the outer ring */
+  height: 60px;
+  border-radius: 50%;
+  border: 2px solid; /* Color set by component */
+  transform: translate(-50%, -50%); /* Center on position */
+  opacity: 0.5;
   animation: pingAnimation 2s ease-out forwards;
 }
-.chatbox {
-  z-index: 900;
+
+.ping-inner {
+  position: absolute;
+  width: 10px; /* Size of the inner dot */
+  height: 10px;
+  border-radius: 50%;
+  background-color: ; /* Color set by component */
+  transform: translate(-50%, -50%); /* Center on position */
+  opacity: 1;
+  animation: pingAnimation 2s ease-out forwards;
+}
+
+/* DM Tools area styles */
+.dm-tools-area {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.dm-tools-area button {
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    text-align: center;
+}
+
+.dm-tools-area .btn-combat-start {
+    background-color: #28a745; /* Green */
+    color: white;
+}
+.dm-tools-area .btn-combat-end {
+    background-color: #dc3545; /* Red */
+    color: white;
+}
+.dm-tools-area .btn-grid-toggle {
+    background-color: #6c757d; /* Gray */
+    color: white;
+}
+
+.dm-tools-area select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+.dm-tools-area label {
+    font-size: 0.9em;
+    font-weight: bold;
+    color: #555;
+}
+
+
+/* Scrollbar styles (optional) */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+
+/* Styles for the SplitPane resizer handle */
+.Resizer {
+  background: #ccc;
+  opacity: 0.2;
+  z-index: 1;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+  background-clip: padding-box;
+}
+
+.Resizer:hover {
+  -webkit-transition: all 2s ease;
+  transition: all 2s ease;
+  background: #000;
+  opacity: 0.5;
+}
+
+.Resizer.vertical {
+  width: 11px;
+  margin: 0 -5px;
+  border-left: 5px solid rgba(255, 255, 255, 0);
+  border-right: 5px solid rgba(255, 255, 255, 0);
+  cursor: col-resize;
+}
+
+.Resizer.vertical:hover {
+  border-left: 5px solid rgba(0, 0, 0, 0.5);
+  border-right: 5px solid rgba(0, 0, 0, 0.5);
+}
+
+.Resizer.disabled {
+  cursor: not-allowed;
+}
+.Resizer.disabled:hover {
+  border-color: transparent;
 }
