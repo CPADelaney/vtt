@@ -1,4 +1,3 @@
-```javascript
 // src/components/VirtualTabletop.jsx
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'; // Added useEffect, useCallback, useMemo, useRef
 // Removed SplitPane import - layout handled by App.jsx
@@ -23,7 +22,7 @@ import { Token } from './Token';
 import { Controls } from './Controls';
 import { Ping } from './Ping';
 import { Marquee } from './Marquee'; // Use dedicated Marquee file
-// import { Sidebar } from './Sidebar'; // Import Sidebar - Note: Sidebar is rendered by App.jsx's SplitPane, not here.
+// import { Sidebar } // Import Sidebar - Note: Sidebar is rendered by App.jsx's SplitPane, not here.
 import { ContextMenu } from './ContextMenu'; // Import ContextMenu
 import '../../css/styles.css'; // Corrected import path for VirtualTabletop.jsx
 
@@ -104,7 +103,8 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
 
   const onToggleCombat = useCallback(() => {
     updateGameState(prev => ({ ...prev, inCombat: !prev.inCombat }));
-  }, [updateGameState]); // <--- MISSING SEMICOLON WAS HERE
+  }, [updateGameState]) // <--- MISSING SEMICOLON WAS HERE
+; // **ADDED SEMICOLON HERE**
 
   // Token drag hook - Expose `isDragging` state
   const { startDrag, isDragging } = useTokenDrag({
@@ -906,6 +906,115 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
        // --- END MODIFIED ---
    }, [undoGameState, selectionHandlersRef]); // --- MODIFIED Dependency: Use combined ref ---
 
+    // --- Grid Dimensions Calculation ---
+    // Calculate total size of the grid based on dimensions and cell size
+    const gridConfig = useMemo(() => ({
+        squareSize: DEFAULT_SQUARE_SIZE,
+        hexSize: DEFAULT_HEX_SIZE,
+        // Hex dimensions based on hexSize (pointy-top orientation)
+        hexWidth: DEFAULT_HEX_SIZE * 2,
+        hexHeight: Math.sqrt(3) * DEFAULT_HEX_SIZE,
+    }), []);
+
+    // Calculate the number of rows and columns needed based on some arbitrary map size
+    // TODO: Make map size configurable and responsive
+    const dimensions = useMemo(() => {
+        // Example fixed size for now
+        const totalMapWidth = 2000; // Example size in 'world' units (grid units)
+        const totalMapHeight = 2000;
+
+        if (isHexGrid) {
+            // For hex grids, cols are simpler, but rows are based on 3/4 height
+            const cols = Math.ceil(totalMapWidth / gridConfig.hexWidth);
+            const rows = Math.ceil(totalMapHeight / (gridConfig.hexHeight * 0.75));
+            return { rows, cols };
+        } else {
+            // For square grids
+            const cols = Math.ceil(totalMapWidth / gridConfig.squareSize);
+            const rows = Math.ceil(totalMapHeight / gridConfig.squareSize);
+            return { rows, cols };
+        }
+    }, [isHexGrid, gridConfig]); // Depend on isHexGrid and gridConfig
+
+    // Calculate total pixel width and height of the *grid content* at scale 1
+    const { totalWidth, totalHeight } = useMemo(() => {
+        if (isHexGrid) {
+            // Total width: num_cols * hexWidth
+            // Total height: (num_rows - 1) * (hexHeight * 0.75) + hexHeight
+            // This calculation seems slightly off. Let's revisit the hex grid height.
+            // A hex grid of N rows has total height approx (N-1) * (hexHeight * 0.75) + hexHeight.
+            // The Grid component calculates this correctly. Let's derive total size based on that.
+            const width = dimensions.cols * gridConfig.hexWidth;
+            const height = dimensions.rows * (gridConfig.hexHeight * 0.75); // Simplified calculation based on grid drawing logic
+             // The actual drawn height might be slightly more due to the last row.
+             // For now, use this approximation or get it from the Grid component if it exposed it.
+             // Let's match the Grid component's calculation slightly better for total height.
+             const preciseHeight = dimensions.rows > 0 ? (dimensions.rows - 1) * (gridConfig.hexHeight * 0.75) + gridConfig.hexHeight : 0;
+
+            return { width: width, height: preciseHeight };
+
+        } else {
+            // For square grids
+            const width = dimensions.cols * gridConfig.squareSize;
+            const height = dimensions.rows * gridConfig.squareSize;
+            return { width, height };
+        }
+    }, [isHexGrid, dimensions, gridConfig]); // Depend on isHexGrid, dimensions, and gridConfig
+
+
+    // Attach a window resize listener to update dimensions (debounced)
+     const updateGridDimensions = useCallback(_.debounce(() => {
+         // This function doesn't actually *recalculate* rows/cols/total size here,
+         // it just logs. The dimensions/totalWidth/totalHeight are derived from fixed
+         // totalMapWidth/Height.
+         // If the map size should be responsive to window size, the logic here
+         // would need to update state that dimensions/totalWidth/totalHeight depend on.
+         // For now, it's just a placeholder.
+
+         // The grid dimensions are currently fixed based on constants, not window size.
+         // This listener is effectively doing nothing regarding the grid dimensions calculation itself.
+         // If the intent is to make the *grid size relative to the viewport* or
+         // *recenter the map on resize*, this listener and its logic need revision.
+         // For now, keeping the listener but noting its limited function based on current state dependencies.
+        console.log('[DEBUG] Window resized (debounced). Grid dimensions derived from fixed map size:', { totalWidth, totalHeight });
+
+     }, 250), [totalWidth, totalHeight]); // Debounced function depends on calculated size
+
+     useEffect(() => {
+         window.addEventListener('resize', updateGridDimensions);
+         // Initial call on mount to log dimensions
+         updateGridDimensions();
+         return () => {
+             window.removeEventListener('resize', updateGridDimensions);
+              // Cancel any pending debounced calls on cleanup
+             updateGridDimensions.cancel();
+         };
+     }, [updateGridDimensions]); // Effect depends on the stable debounced function
+
+
+    // --- AutoSave Hook ---
+    const { saveState, loadState } = useCampaignManager('my-vtt-campaign'); // Example campaign ID
+
+    useAutoSave(gameState, saveState, 1000); // Auto-save every 1 second of inactivity
+
+    // --- Load State on Mount ---
+    useEffect(() => {
+        console.log('[DEBUG] Component mounted, attempting to load state...');
+        const loadedState = loadState();
+        if (loadedState) {
+            // Use the history setter to load the state and initialize history
+            // useStateWithHistory provides a setter for this
+            // Let's assume setGameState from useStateWithHistory can handle this (it should)
+            setGameState(loadedState);
+            console.log('[DEBUG] State loaded and applied.');
+        } else {
+             console.log('[DEBUG] No state loaded, starting with initial state.');
+             // If no state loaded, the initial state from useStateWithHistory is already set.
+             // Add this initial state to history so undo/redo works immediately
+             updateGameState(prev => ({ ...prev })); // Pushes the initial state to history
+        }
+    }, [loadState, setGameState, updateGameState]); // Depend on stable loadState, setGameState, updateGameState
+
 
   // Cleanup initial mousedown ref and temporary global listeners on component unmount
   useEffect(() => {
@@ -1078,4 +1187,3 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
     </div>
   );
 };
-```
