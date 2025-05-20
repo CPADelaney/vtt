@@ -33,7 +33,15 @@ body {
   font-size: 18px;
   padding: 0;
   cursor: pointer;
+  border: 1px solid #ccc; /* Added border for clarity */
+  background: #f0f0f0; /* Added background */
+  border-radius: 4px; /* Added border-radius */
 }
+
+.zoom-controls button:hover {
+  background: #ddd; /* Hover effect */
+}
+
 
 /* Container for your tabletop, typically 100% of viewport */
 /* Note: Actual sizing is handled by the layout grid in App.jsx */
@@ -43,30 +51,23 @@ body {
   overflow: hidden;
   background: #f0f0f0;
   position: relative;
+  /* Removed cursor styles, handled by JS */
 }
 
 /* The main tabletop element that gets panned/zoomed */
 #tabletop {
   position: absolute;
   transform-origin: 0 0;
+  user-select: none; /* Prevent text selection during drag/pan */
 }
 
-/* Cursor style when panning (grabbing) */
-#tabletop.grabbing {
+/* Cursor style when panning (grabbing) - Now applied to document.body by ZoomableContainer hook */
+/* #tabletop.grabbing {
   cursor: grabbing;
-}
+} */
 
 /* Base grid cell styles (used by Grid component) */
-.grid-cell {
-  position: absolute;
-  box-sizing: border-box;
-}
-
-/* Square grid specific (when isHexGrid = false) */
-/* Note: Grid component now draws squares using SVG pattern */
-
-/* Hex grid specific (when isHexGrid = true) */
-/* Note: Grid component now draws hexes using SVG paths */
+/* Note: Grid component now draws grid using SVG pattern or paths */
 
 
 /* Token styles */
@@ -76,10 +77,12 @@ body {
   height: 40px; /* Adjust based on desired token size relative to grid */
   border-radius: 50%;
   background: red; /* Default placeholder color */
-  transform: translate(-50%, -50%); /* Center the token on its {x,y} point */
+  /* transform: translate(-50%, -50%); /* Centering now often handled by container or hook */
   cursor: move;
   z-index: 100; /* Ensure tokens are above grid */
   box-sizing: border-box; /* Include border/padding in size */
+  /* Added for visual feedback */
+  border: 2px solid transparent; 
 }
 
 .token.selected {
@@ -87,7 +90,7 @@ body {
   outline-offset: 2px;
 }
 
-/* Selection marquee (used by useTokenSelection) */
+/* Selection marquee (used by useTokenSelection) - Rendered by Marquee component now */
 .marquee {
   position: absolute;
   border: 2px solid #3498db;
@@ -96,7 +99,7 @@ body {
   z-index: 10000; /* Ensure marquee is on top */
 }
 
-/* Context menu */
+/* Context menu - Rendered by ContextMenu component now */
 .context-menu {
   position: fixed; /* Positioning handled by JS */
   background: white;
@@ -144,8 +147,7 @@ body {
 .app-layout {
   display: grid;
   /* Define grid columns: left toolbar (fixed), main content (flexible), right sidebar (fixed/flexible) */
-  /* This matches the grid-template-columns definition in App.jsx */
-  /* grid-template-columns: 60px 1fr 350px; */ /* Defined in JS */
+  /* grid-template-columns: 60px 1fr 350px; */ /* Defined in App.jsx now */
   grid-template-rows: 100%;
   grid-template-areas: "tools-bar main-content right-sidebar";
 
@@ -164,6 +166,7 @@ body {
   align-items: center; /* Center icons horizontally */
   padding-top: 10px;
   overflow-y: auto; /* Allow scrolling if toolbar is tall */
+  /* flex-shrink: 0; */ /* Ensure it doesn't shrink */
 }
 
 /* Middle column: the main game area */
@@ -179,16 +182,17 @@ body {
   grid-area: right-sidebar;
   background-color: #fff;
   border-left: 1px solid #ccc;
-  overflow-y: auto; /* Allow scrolling within the sidebar */
-  display: flex; /* Use flex for internal layout (collapse button + content) */
-  flex-direction: row-reverse; /* Puts collapse button on the left edge of the sidebar */
-  transition: width 0.3s ease; /* Smooth collapse/expand animation */
+  overflow: hidden; /* Sidebar content manages its own scroll */
+  display: flex;
+  flex-direction: column; /* Changed to column for internal layout */
+  /* Removed fixed width/transition - let SplitPane handle width */
 }
 
 .right-sidebar.collapsed {
-  width: 12px !important; /* Adjust width for collapsed state */
-  min-width: 12px !important;
-  flex-direction: row; /* Put button on the right edge when collapsed */
+  /* Handled by SplitPane min/max/default sizes and className prop */
+  /* width: 12px !important; */
+  /* min-width: 12px !important; */
+  /* flex-direction: row; */
 }
 
 .sidebar-content {
@@ -203,6 +207,7 @@ body {
   display: flex;
   border-bottom: 1px solid #ccc;
   flex-shrink: 0; /* Don't shrink tabs */
+  background-color: #f5f5f5; /* Added background */
 }
 
 .sidebar-tab-button {
@@ -216,20 +221,22 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 0.9em;
 }
 
 .sidebar-tab-button.active {
   border-bottom: 2px solid #007bff;
   color: #007bff;
-  background-color: #f0f0f0;
+  background-color: #fff; /* Active tab is lighter */
 }
 
 .sidebar-content-area {
   flex-grow: 1; /* Content fills remaining space */
   overflow-y: auto;
-  padding: 16px; /* Added padding */
+  padding: 16px;
   display: flex;
   flex-direction: column;
+  gap: 16px;
 }
 
 .chat-messages {
@@ -240,10 +247,39 @@ body {
   gap: 8px;
 }
 
+.chat-message {
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.chat-message.roll {
+  background-color: #eef5ff; /* Light blue */
+  border-left: 3px solid #007bff;
+}
+.chat-message.error {
+  background-color: #ffeef0; /* Light red */
+  border-left: 3px solid #dc3545;
+}
+.chat-message.system {
+   background-color: #f8f9fa; /* Light gray */
+   border-left: 3px solid #6c757d;
+}
+.chat-message.message {
+  background-color: #f9f9f9; /* Very light gray */
+  border-left: 3px solid #ccc;
+}
+
+.chat-message .sender {
+  font-weight: bold;
+  margin-right: 4px;
+}
+
 .chat-input-area {
   flex-shrink: 0; /* Input doesn't shrink */
   padding-top: 8px;
   border-top: 1px solid #ccc;
+  background-color: #fff; /* Ensure input area has background */
 }
 
 .chat-input-area input {
@@ -251,6 +287,7 @@ body {
   padding: 8px;
   border: 1px solid #ccc;
   border-radius: 4px;
+  box-sizing: border-box; /* Include padding in width */
 }
 
 .chat-quick-rolls {
@@ -306,6 +343,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 .tool-icon:hover {
   background: #eee;
@@ -323,23 +361,50 @@ body {
   }
 }
 
-/* The main resizer handle in SplitPane */
+/* Styles for the SplitPane resizer handle */
 .Resizer {
   background: #ccc;
-  cursor: col-resize;
-  width: 4px;
-  z-index: 500; /* Ensure resizer is above tabletop content */
+  opacity: 0.2;
+  z-index: 500; /* Ensure resizer is above main content but below controls/menu */
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+  background-clip: padding-box;
 }
 
 .Resizer:hover {
-  background: #999;
+  -webkit-transition: all 0.2s ease; /* Smoothed transition */
+  transition: all 0.2s ease;
+  background: #000;
+  opacity: 0.5;
 }
+
+.Resizer.vertical {
+  width: 11px;
+  margin: 0 -5px; /* Makes it easier to grab */
+  border-left: 5px solid rgba(255, 255, 255, 0);
+  border-right: 5px solid rgba(255, 255, 255, 0);
+  cursor: col-resize;
+}
+
+.Resizer.vertical:hover {
+  border-left: 5px solid rgba(0, 0, 0, 0.5);
+  border-right: 5px solid rgba(0, 0, 0, 0.5);
+}
+
+.Resizer.disabled {
+  cursor: not-allowed;
+}
+.Resizer.disabled:hover {
+  border-color: transparent;
+}
+
 
 /* Ping component styles */
 .ping-container {
   position: absolute;
   pointer-events: none; /* Cannot interact with pings */
-  will-change: transform, opacity;
+  /* transform/position handled by component JS */
 }
 
 .ping-outer {
@@ -348,8 +413,8 @@ body {
   height: 60px;
   border-radius: 50%;
   border: 2px solid; /* Color set by component */
-  transform: translate(-50%, -50%); /* Center on position */
-  opacity: 0.5;
+  /* transform: translate(-50%, -50%); /* Centering handled by ping-container positioning */
+  opacity: 0.5; /* Base opacity */
   animation: pingAnimation 2s ease-out forwards;
 }
 
@@ -359,10 +424,13 @@ body {
   height: 10px;
   border-radius: 50%;
   background-color: ; /* Color set by component */
-  transform: translate(-50%, -50%); /* Center on position */
-  opacity: 1;
-  animation: pingAnimation 2s ease-out forwards;
+  left: 50%; /* Center the dot */
+  top: 50%; /* Center the dot */
+  transform: translate(-50%, -50%); /* Adjust for dot's own size */
+  opacity: 1; /* Base opacity */
+  /* Animation handled by ping component JS now */
 }
+
 
 /* DM Tools area styles */
 .dm-tools-area {
@@ -378,26 +446,76 @@ body {
     cursor: pointer;
     font-weight: bold;
     text-align: center;
+    border: none; /* Buttons should often not have default borders */
 }
 
 .dm-tools-area .btn-combat-start {
     background-color: #28a745; /* Green */
     color: white;
 }
+.dm-tools-area .btn-combat-start:hover {
+  background-color: #218838;
+}
+.dm-tools-area .btn-combat-start:disabled {
+  background-color: #a0a0a0;
+  cursor: not-allowed;
+}
+
 .dm-tools-area .btn-combat-end {
     background-color: #dc3545; /* Red */
     color: white;
 }
+.dm-tools-area .btn-combat-end:hover {
+  background-color: #c82333;
+}
+.dm-tools-area .btn-combat-end:disabled {
+  background-color: #a0a0a0;
+  cursor: not-allowed;
+}
+
 .dm-tools-area .btn-grid-toggle {
     background-color: #6c757d; /* Gray */
     color: white;
 }
+.dm-tools-area .btn-grid-toggle:hover {
+  background-color: #5a6268;
+}
+.dm-tools-area .btn-grid-toggle:disabled {
+  background-color: #a0a0a0;
+  cursor: not-allowed;
+}
+
+.dm-tools-area .btn-undo {
+    background-color: #007bff; /* Blue */
+    color: white;
+}
+.dm-tools-area .btn-undo:hover {
+  background-color: #0056b3;
+}
+.dm-tools-area .btn-undo:disabled {
+  background-color: #a0a0a0;
+  cursor: not-allowed;
+}
+
+.dm-tools-area .btn-revert-turn {
+    background-color: #6f42c1; /* Purple */
+    color: white;
+}
+.dm-tools-area .btn-revert-turn:hover {
+  background-color: #563d7c;
+}
+.dm-tools-area .btn-revert-turn:disabled {
+  background-color: #a0a0a0;
+  cursor: not-allowed;
+}
+
 
 .dm-tools-area select {
     width: 100%;
     padding: 8px;
     border: 1px solid #ccc;
     border-radius: 4px;
+    box-sizing: border-box;
 }
 .dm-tools-area label {
     font-size: 0.9em;
@@ -422,43 +540,4 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
-}
-
-
-/* Styles for the SplitPane resizer handle */
-.Resizer {
-  background: #ccc;
-  opacity: 0.2;
-  z-index: 1;
-  -moz-box-sizing: border-box;
-  -webkit-box-sizing: border-box;
-  box-sizing: border-box;
-  background-clip: padding-box;
-}
-
-.Resizer:hover {
-  -webkit-transition: all 2s ease;
-  transition: all 2s ease;
-  background: #000;
-  opacity: 0.5;
-}
-
-.Resizer.vertical {
-  width: 11px;
-  margin: 0 -5px;
-  border-left: 5px solid rgba(255, 255, 255, 0);
-  border-right: 5px solid rgba(255, 255, 255, 0);
-  cursor: col-resize;
-}
-
-.Resizer.vertical:hover {
-  border-left: 5px solid rgba(0, 0, 0, 0.5);
-  border-right: 5px solid rgba(0, 0, 0, 0.5);
-}
-
-.Resizer.disabled {
-  cursor: not-allowed;
-}
-.Resizer.disabled:hover {
-  border-color: transparent;
 }
