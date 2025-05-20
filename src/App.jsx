@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react'; // Added useEffect, useRef, useCallback for potential future use or clarification of existing use in comments
 // NOTE: If you see a build error about react-split-pane, you need to install it:
 // npm install react-split-pane
 // import SplitPane from '@rexxars/react-split-pane'; // Use the rexxars fork - ORIGINAL LINE CAUSING ERROR
@@ -11,6 +11,10 @@ import ToolsBar from './components/ToolsBar';
 // import { Sidebar } from './components/Sidebar'; // Sidebar import removed based on VT rendering it internally plan (as noted in original code comments)
 import '../css/styles.css'; // This file already contains the necessary resizer styles
 
+// Fix: Import Sidebar at the top level, outside the component function
+import { Sidebar } from './components/Sidebar'; // Re-adding Sidebar import here
+
+
 export default function App() {
   // State for the sidebar width managed by SplitPane
   // This state might become less relevant if Sidebar is rendered *inside* VirtualTabletop
@@ -20,9 +24,9 @@ export default function App() {
   // The original App.jsx comments were inconsistent about where Sidebar is rendered relative to SplitPane.
   // Reverting to the structure implied by the original SplitPane definition: App renders SplitPane, SplitPane's panes are VT and Sidebar.
   // This requires VT to pass state up or use Context, which is noted as a future improvement.
-  // For THIS fix, we assume App's SplitPane *does* render VirtualTabletop and Sidebar as siblings.
-  // The Sidebar *component* is imported below. The state passing issue is separate from the import error fix.
-  import { Sidebar } from './components/Sidebar'; // Re-adding Sidebar import
+  // For THIS fix (addressing the import error), we assume App's SplitPane *does* render VirtualTabletop and Sidebar as siblings.
+  // The Sidebar *component* is imported above. The state passing issue is separate from the import error fix.
+
 
   const [sidebarWidth, setSidebarWidth] = useState(350); // Default width
 
@@ -86,110 +90,79 @@ export default function App() {
         // The original code had the SplitPane *inside* the `main-content` div, which breaks the grid layout.
         // Correct approach: SplitPane is a direct child of `.app-layout` and its panes are styled to occupy `main-content` and `right-sidebar` areas.
         // This requires changing the CSS Grid definition or how SplitPane applies styles.
-        // Let's adjust the SplitPane children to apply the grid area classes.
+        // A common pattern is: outer grid defines static areas (like toolbar), and ONE grid area is then managed by SplitPane (e.g., splitting main content and a sidebar *within that single grid cell*).
+        // The original code's `className="split-pane-container"` and `paneStyle` suggests an attempt to apply styles, but the comments about grid areas conflict with putting SplitPane *inside* a grid area div.
+        // The most plausible interpretation of the original SplitPane usage with two panes is that App's layout should NOT use a 3-column grid with fixed areas for main-content/right-sidebar managed by grid-area. Instead, the ToolsBar gets its grid area, and the *remaining space* is managed by SplitPane, which then contains VirtualTabletop in one pane and Sidebar in the other.
+        // Reverting to a simplified grid structure in App: tools-bar (fixed) | split-pane-area (flexible).
+        // The split-pane-area will be managed by SplitPane, containing VT and Sidebar.
 
-        // Removing the SplitPane wrapper div and applying grid classes to its panes' content.
-        // This might be complex with how SplitPane renders. A simpler fix is often
-        // to let SplitPane manage the layout entirely *within* one grid cell, or
-        // abandon the outer grid for the split part. Given the original code's attempt
-        // to put SplitPane *inside* a grid cell, it implies the intent might have been
-        // to split something *within* the main area.
+        // Let's try the most literal interpretation based on the original non-working SplitPane code structure within the grid comments:
+        // The `app-layout` grid defines three columns: tools-bar | main-content | right-sidebar.
+        // The `main-content` area contains the `VirtualTabletop`.
+        // The `right-sidebar` area contains the `Sidebar`.
+        // The SplitPane is intended to make the boundary between `main-content` and `right-sidebar` resizable.
+        // `react-split-pane` typically replaces the parent's display/layout properties to manage the split.
+        // It's difficult to directly combine the outer CSS Grid layout with `react-split-pane` managing the split within two of those columns.
+        // The code block below SplitPane was trying to apply `gridArea` to a flex div wrapping SplitPane, and then children inside the split pane, which is still conflicting.
+        // Let's go back to the *most recent* interpretation from the original comments block, where SplitPane manages the area that *would* have been main-content and right-sidebar, and its children are styled to fit conceptually.
 
-        // Let's revisit the SplitPane example in the original file comments. It implies SplitPane's LEFT pane is the main-content and the RIGHT pane is the right-sidebar.
-        // This means SplitPane should be a direct child of .app-layout, and its two children should be styled for main-content and right-sidebar.
+         // Reverting to a layout closer to the original intent implied by SplitPane having two children, but applying grid areas to the *children* of SplitPane (or wrappers).
+         // This still feels like conflicting layout strategies. A simpler pattern is to let SplitPane manage the entire area next to the toolbar.
+         // Let's use a layout where the toolbar is in a grid area, and the SplitPane occupies the remaining space (`1fr`) and *then* splits its children (VT and Sidebar) using flexbox/width it controls.
 
-         // Let's assume the SplitPane *itself* is not placed in a grid area, but its two children are.
-         // This requires the children to be divs that *are* in grid areas.
-         // This conflicts with SplitPane's typical usage where its children are the actual pane content.
+         // Updated layout structure:
+         // .app-layout (display: grid, grid-template-columns: toolbar-width 1fr)
+         //   .tools-bar (grid-area: ...)
+         //   .split-container (occupies 1fr, display: flex, flex-direction: row) - this container holds SplitPane
+         //      SplitPane (split="vertical")
+         //          VirtualTabletop (flex-grow: 1, flex-shrink: 0, flex-basis: auto, width controlled by SplitPane)
+         //          Sidebar (flex-grow: 0, flex-shrink: 0, flex-basis: auto, width controlled by SplitPane)
 
-         // Okay, simplest interpretation based on the original non-working SplitPane code structure:
-         // The `app-layout` grid defines three columns: tools-bar | main-content | right-sidebar.
-         // The `main-content` area contains the `VirtualTabletop`.
-         // The `right-sidebar` area contains the `Sidebar`.
-         // The SplitPane is intended to make the boundary between `main-content` and `right-sidebar` resizable.
-         // `react-split-pane` typically replaces the parent's display/layout properties to manage the split.
-         // It's difficult to directly combine the outer CSS Grid layout with `react-split-pane` managing the split within two of those columns.
-         // A common pattern is: outer grid defines static areas (like toolbar), and ONE grid area is then managed by SplitPane (e.g., splitting main content and a sidebar *within that single grid cell*).
-         // The original code's `className="split-pane-container"` and `paneStyle` suggests an attempt to apply styles, but the comments about grid areas conflict with putting SplitPane *inside* a grid area div.
 
-         // Let's try the most literal interpretation based on the error context and the original (commented out/struggling) code:
-         // App layout is grid.
-         // ToolsBar goes in 'tools-bar'.
-         // The rest (`main-content` and `right-sidebar`) is managed by SplitPane.
-         // So SplitPane must be a direct child of the grid container, and its *two children* must be the VirtualTabletop and the Sidebar, styled to occupy their respective grid areas.
-         // This requires applying `grid-area` directly to the `VirtualTabletop` and `Sidebar` components or wrapper divs *rendered as children of SplitPane*.
-         // SplitPane's `paneStyle` can then apply flexbox or other layout *within* the panes.
+         // This means the outer grid defines only two areas: toolbar and a flexible main area.
+         // The flexible main area will contain the SplitPane.
 
-         // Reverting the SplitPane structure closer to the original intent but fixing the grid application.
-         // The SplitPane will be a direct child of `.app-layout`. Its first child is VT, second is Sidebar.
-         // Styles will be applied to VT and Sidebar (or their wrappers) to place them in grid areas.
-
-         // This seems overly complicated due to the conflicting layout approaches.
-         // Let's go back to the simpler approach implied by the comments suggesting Sidebar is rendered *inside* VirtualTabletop.
-         // If Sidebar is *inside* VirtualTabletop, then App's SplitPane only needs to split between the ToolsBar and the *entire* main area containing VT and its internal Sidebar.
-         // This means the RIGHT pane of App's SplitPane becomes just an empty placeholder or is removed entirely, and VirtualTabletop takes up the remaining space after the ToolsBar.
-         // Then, the SplitPane in App.jsx should split between `tools-bar` and `main-content`. The `right-sidebar` grid area is effectively unused or handled differently.
-         // The original SplitPane definition had two panes, suggesting splitting into two areas. Let's assume it splits `main-content` and `right-sidebar`. This means SplitPane must have two children, one styled for `main-content` and one for `right-sidebar`.
-
-         // Okay, let's stick to the simplest fix for the BUILD ERROR and leave the complex layout/state issues for a future refactoring.
-         // The import statement is the problem. Fixing just that allows the build to succeed.
-         // The SplitPane structure and state flow issues noted in the original comments and my analysis are secondary to this *specific* error fix request.
-
-         // Restoring the SplitPane structure where App renders SplitPane, and SplitPane's children are VirtualTabletop and Sidebar.
-         // This requires applying the grid area styles to the children or letting SplitPane manage the layout entirely.
-         // The original code had `paneStyle={{ display: 'flex', flexDirection: 'column', height: '100%' }}` which SplitPane applies to its *internal* pane divs wrapping the children.
-         // The `className="split-pane-container"` was on the SplitPane itself.
-
-         // Let's put SplitPane *inside* a div styled as `main-content`, and have a separate `right-sidebar` div.
-         // This still doesn't make the boundary resizable using SplitPane.
-
-         // The most plausible interpretation of the original SplitPane usage with two panes is that App's layout should NOT use a 3-column grid with fixed areas for main-content/right-sidebar managed by grid-area. Instead, the ToolsBar gets its grid area, and the *remaining space* is managed by SplitPane, which then contains VirtualTabletop in one pane and Sidebar in the other.
-
-         // Reverting to a simplified grid structure in App: tools-bar (fixed) | split-pane-area (flexible).
-         // The split-pane-area will be managed by SplitPane, containing VT and Sidebar.
-
-    }}>
+    >
       {/* LEFT COLUMN: Tools Bar - REMAINS IN GRID */}
-      <div className="tools-bar">
+      {/* This div is NOT wrapped by SplitPane */}
+      <div className="tools-bar" style={{ gridArea: 'tools-bar' }}> {/* Explicitly assign grid area */}
         <ToolsBar />
       </div>
 
-      {/* MAIN CONTENT AREA (flexible width) - MANAGED BY SPLITPANE */}
-      {/* The SplitPane container itself will take the remaining grid space */}
-      {/* This div will contain the resizable split */}
+      {/* MAIN CONTENT & SIDEBAR AREA (flexible width) - MANAGED BY SPLITPANE */}
+      {/* This div occupies the remaining 1fr grid space and contains the SplitPane */}
       <div style={{ gridArea: 'main-content / main-content / main-content / right-sidebar', display: 'flex', height: '100%' }}>
-          {/* SplitPane manages the division between the main tabletop and the sidebar within this area */}
+          {/* SplitPane manages the division between the main tabletop and the sidebar within this flex container */}
           <SplitPane
             split="vertical"
             minSize={400} // Minimum width for the main tabletop area pane
-            // maxSize={-sidebarWidth} // This concept is less direct with the new SplitPane versions
-            // defaultSize={window.innerWidth - sidebarWidth} // Initial split position - Needs careful calculation relative to the pane container's width
-            // Let SplitPane use its default or calculate a percentage/relative size
+            // maxSize={-sidebarWidth} // SplitPane manages this relative to parent container size now
+            // defaultSize={window.innerWidth - sidebarWidth} // Initial split position relative to SplitPane container
+            // Let SplitPane calculate initial size relative to its container (this flex div)
             defaultSize={'70%'} // Example: 70% for VT, 30% for Sidebar initially
             onChange={(size) => {
                  // The size here is the size of the *first* pane (VirtualTabletop).
-                 // Calculate the sidebar width based on the container width and the first pane's size.
-                 // Need to get the width of the SplitPane container div.
-                 const container = document.querySelector('.app-layout > div:last-child'); // Assuming the flex div wrapping SplitPane is the last child
-                 if (container) {
-                     const containerWidth = container.offsetWidth;
+                 // Calculate the sidebar width based on the SplitPane container's width.
+                 // SplitPane applies styles directly to its children divs. We need the width of the SplitPane element itself.
+                 // SplitPane is within the flex div styled with gridArea.
+                 const splitPaneElement = document.querySelector('.app-layout .Resizer')?.parentElement; // Find split pane element via resizer
+                 if (splitPaneElement) {
+                     const containerWidth = splitPaneElement.offsetWidth;
                      setSidebarWidth(containerWidth - size);
+                 } else {
+                     // Fallback: if resizer/splitpane not found, estimate based on window
+                      setSidebarWidth(window.innerWidth - 60 - size); // Subtract toolbar width
                  }
             }}
-             // SplitPane applies flexbox to its children by default to manage the split
-             // Removed redundant paneStyle from SplitPane itself
+             // SplitPane applies flexbox styles to its internal pane divs and children by default
              className="split-pane-container" // Use this class for SplitPane wrapper if needed
           >
             {/* LEFT PANE: The VirtualTabletop */}
             {/* VirtualTabletop needs to receive state/callbacks for Sidebar */}
-            {/* For *this* fix, we acknowledge this dependency but don't implement the state flow. */}
-            {/* Sidebar props like isHexGrid, inCombat, historyInfo, undoGameState, onToggleGrid, onToggleCombat */}
-            {/* will be passed to Sidebar when it is rendered in the right pane. */}
-            {/* VirtualTabletop *will* manage these internally via useStateWithHistory. */}
-            {/* The challenge is getting them from VirtualTabletop *up* to App and *down* to Sidebar. */}
-            {/* This would require VT exposing them or using Context. */}
-            {/* For now, VirtualTabletop remains standalone, managing its state, and Sidebar remains standalone, expecting props it won't receive yet. */}
-            {/* This allows the build error to be fixed without tackling the larger state management issue. */}
+            {/* For *this* specific fix (import error), VirtualTabletop remains standalone, managing its state internally. */}
+            {/* It cannot pass state up to App to be passed down to Sidebar without significant refactoring (Context API, render prop, etc.). */}
+            {/* This is a known limitation resulting from prioritizing the build error fix over larger architectural changes. */}
+            {/* The Sidebar will be rendered but non-functional regarding VT state interaction (inCombat, history, undo, toggle grid/combat). */}
             <VirtualTabletop
                // isHexGrid etc props removed from VT in a previous iteration - need to confirm if VT expects them now or manages internally.
                // The current VT code review shows it manages `isHexGrid` and `inCombat` internally via `useStateWithHistory`.
@@ -200,7 +173,6 @@ export default function App() {
                // This implies VT needs to expose them. UseImperativeHandle or a render prop is one way.
                // Let's add a ref to VT to potentially access its state/methods later if needed, but don't rely on it for Sidebar props *yet*.
                // Let's assume Sidebar *will* receive props, even if App isn't providing them correctly in this version.
-
             />
 
             {/* RIGHT PANE: The Sidebar */}
@@ -210,17 +182,20 @@ export default function App() {
                 // Placeholder props - these need to be populated by state from VirtualTabletop
                 // Passing dummy/default values for now to allow the Sidebar component to render without prop errors,
                 // assuming its rendering logic doesn't immediately fail on `undefined` for complex props.
+                // The Sidebar component provided in the code bundle *does* expect these props,
+                // and uses them (e.g., `onClick={onToggleCombat}`, `disabled={!historyInfo?.canUndo}`).
+                // With placeholder values, the Sidebar component *will* render, but its interactive elements
+                // tied to these props (buttons, displaying combat status/history) will likely be disabled or non-functional.
                 isHexGrid={false} // Placeholder
                 onToggleGrid={() => console.warn("onToggleGrid not connected")} // Placeholder
                 inCombat={false} // Placeholder
                 onToggleCombat={() => console.warn("onToggleCombat not connected")} // Placeholder
                 undoGameState={() => console.warn("undoGameState not connected")} // Placeholder
-                historyInfo={null} // Placeholder - Sidebar checks historyInfo?.history
+                historyInfo={{ history: [], currentIndex: 0, canUndo: false, canRedo: false }} // Placeholder object matching structure
              />
           </SplitPane>
       </div>
-       {/* The right-sidebar grid area is now handled by the SplitPane's right pane content */}
-       {/* The original .right-sidebar div below SplitPane is removed */}
+       {/* The right-sidebar grid area definition is kept in the wrapper div's style to align with the 3-column grid concept */}
 
     </div>
   );
