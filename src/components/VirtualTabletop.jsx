@@ -103,8 +103,7 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
 
   const onToggleCombat = useCallback(() => {
     updateGameState(prev => ({ ...prev, inCombat: !prev.inCombat }));
-  }, [updateGameState]) // <--- MISSING SEMICOLON WAS HERE
-; // **ADDED SEMICOLON HERE**
+  }, [updateGameState]);
 
   // Token drag hook - Expose `isDragging` state
   const { startDrag, isDragging } = useTokenDrag({
@@ -689,7 +688,7 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
           // hideMenu(); // Ensure our context menu is hidden on any right mousedown? Maybe not necessary if it hides on any mousedown.
           // Prevent default context menu if this mousedown is the start of a right-click gesture
           e.preventDefault();
-          // Don't stop propagation yet, let it bubble up to the contextmenu listener on ZoomableContainer if needed.
+          // Don't stop propagation yet. Let it bubble up to the contextmenu listener on ZoomableContainer if needed.
           return; // Exit early for right click on token
      }
 
