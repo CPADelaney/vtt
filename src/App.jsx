@@ -3,12 +3,12 @@ import React, { useState } from 'react';
 // NOTE: If you see a build error about react-split-pane, you need to install it:
 // npm install react-split-pane
 import SplitPane from '@rexxars/react-split-pane'; // Use the rexxars fork
-import '@rexxars/react-split-pane/dist/resizer.css'; // Import resizer styles
+// REMOVED: import '@rexxars/react-split-pane/dist/resizer.css'; // This import causes build error
 
 import VirtualTabletop from './components/VirtualTabletop';
 import ToolsBar from './components/ToolsBar';
 import { Sidebar } from './components/Sidebar';
-import '../css/styles.css';
+import '../css/styles.css'; // This file already contains the necessary resizer styles
 
 export default function App() {
   // State for the sidebar width managed by SplitPane
@@ -73,10 +73,6 @@ export default function App() {
              {/* Let's proceed with rendering Sidebar inside VirtualTabletop and removing this div. */}
              {/* Final Decision: Keep Sidebar here in App's SplitPane, but VirtualTabletop needs to expose state/setters for Sidebar. This requires changes in VirtualTabletop's return value or using React Context. Given the complexity of existing hooks, let's adjust VirtualTabletop to *directly* render the Sidebar and remove the Sidebar from App's layout. This is simpler for a minimal example. */}
              {/* Reverting again: The SplitPane layout implies Sidebar is a peer of VirtualTabletop. Let's pass state DOWN from VirtualTabletop. This requires VirtualTabletop to expose state/setters. */}
-             {/* Okay, VirtualTabletop will use React.useImperativeHandle or similar to expose methods/state *up* to App, which passes it down to Sidebar. This is complex. The simplest is to pass state/history info *from* VirtualTabletop *as props* to Sidebar. Let's add state exports from VT. */}
-             {/* Alternative: Pass the `historyInfo`, `undoGameState`, `onToggleGrid`, `onToggleCombat` callbacks/state directly from VirtualTabletop as props to the Sidebar instance rendered HERE in App. This requires VirtualTabletop to render its children or pass these things up. This is the confusing loop identified. */}
-
-             {/* Let's stick to the original intent: App sets up the layout, VT manages the tabletop, Sidebar manages the side content. VT needs to pass its state/actions OUT to App, so App can pass them DOWN to Sidebar. */}
              {/* This requires significant refactoring or a state management library/context. */}
              {/* Simplest intermediate step: Modify VirtualTabletop to return *both* its main content JSX *and* the props Sidebar needs. App can then render Sidebar with those props. */}
              {/* This is hacky. A better way: Add a Context provider in App wrapping both VT and Sidebar, and VT puts state into context, Sidebar consumes it. */}
@@ -96,12 +92,12 @@ export default function App() {
              {/* Exposing internal hook state/setters from a component is done via `useImperativeHandle`. Let's try that. */}
 
              {/* Okay, plan: VirtualTabletop uses `useImperativeHandle` to expose `historyInfo` and `undoGameState`. App calls the ref to get these and passes them to Sidebar. App keeps `isHexGrid` and `inCombat` state and passes toggle handlers to Sidebar. VirtualTabletop receives `isHexGrid` and `inCombat` as props and syncs its internal state. */}
-             {/* This seems overly complex. A simpler approach: VirtualTabletop renders the Sidebar *inside* itself, positioned absolutely or via flex/grid within its own area. This avoids the App -> VT -> App -> Sidebar state loop. Let's do that. Remove Sidebar from App.jsx and add it to VirtualTabletop.jsx. */}
+             {/* This seems overly complex. A simpler approach: VirtualTabletop renders the Sidebar *inside* itself, positioned absolutely or via flex/grid within its own area. This avoids the complex state passing between App, VT, and Sidebar. Let's do that. Remove Sidebar from App.jsx and add it to VirtualTabletop.jsx. */}
              {/* BUT, SplitPane is here. If Sidebar is in VT, it won't be resizable by SplitPane. The SplitPane structure *requires* Sidebar to be a sibling of VT. */}
              {/* The correct fix for this structure is Context. App provides a Context with VTT state. VT updates context. Sidebar consumes context. */}
              {/* Without adding Context, the *least* disruptive fix is to pass state/history info FROM VirtualTabletop to App, and then DOWN to Sidebar as props. This makes the flow App -> VT, VT -> App (via exposed value/ref), App -> Sidebar. Still weird. */}
 
-             {/* Let's revert App to the state where it holds `isHexGrid` and `inCombat` state and passes toggles down to VirtualTabletop. VirtualTabletop will simply receive these as props and use them. It will NOT manage them in `gameState` unless they are loaded from a save. The history state (`undoGameState`, `historyInfo`) *must* come from `useStateWithHistory` inside VirtualTabletop. App needs to get this and pass it to Sidebar. */}
+             {/* Okay, let's revert App to the state where it holds `isHexGrid` and `inCombat` state and passes toggles down to VirtualTabletop. VirtualTabletop will simply receive these as props and use them. It will NOT manage them in `gameState` unless they are loaded from a save. The history state (`undoGameState`, `historyInfo`) *must* come from `useStateWithHistory` inside VirtualTabletop. App needs to get this and pass it to Sidebar. */}
              {/* Okay, final plan for App/VT/Sidebar state flow: */}
              {/* - App.jsx: Manages `sidebarWidth`. Renders SplitPane, ToolsBar, VirtualTabletop, Sidebar. */}
              {/* - VirtualTabletop.jsx: Manages all core VTT state (`tokens`, `scale`, `position`, `isHexGrid`, `inCombat`) using `useStateWithHistory`. Exposes `historyInfo` and `undoGameState` via props or render prop (render prop is cleaner). Passes `isHexGrid` and `inCombat` *out* via render prop. Provides toggle callbacks (`onToggleGrid`, `onToggleCombat`) via render prop. */}
