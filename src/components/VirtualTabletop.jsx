@@ -122,7 +122,6 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
       initialLoadDoneRef.current = true;
     } else {
       console.log('[DEBUG] No saved state found... using defaults');
-      // The useStateWithHistory initial state is used if loadState returns null
       initialLoadDoneRef.current = true;
     }
   }, [loadState, setGameState]); // Depend on loadState and setGameState
@@ -445,20 +444,24 @@ const { startDrag, isDragging } = useTokenDrag({
         }
         // Always select/toggle the clicked token
         selectTokenId(clickedTokenId, isAdditiveSelection); // <<< THIS IS LINE 290, where the error occurs
+    }
 // ... rest of handleMouseDown
-    }, [
-        hideMenu, // Depend on hideMenu callback
-        tokens, // Needed to find clicked token details if dragging starts - actually not needed here, only in startDrag
-        // selectTokenId, // Removed dependency - stable function from hook
-        // clearSelection, // Removed dependency - stable function from hook
-        startDrag, // Hook callback to start drag
-        startMarquee, // Hook callback to start marquee
-        isDragging, // Need latest status from hook
-        isSelecting, // Need latest status from hook
-        // Note: createPing is NOT a dependency here; it's called in mouseup.
-        // Note: scale and position are NOT dependencies here; they are used in mouseup to calculate ping pos.
-        selectedTokenIds, // Dependency for selection logic within this handler
-    ]);
+  }, [ // <-- Corrected: Removed the trailing comma after the array
+      hideMenu, // Depend on hideMenu callback
+      tokens, // Needed to find clicked token details if dragging starts - actually not needed here, only in startDrag
+      // selectTokenId, // Removed dependency - stable function from hook
+      // clearSelection, // Removed dependency - stable function from hook
+      startDrag, // Hook callback to start drag
+      startMarquee, // Hook callback to start marquee
+      isDragging, // Need latest status from hook
+      isSelecting, // Need latest status from hook
+      // Note: createPing is NOT a dependency here; it's called in mouseup.
+      // Note: scale and position are NOT dependencies here; they are used in mouseup to calculate ping pos.
+      selectedTokenIds, // Dependency for selection logic within this handler
+      // Corrected: Use stable hook functions instead of adding them here
+      selectTokenId, // Added selectTokenId
+      clearSelection, // Added clearSelection
+  ]); // <-- Corrected: closing parenthesis follows bracket
 
 
   // Global mousemove handler (attached on mousedown)
@@ -537,6 +540,7 @@ const { startDrag, isDragging } = useTokenDrag({
       isDragging, isSelecting, // State values from hooks
       // Note: initialMouseDownPosRef and interactionStartedRef are accessed via closure/current
       selectedTokenIdsRef, // Need ref to access latest selection state in callback
+      handleGlobalMouseMove, handleGlobalMouseUp // Need for cleanup (defensive addition, hooks usually handle this)
   ]);
 
    // Global mouseup handler (attached on mousedown)
@@ -687,7 +691,7 @@ const { startDrag, isDragging } = useTokenDrag({
       // scale, position, selectedTokenIds are now accessed via refs.
       // Need callbacks as dependencies:
       selectedTokenIdsRef, scaleRef, positionRef // Add refs here
-   ]); // Added refs as dependencies
+   ]);
 
 
    // Handlers for zoom buttons (passed to Controls component)
