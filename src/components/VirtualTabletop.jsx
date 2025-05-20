@@ -281,6 +281,7 @@ const { startDrag, isDragging } = useTokenDrag({
       isSelecting, // Expose isSelecting flag from hook state
       setSelectedTokenIds, // Needed for cleanup effect within VT
       cancelMarquee, // Added cancelMarquee from useTokenSelection
+      marqueeState, // <-- ADDED: Destructure marqueeState from the hook
     } = useTokenSelection({
     getTokens: useCallback(() => gameState.tokens, [gameState.tokens]), // Pass function to get tokens
     scale, // Pass scale from state
@@ -784,7 +785,7 @@ const { startDrag, isDragging } = useTokenDrag({
        setScale: newScale => setDirectState(prev => ({ ...prev, scale: newScale })),
        setPosition: newPosition => setDirectState(prev => ({ ...prev, position: newPosition })),
        minScale: MIN_SCALE,
-       maxScale: MAX_SCALE,
+       maxScale: MAXScale,
        zoomFactor: ZOOM_FACTOR,
        isPanDisabled: isDragging || isSelecting, // Pass the disabled flag
    });
@@ -932,7 +933,7 @@ const { startDrag, isDragging } = useTokenDrag({
 
         {/* Marquee component, rendered if marqueeState is active */}
         {/* This component is rendered by the Marquee.jsx file */}
-        <Marquee marqueeState={marqueeState} />
+        <Marquee marqueeState={marqueeState} /> {/* <-- marqueeState is now defined */}
 
         {/* Context Menu component, rendered if menuState is active */}
         {/* This component is rendered using the definition above or imported */}
