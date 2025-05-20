@@ -517,9 +517,7 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
         isPanning, // --- ADDED State ---
         setIsPanning, // --- ADDED Dependency ---
         handleGlobalMouseMoveRef, handleGlobalMouseUpRef, handleGlobalKeyDownRef // --- MODIFIED Dependency: Used refs for cleanup calls ---
-    ]); // Dependencies for handleGlobalMouseUp
-    }); // <-- ADDED this closing brace and parenthesis to close the useCallback call.
-
+    ]);
 
   // --- Refs for the actual listener functions ---
   // These refs will always point to the latest version of the handler logic defined above.
