@@ -1,7 +1,7 @@
 // src/App.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react'; // Added useEffect, useRef, useCallback for potential future use or clarification of existing use in comments
 // NOTE: If you see a build error about react-split-pane, you need to install it:
-// npm install react-split-pane
+// npm install @rexxars/react-split-pane
 // import SplitPane from '@rexxars/react-split-pane'; // Use the rexxars fork - ORIGINAL LINE CAUSING ERROR
 import { SplitPane } from '@rexxars/react-split-pane'; // Corrected: Use named import for SplitPane
 // REMOVED: import '@rexxars/react-split-pane/dist/resizer.css'; // This import causes build error
@@ -90,16 +90,6 @@ export default function App() {
       {/* Reverting to a simplified grid structure in App: tools-bar (fixed) | split-pane-area (flexible). */}
       {/* The split-pane-area will be managed by SplitPane, containing VT and Sidebar. */}
 
-      {/* Let's try the most literal interpretation based on the original non-working SplitPane code structure within the grid comments: */}
-      {/* The `app-layout` grid defines three columns: tools-bar | main-content | right-sidebar. */}
-      {/* The `main-content` area contains the `VirtualTabletop`. */}
-      {/* The `right-sidebar` area contains the `Sidebar`. */}
-      {/* The SplitPane is intended to make the boundary between `main-content` and `right-sidebar` resizable. */}
-      {/* `react-split-pane` typically replaces the parent's display/layout properties to manage the split. */}
-      {/* It's difficult to directly combine the outer CSS Grid layout with `react-split-pane` managing the split within two of those columns. */}
-      {/* The code block below SplitPane was trying to apply `gridArea` to a flex div wrapping SplitPane, and then children inside the split pane, which is still conflicting. */}
-      {/* Let's go back to the *most recent* interpretation from the original comments block, where SplitPane manages the area that *would* have been main-content and right-sidebar, and its children are styled to fit conceptually. */}
-
        {/* Reverting to a layout closer to the original intent implied by SplitPane having two children, but applying grid areas to the *children* of SplitPane (or wrappers). */}
        {/* This still feels like conflicting layout strategies. A simpler pattern is to let SplitPane manage the entire area next to the toolbar. */}
        {/* Let's use a layout where the toolbar is in a grid area, and the SplitPane occupies the remaining space (`1fr`) and *then* splits its children (VT and Sidebar) using flexbox/width it controls. */}
@@ -132,7 +122,7 @@ export default function App() {
               onChange={(size) => {
                    // The size here is the size of the *first* pane (VirtualTabletop).
                    // Calculate the sidebar width based on the SplitPane container's width.
-                   // SplitPane applies styles directly to its children divs. We need the width of the SplitPane element itself.
+                   // SplitPane applies styles directly to its internal pane divs and children by default. We need the width of the SplitPane element itself.
                    // SplitPane is within the flex div styled with gridArea.
                    // Use a ref for the SplitPane container div to get its width reliably
                    const splitContainer = document.querySelector('.app-layout > div:nth-child(2)'); // Assuming the second child is the split container
@@ -188,6 +178,6 @@ export default function App() {
         </div>
          {/* The right-sidebar grid area definition is conceptually covered by the split container spanning columns 2 and 3 */}
 
-      </div> {/* THIS CLOSING DIV WAS MISSING */}
+      </div>
     );
   }
