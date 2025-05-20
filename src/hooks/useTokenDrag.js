@@ -3,15 +3,16 @@ import { useCallback, useEffect, useRef } from 'react';
 /**
  * Hook to handle dragging selected tokens.
  * Coordinates are assumed to be in "grid" space.
+ * Attaches global mousemove and mouseup listeners to track drag.
  *
  * @param {object} options
  * @param {number} options.scale - The current zoom scale of the tabletop.
  * @param {Function} options.getSnappedPosition - Function to snap a grid coordinate pair.
- * @param {Function} options.onDragMove - Callback (tokenId, newPos, isFinal) => void for intermediate moves.
- * @param {Function} options.onDragEnd - Callback (tokenId, finalPos) => void when drag finishes.
+ * @param {Function} options.onDragMove - Callback (tokenId, newPos) => void for intermediate moves (receives snapped pos).
+ * @param {Function} options.onDragEnd - Callback (tokenId, finalPos) => void when drag finishes (receives snapped pos).
  */
 export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd }) {
-  // Refs for storing the latest props/state without needing hook re-runs
+  // Refs for storing the latest props/state without needing hook re-runs for event handlers
   const scaleRef = useRef(scale);
   const getSnappedPositionRef = useRef(getSnappedPosition);
   const onDragMoveRef = useRef(onDragMove);
@@ -21,7 +22,8 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
   const dragStateRef = useRef(null);
   const isDraggingRef = useRef(false); // Simple boolean ref
 
-  // Update the refs when props change
+  // Update the refs when props change. This effect ensures the global listeners
+  // (even though they are added once) access the latest state/prop values via these refs.
   useEffect(() => {
     scaleRef.current = scale;
     getSnappedPositionRef.current = getSnappedPosition;
@@ -29,21 +31,25 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
     onDragEndRef.current = onDragEnd;
   }, [scale, getSnappedPosition, onDragMove, onDragEnd]); // Depend on the props
 
-  // Attach global event listeners once
+  // Attach global event listeners once on mount.
+  // These listeners use the refs to access the latest data.
   useEffect(() => {
+    console.log('[DEBUG] useTokenDrag: Attaching global mouse/key listeners.');
+
     function onMouseMove(e) {
       if (!isDraggingRef.current || !dragStateRef.current) return; // Only process if dragging
-      const dragState = dragStateRef.current;
 
       // Prevent text selection and default drag behavior while dragging
       e.preventDefault();
-      e.stopPropagation(); // Stop propagation so other listeners (like marquee) don't interfere if drag starts
+      e.stopPropagation(); // Stop propagation so other listeners don't interfere
+
+      const dragState = dragStateRef.current;
 
       // Calculate mouse movement delta in screen coordinates
       const dxScreen = e.clientX - dragState.startMouseX;
       const dyScreen = e.clientY - dragState.startMouseY;
 
-      // Convert screen delta to grid delta using the current scale
+      // Convert screen delta to grid delta using the current scale from ref
       const currentScale = scaleRef.current || 1; // Use ref and default to 1
       const dxGrid = dxScreen / currentScale;
       const dyGrid = dyScreen / currentScale;
@@ -53,34 +59,35 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
         const startPos = dragState.tokenStartPositions.get(tokenId);
         if (!startPos) return; // Should not happen if setup correctly
 
-        // Calculate new position in grid space
+        // Calculate new position in grid space (initial + delta)
         const rawNewX = startPos.x + dxGrid;
         const rawNewY = startPos.y + dyGrid;
 
-        // Get the snapped position
+        // Get the snapped position using the snapping function from ref
         const snappedPos = getSnappedPositionRef.current(rawNewX, rawNewY);
 
-        // Call the drag move callback for intermediate updates
-        // Pass false for isFinal
-        onDragMoveRef.current?.(tokenId, snappedPos, false);
+        // Call the drag move callback for intermediate updates using ref
+        // This callback typically updates component state directly (e.g., via setDirectState)
+        onDragMoveRef.current?.(tokenId, snappedPos); // Simplified callback signature
       });
 
     }
 
     function onMouseUp(e) {
       if (!isDraggingRef.current || !dragStateRef.current) return; // Only process if dragging
-      const dragState = dragStateRef.current;
 
       // Prevent default behavior
        e.preventDefault();
        e.stopPropagation(); // Ensure this stops event propagation
 
 
+      const dragState = dragStateRef.current;
+
       // Calculate final mouse movement delta in screen coordinates
       const dxScreen = e.clientX - dragState.startMouseX;
       const dyScreen = e.clientY - dragState.startMouseY;
 
-      // Convert screen delta to grid delta using the current scale
+      // Convert screen delta to grid delta using the current scale from ref
       const currentScale = scaleRef.current || 1;
       const dxGrid = dxScreen / currentScale;
       const dyGrid = dyScreen / currentScale;
@@ -95,18 +102,17 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
         const rawFinalY = startPos.y + dyGrid;
         const finalSnappedPos = getSnappedPositionRef.current(rawFinalX, rawFinalY);
 
-         // Call the drag move callback ONE LAST TIME with the final position and true for isFinal
-         onDragMoveRef.current?.(tokenId, finalSnappedPos, true);
-
-        // Call the drag end callback
-        onDragEndRef.current?.(tokenId, finalSnappedPos);
+        // Call the drag end callback using ref.
+        // This callback typically updates component state and adds to history (e.g., via updateGameState)
+        onDragEndRef.current?.(tokenId, finalSnappedPos); // Simplified callback signature
       });
 
       // Reset drag state
-      console.log('[DEBUG] Drag ended.');
+      console.log('[DEBUG] useTokenDrag: Drag ended.');
       isDraggingRef.current = false;
-      dragStateRef.current = null;
-      // Restore default cursor and user select
+      dragStateRef.current = null; // Clear the drag state
+
+      // Restore default cursor and user select globally
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     }
@@ -114,38 +120,48 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
     function onKeyDown(e) {
       if (e.key === 'Escape' && isDraggingRef.current) {
         console.log('[DEBUG] Drag cancelled via Escape key');
-         // TODO: Revert tokens to original positions? Or just stop the drag?
-         // For now, just stop drag. Reverting needs storing initial positions here.
-         // The current dragStateRef stores initial positions, so reverting is possible.
-         // Let's just stop the drag for now, leaving tokens where they are.
+         // Current implementation just stops the drag, leaving tokens at their current position.
+         // To revert to original positions, you would need to use the tokenStartPositions
+         // stored in dragStateRef.current and call onDragMoveRef.current for each token
+         // with their original start position, then call onDragEndRef.current with the start position.
 
         isDraggingRef.current = false;
         dragStateRef.current = null; // Discard state
+
+        // Restore default cursor and user select globally
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
-         e.preventDefault(); // Prevent default browser behavior for Escape
+
+         e.preventDefault(); // Prevent default browser behavior for Escape (e.g., closing dialogs)
          e.stopPropagation(); // Stop propagation
       }
     }
 
     // Add document-level listeners in the capture phase to ensure they run first
-    // This helps in preventing default behaviors and stopping propagation before other handlers.
+    // This is important for preventing default behaviors and stopping propagation
+    // before potentially conflicting handlers lower in the DOM tree or later in the phase.
     document.addEventListener('mousemove', onMouseMove, { capture: true });
     document.addEventListener('mouseup', onMouseUp, { capture: true });
-    document.addEventListener('keydown', onKeyDown, { capture: true }); // Keydown can be capture or bubble, capture often safer
+    document.addEventListener('keydown', onKeyDown, { capture: true }); // Keydown capture is also common
 
-    // Cleanup function
+    // Cleanup function: runs when the hook unmounts (component unmounts)
     return () => {
+      console.log('[DEBUG] useTokenDrag: Cleaning up global mouse/key listeners.');
       document.removeEventListener('mousemove', onMouseMove, { capture: true });
       document.removeEventListener('mouseup', onMouseUp, { capture: true });
       document.removeEventListener('keydown', onKeyDown, { capture: true });
+      // Ensure cursor/user-select are reset on unmount just in case
+       document.body.style.cursor = '';
+       document.body.style.userSelect = '';
     };
-  }, []); // Empty dependency array means these listeners are attached once on mount
+  }, []); // Empty dependency array means these listeners are attached and removed only once
 
   /**
    * Function called from the component's onMouseDown to initiate a drag.
+   * Should be called when a token mousedown occurs and the component
+   * decides a drag might start (e.g., not just a click for selection).
    *
-   * @param {object} initialToken - The token element where the mouse down occurred.
+   * @param {object} initialToken - The token object where the mouse down occurred.
    * @param {MouseEvent} e - The mouse down event.
    * @param {Array<object>} selectedTokens - Array of all token objects that should be dragged together.
    */
@@ -157,9 +173,15 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
       mouseY: e.clientY
     });
 
-    // Prevent default text selection etc.
-     e.preventDefault();
-     e.stopPropagation(); // Stop propagation so the background mousedown handler doesn't also fire
+    // Prevent default text selection etc. related to the initial click on the element
+    // e.preventDefault(); // Prevented by VirtualTabletop's mousedown handler if on token
+    // e.stopPropagation(); // Stopped by VirtualTabletop's mousedown handler if on token
+
+    // If a drag is already in progress, ignore this new startDrag call
+    if (isDraggingRef.current) {
+        console.warn('[DEBUG] useTokenDrag: startDrag called while already dragging. Ignoring.');
+        return;
+    }
 
     // Build the map of initial positions for *all* tokens being dragged
     const tokenStartPositions = new Map();
@@ -176,7 +198,7 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
       startMouseX: e.clientX,
       startMouseY: e.clientY,
       tokenStartPositions,
-      initialTimestamp: Date.now()
+      initialTimestamp: Date.now() // Might be useful for timing/thresholds
     };
 
     // Set dragging flag
@@ -187,7 +209,7 @@ export function useTokenDrag({ scale, getSnappedPosition, onDragMove, onDragEnd 
     document.body.style.userSelect = 'none'; // Prevent selecting text while dragging
 
     console.log('[DEBUG] useTokenDrag: Drag state initialized.');
-  }, []); // No dependencies needed if called from component with current data
+  }, []); // No dependencies needed if called from component with current data passed as args
 
   return {
     startDrag,

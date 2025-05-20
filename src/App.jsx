@@ -1,5 +1,7 @@
 // src/App.jsx
 import React, { useState } from 'react';
+// NOTE: If you see a build error about react-split-pane, you need to install it:
+// npm install react-split-pane
 import SplitPane from 'react-split-pane';
 import 'react-split-pane/style.css';
 
@@ -66,6 +68,8 @@ export default function App() {
            <VirtualTabletop
             isHexGrid={isHexGrid} // Pass grid state down
             onToggleGrid={handleToggleGrid} // Pass toggle function down (although Sidebar handles button, VT needs it for calculations)
+            inCombat={inCombat} // Pass combat state down
+            onToggleCombat={handleToggleCombat} // Pass toggle function down
           />
         </div>
 

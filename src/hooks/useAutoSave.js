@@ -1,6 +1,6 @@
 // hooks/useAutoSave.js
 import { useEffect, useRef } from 'react';
-import _ from 'lodash';
+import _ from 'lodash'; // Assuming lodash is available
 
 /**
  * Generic hook that auto-saves gameState with a debounce.
@@ -8,15 +8,17 @@ import _ from 'lodash';
  * @param {any} gameState - The single source-of-truth object
  *                          (tokens, zoom, chat, etc.)
  * @param {Function} saveFn - Your function to actually persist the state
- *                            (e.g. localStorage, server).
+ *                            (e.g. localStorage, server). Should be memoized (e.g., with useCallback).
  * @param {number} debounceMs - How many ms of inactivity before saving
  */
 export function useAutoSave(gameState, saveFn, debounceMs = 1000) {
-  // Create a debounced save function
+  // Create a debounced save function.
+  // The debounced function should be created once and reused across renders.
+  // We use useRef to ensure the debounced function instance is stable.
   const debouncedSave = useRef(
     _.debounce((currentState) => {
-      console.log('[DEBUG] useAutoSave => saving gameState:', currentState);
-      saveFn(currentState);
+      console.log('[DEBUG] useAutoSave => saving gameState...'); // Log before calling saveFn
+      saveFn(currentState); // Call the actual save function
     }, debounceMs, {
       leading: false,  // Don't save immediately when changes start
       trailing: true,  // Do save after changes stop
@@ -24,66 +26,62 @@ export function useAutoSave(gameState, saveFn, debounceMs = 1000) {
     })
   ).current;
 
-  // Keep track of last saved state and whether we have pending changes
-  const pendingChangesRef = useRef(false);
-  const lastStateRef = useRef(gameState); // Store the last state that was *passed into* the effect
-
-  // Set up the effect to call the debounced save
+  // useEffect runs whenever gameState changes. It triggers the debounced save.
   useEffect(() => {
     // Do not save if gameState is null/undefined on mount before initial load
-    if (gameState === null || gameState === undefined) return;
-
-    // If the state object reference hasn't changed, no need to save/debounce
-    // This is a shallow check, but cheap. Deep comparison is handled within saveFn.
-    if (gameState === lastStateRef.current) {
-       console.log('[DEBUG] useAutoSave: State object reference unchanged, skipping debounce call.');
-       return;
+    if (gameState === null || gameState === undefined) {
+        console.log('[DEBUG] useAutoSave: gameState is null/undefined, skipping save.');
+        return;
     }
 
-    pendingChangesRef.current = true;
-    lastStateRef.current = gameState; // Update ref to current state
+    // We don't need to compare state here; the debouncedSave function
+    // will be triggered by the effect's dependency array whenever gameState
+    // reference changes. The actual state comparison to avoid redundant saves
+    // should happen INSIDE the `saveFn` function (like in `useCampaignManager`).
+    // This effect's sole purpose is to tell the debouncer "state *might* have changed, schedule a save".
 
-    console.log('[DEBUG] useAutoSave: State changed, triggering debounce.');
-    debouncedSave(gameState);
+    // Call the debounced function. It will wait for the debounce period
+    // before executing `saveFn(gameState)`.
+    // If `gameState` changes again within the debounce period, the timer resets.
+    console.log('[DEBUG] useAutoSave: gameState dependency changed, triggering debounced save.');
+    debouncedSave(gameState); // Pass the latest state
 
-     // Cleanup for the effect runs when gameState changes or component unmounts
-     return () => {
-         // If the effect is cleaning up *because state changed*, we don't need to flush.
-         // The new effect instance will take over.
-         // If the effect is cleaning up because the component is unmounting, we need to flush.
-         // The window.addEventListener('beforeunload') handles the unmount case more reliably.
-     };
+    // Cleanup function for this effect.
+    // This specific cleanup runs when the *dependencies change* or when the component unmounts.
+    // If dependencies change, the new effect instance takes over.
+    // If component unmounts, the return function runs.
+    return () => {
+        // This cleanup primarily ensures that if gameState changes *very* rapidly,
+        // pending debounced saves associated with the *old* gameState reference
+        // are cancelled, althoughlodash's debounce handles passing the latest arg.
+        // The main cleanup for component unmount is the `beforeunload` listener below.
+        // console.log('[DEBUG] useAutoSave: Effect cleanup (state changed or unmounting)');
+        // debouncedSave.cancel(); // Cancelling here might be too aggressive if a new effect is starting immediately
+    };
 
-  }, [gameState, debouncedSave]); // Depend on gameState
-
-  // Clean up and ensure any pending changes are saved when the hook itself cleans up
-  // This might happen on component unmount or if dependencies change
-  useEffect(() => {
-      // This return function runs on unmount
-      return () => {
-          // Use the beforeunload listener for saving final state.
-          // This cleanup is more for cancelling the debounce timer itself.
-          console.log('[DEBUG] useAutoSave: Hook cleanup, cancelling debounce.');
-          debouncedSave.cancel(); // Ensure no debounced calls happen after unmount
-      };
-  }, [debouncedSave]);
+  }, [gameState, debouncedSave]); // Depend on gameState and the stable debouncedSave function
 
 
-  // Handle window unload to save any pending changes *synchronously*
-  // This is the most reliable way to save just before the page closes
+  // Handle window unload to save any pending changes *synchronously*.
+  // This is essential because asynchronous operations are often not guaranteed
+  // to complete during the `beforeunload` event. localStorage is synchronous.
   useEffect(() => {
     const handleBeforeUnload = () => {
-      // Flush the debounced save immediately
+      // Flush the debounced save immediately before the page closes.
+      // This forces any pending save to execute NOW.
       console.log('[DEBUG] useAutoSave: Before unload, flushing debounced save.');
-      debouncedSave.flush();
+      debouncedSave.flush(); // Flush any pending saves
        // Note: You cannot perform asynchronous operations like fetch/indexedDB here.
        // localStorage is synchronous, which is why it's often used for this.
     };
 
-    // Attach the listener
+    // Attach the listener to the window
     window.addEventListener('beforeunload', handleBeforeUnload);
 
-    // Detach the listener on unmount
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [debouncedSave]); // Depends on the debounced save function
+    // Detach the listener when the hook cleans up (component unmounts)
+    return () => {
+        console.log('[DEBUG] useAutoSave: Removing beforeunload listener.');
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [debouncedSave]); // Depends on the stable debounced save function
 }

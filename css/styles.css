@@ -11,7 +11,7 @@ body {
   top: 10px;
   left: 10px;
   z-index: 1000;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 2akim5, 255, 0.9);
   padding: 10px;
   border-radius: 5px;
   display: flex;
@@ -59,6 +59,8 @@ body {
   position: absolute;
   transform-origin: 0 0;
   user-select: none; /* Prevent text selection during drag/pan */
+  -webkit-user-select: none; /* Safari */
+  -ms-user-select: none; /* IE 10+ */
 }
 
 /* Cursor style when panning (grabbing) - Now applied to document.body by ZoomableContainer hook */
@@ -82,7 +84,7 @@ body {
   z-index: 100; /* Ensure tokens are above grid */
   box-sizing: border-box; /* Include border/padding in size */
   /* Added for visual feedback */
-  border: 2px solid transparent; 
+  border: 2px solid transparent;
 }
 
 .token.selected {
