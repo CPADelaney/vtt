@@ -32,7 +32,7 @@ const MAX_SCALE = 3;
 const ZOOM_FACTOR = 0.1;
 const DEFAULT_SQUARE_SIZE = 50;
 const DEFAULT_HEX_SIZE = 30;
-const DRAG_THRESHOLD = 5; // Pixels mouse must move to cancel ping/start drag/marquee
+const DRAG_THRESHOLD = 5; // Pixels mouse must move to cancel ping/start drag/marquee/pan
 const TOKEN_VISUAL_SIZE = 40; // Matches CSS .token width/height
 
 
@@ -388,20 +388,76 @@ const { startDrag, isDragging } = useTokenDrag({
   }, [playerColor]);
 
 
-  // --- Global Mouse Event Handling on Document (for drag/marquee threshold) ---
+  // --- Global Mouse Event Handling on Document (for drag/marquee/pan threshold and movement) ---
   // These handlers are attached on the initial mousedown and removed on mouseup
-  // regardless of where the mouse moves, to track drag/marquee start.
+  // regardless of where the mouse moves, to track drag/marquee/pan start and progress.
 
-  const initialMouseDownPosRef = useRef(null); // Store screen position at mouse down { clientX, clientY, target, clickedTokenId, isAdditiveSelection }
-  const interactionStartedRef = useRef(false); // Flag if a drag or marquee has started
+  const initialMouseDownPosRef = useRef(null); // Store screen position at mouse down { clientX, clientY, target, clickedTokenId, button, isAdditiveSelection }
+  const interactionStartedRef = useRef(false); // Flag if a drag, marquee, or pan has started
+
+  // --- Added State/Refs for Panning ---
+  const [isPanning, setIsPanning] = useState(false);
+  const panStartMousePosRef = useRef({ x: 0, y: 0 }); // Mouse position (screen px) when pan started
+  const panStartVTStatePosRef = useRef({ x: 0, y: 0 }); // VirtualTabletop position (grid px) when pan started
+  // --- End Added ---
+
 
   // Define handlers using useCallback to get stable references for add/removeEventListener
    const handleGlobalMouseMove = useCallback((e) => {
-        // Only process if a potential interaction was initiated and no interaction has started yet
+        // Only process if a potential interaction was initiated (mousedown occurred)
         const initialPos = initialMouseDownPosRef.current;
-        if (!initialPos || interactionStartedRef.current) return; // Only check threshold if no interaction started
+        if (!initialPos) return;
 
-        const { clientX: startX, clientY: startY, target: startTarget, clickedTokenId, isAdditiveSelection } = initialPos;
+        // If an interaction has *already* started (drag, marquee, or pan)
+        if (interactionStartedRef.current) {
+             // Handle the ongoing interaction logic based on which state flag is true
+             if (isDragging) {
+                  // useTokenDrag hook's internal mousemove handles this
+                  // Ensure preventDefault/stopPropagation anyway if we know we're dragging
+                  e.preventDefault();
+                  e.stopPropagation();
+             } else if (isSelecting) {
+                 // useTokenSelection hook's internal mousemove handles this
+                 // Ensure preventDefault/stopPropagation anyway if we know we're selecting
+                  e.preventDefault();
+                  e.stopPropagation();
+             } else if (isPanning) {
+                 // --- ADDED Pan Move Logic ---
+                 e.preventDefault(); // Prevent default browser actions like text selection
+                 e.stopPropagation(); // Stop propagation
+
+                 const currentMouseX = e.clientX;
+                 const currentMouseY = e.clientY;
+                 const startMouseX = panStartMousePosRef.current.x;
+                 const startMouseY = panStartMousePosRef.current.y;
+                 const startVTStateX = panStartVTStatePosRef.current.x;
+                 const startVTStateY = panStartVTStatePosRef.current.y;
+
+                 // Calculate mouse movement delta in screen coordinates
+                 const dxScreen = currentMouseX - startMouseX;
+                 const dyScreen = currentMouseY - startMouseY;
+
+                 // Access the latest scale via ref
+                 const currentScale = scaleRef.current || 1;
+
+                 // Calculate the new tabletop position
+                 // newPos = startVTStatePos + (delta_screen / scale)
+                 const newPosition = {
+                     x: startVTStateX + (dxScreen / currentScale),
+                     y: startVTStateY + (dyScreen / currentScale),
+                 };
+
+                  // Update the state directly (no history)
+                 setDirectState(prev => ({ ...prev, position: newPosition }));
+                 // --- End Added ---
+             }
+             // If an interaction has started, stop further processing here.
+             return;
+        }
+
+
+        // --- Check Threshold to START an Interaction (if none started yet) ---
+        const { clientX: startX, clientY: startY, target: startTarget, clickedTokenId, button, isAdditiveSelection } = initialPos;
         const currentX = e.clientX;
         const currentY = e.clientY;
 
@@ -411,54 +467,77 @@ const { startDrag, isDragging } = useTokenDrag({
 
         // If mouse moved beyond threshold
         if (distance > DRAG_THRESHOLD) {
-            console.log('[DEBUG] Mouse moved significantly, initiating drag/marquee check.');
+            console.log('[DEBUG] Mouse moved significantly, initiating drag/marquee/pan check.');
             interactionStartedRef.current = true; // Mark interaction started
 
-            // Check if the initial mousedown target was a token
-            if (clickedTokenId) {
-                // It started on a token, initiate token drag
-                 console.log('[DEBUG] Starting token drag via mousemove threshold.');
-                 // Pass the currently *selected* tokens to useTokenDrag.
-                 // IMPORTANT: Access the LATEST `selectedTokenIds` state via its ref
-                 const tokensToDrag = tokens.filter(t => selectedTokenIdsRef.current.has(t.id)); // Use ref here!
+            // Determine which interaction started based on the initial mousedown context
+            if (button === 0) { // Left click
+                if (clickedTokenId) {
+                    // It started on a token, initiate token drag
+                     console.log('[DEBUG] Starting token drag via mousemove threshold.');
+                     // Pass the currently *selected* tokens to useTokenDrag.
+                     // IMPORTANT: Access the LATEST `selectedTokenIds` state via its ref
+                     const tokensToDrag = tokens.filter(t => selectedTokenIdsRef.current.has(t.id)); // Use ref here!
 
-                 if (tokensToDrag.length === 0) {
-                     // This edge case could happen if the clicked token ID is stale in state, or other bugs
-                     console.warn('[DEBUG] No selected tokens found for drag start, cancelling interaction.');
-                      // Clean up and stop the tracking listeners
-                     initialMouseDownPosRef.current = null;
-                     interactionStartedRef.current = false;
-                     // These handlers are attached in handleMouseDown
-                     document.removeEventListener('mousemove', handleGlobalMouseMove, { capture: true });
-                     document.removeEventListener('mouseup', handleGlobalMouseUp, { capture: true });
-                     // Note: Keydown listener cleanup is handled by its own effect or handler
-                     return;
+                     if (tokensToDrag.length === 0) {
+                         // This edge case could happen if the clicked token ID is stale in state, or other bugs
+                         console.warn('[DEBUG] No selected tokens found for drag start, cancelling interaction.');
+                          // Clean up and stop the tracking listeners
+                         initialMouseDownPosRef.current = null;
+                         interactionStartedRef.current = false;
+                         // These handlers are attached in handleMouseDown - need to remove them
+                         document.removeEventListener('mousemove', handleGlobalMouseMove, { capture: true }); // Use stable ref
+                         document.removeEventListener('mouseup', handleGlobalMouseUp, { capture: true });   // Use stable ref
+                         // Note: Keydown listener cleanup is handled by its own effect or handler
+                         return;
+                     }
+                     // Start the drag using the hook's startDrag function
+                     startDrag(tokensToDrag, e); // startDrag takes tokens array and event
+
+                     // Now that an interaction (drag) has definitely started, prevent defaults/propagation
+                      e.preventDefault();
+                      e.stopPropagation();
+
+                } else {
+                    // It started on the background, initiate marquee selection
+                     console.log('[DEBUG] Starting marquee selection via mousemove threshold.');
+                     // Start the marquee using the hook's startMarquee function
+                     startMarquee({ // Pass screen coordinates directly to startMarquee
+                         clientX: startX, // Use initial screenX from ref
+                         clientY: startY, // Use initial screenY from ref
+                         shiftKey: isAdditiveSelection // Pass shift/additive state from ref
+                     });
+                      // Now that an interaction (marquee) has definitely started, prevent defaults/propagation
+                      e.preventDefault(); // Prevent default browser selection box
+                      e.stopPropagation(); // Stop propagation
+                }
+            } else if (button === 2) { // Right click
+                 if (!clickedTokenId) {
+                      // --- ADDED Pan Start Logic ---
+                      console.log('[DEBUG] Starting pan via mousemove threshold.');
+                      setIsPanning(true); // Set panning state
+                      // Store starting positions in refs
+                      panStartMousePosRef.current = { x: startX, y: startY }; // Use initial screenX/Y from ref
+                      // Use the latest position from state via ref
+                      panStartVTStatePosRef.current = { x: positionRef.current?.x || 0, y: positionRef.current?.y || 0 }; // Use ref!
+
+                       // Change cursor globally
+                       document.body.style.cursor = 'grabbing';
+
+                       // Now that an interaction (pan) has definitely started, prevent defaults/propagation
+                       e.preventDefault(); // Prevent default browser actions like context menu trigger on mousemove
+                       e.stopPropagation(); // Stop propagation
+                      // --- End Added ---
                  }
-                 // Start the drag using the hook's startDrag function
-                 startDrag(tokensToDrag, e); // startDrag takes tokens array and event
-
-                 // Now that an interaction (drag) has definitely started, prevent defaults/propagation
-                  e.preventDefault();
-                  e.stopPropagation();
-
-            } else {
-                // It started on the background, initiate marquee selection
-                 console.log('[DEBUG] Starting marquee selection via mousemove threshold.');
-                 // Start the marquee using the hook's startMarquee function
-                 startMarquee({ // Pass screen coordinates directly to startMarquee
-                     clientX: startX,
-                     clientY: startY,
-                     shiftKey: isAdditiveSelection // Pass shift/additive state
-                 });
-                  // Now that an interaction (marquee) has definitely started, prevent defaults/propagation
-                  e.preventDefault(); // Prevent default browser selection box
-                  e.stopPropagation(); // Stop propagation
+                 // Note: Right-click on a token is handled by the ContextMenu logic, not drag/pan.
             }
         }
-        // If an interaction *has* started (checked by the hooks' internal listeners),
+        // If an interaction *has* started (checked by the hooks' internal listeners or isPanning flag),
         // prevent default browser behavior (like text selection) during the interaction.
         // Hooks' internal mousemove handlers should be doing this, but adding defensively.
-        if (isDragging || isSelecting) { // Check state flags from hooks
+        // This check is now redundant with the `if (interactionStartedRef.current)` block above,
+        // but kept for clarity on which states disable default behavior.
+        if (isDragging || isSelecting || isPanning) { // Check state flags from hooks AND local pan state
              e.preventDefault();
              e.stopPropagation();
         }
@@ -466,13 +545,16 @@ const { startDrag, isDragging } = useTokenDrag({
 
    }, [
        tokens, // Used to filter tokensToDrag
-       selectedTokenIdsRef, // Used to access latest selection state
+       selectedTokenIdsRef, // Used to access latest selection state for token drag
+       scaleRef, positionRef, // Used to access latest scale/position for pan calculation
        startDrag, // Hook callback
        startMarquee, // Hook callback
        isDragging, // State flag from hook
        isSelecting, // State flag from hook
-       // Dependencies needed for recursive call in cleanup (removed, cleanup is explicit now)
-       // Dependencies needed for logic (removed, accessed via ref/state)
+       isPanning, // --- ADDED Dependency ---
+       setDirectState, // --- ADDED Dependency ---
+        setIsPanning, // --- ADDED Dependency ---
+         handleGlobalMouseUp, handleGlobalMouseMove // Dependencies for cleanup calls (using stable refs below)
    ]); // Dependencies for handleGlobalMouseMove
 
 
@@ -485,72 +567,99 @@ const { startDrag, isDragging } = useTokenDrag({
           id: e.target.id,
           isDragging: isDragging, // State from hook
           isSelecting: isSelecting, // State from hook
+          isPanning: isPanning, // --- ADDED State ---
           interactionStarted: interactionStartedRef.current // Flag from ref
         });
+
+        // Get event button *before* cleanup potentially clears initialPosRef
+        const mouseButton = initialMouseDownPosRef.current?.button;
 
         // Remove the temporary global listeners attached in handleMouseDown
         // Use a slight delay to ensure any hook mouseup logic runs first
         setTimeout(() => {
-            document.removeEventListener('mousemove', handleGlobalMouseMove, { capture: true }); // Use stable ref
-            document.removeEventListener('mouseup', handleGlobalMouseUp, { capture: true });   // Use stable ref
-            // Note: Keydown listener cleanup is handled by its own effect or handler
+            // Use the stable handler refs for removal
+            document.removeEventListener('mousemove', handleGlobalMouseMoveRef.current, { capture: true });
+            document.removeEventListener('mouseup', handleGlobalMouseUpRef.current, { capture: true });
+            // Note: Keydown listener cleanup is handled by its own effect or handler (for Escape)
              console.log('[DEBUG] Removed temporary global mousemove/mouseup listeners.');
 
             // Clean up local refs related to the interaction cycle
             initialMouseDownPosRef.current = null;
             interactionStartedRef.current = false; // Reset the flag
-             console.log('[DEBUG] Cleared interaction refs.');
+
+            // --- ADDED Pan Cleanup Refs ---
+             if (isPanning) { // Check state flag *before* resetting
+                 panStartMousePosRef.current = { x: 0, y: 0 };
+                 panStartVTStatePosRef.current = { x: 0, y: 0 };
+                  setIsPanning(false); // Reset panning state
+                  // Restore default cursor globally
+                  document.body.style.cursor = '';
+             }
+             // --- End Added ---
+
+             // Restore cursor if it was changed by drag/pan and is now finished
+             if (!isDragging && !isPanning) { // Check other drag states too
+                 document.body.style.cursor = '';
+             }
+
+             console.log('[DEBUG] Cleared interaction refs and pan refs.');
 
         }, 0); // Delay allows other mouseup listeners to run
 
-        const initialPos = initialMouseDownPosRef.current; // Note: This might be null after the timeout if not careful, but accessed here before timeout
-        // If initial mousedown happened AND NO drag or marquee started during this interaction cycle
-        if (initialPos && !interactionStartedRef.current) {
-             console.log('[DEBUG] MouseUp detected as a click (no drag/marquee started based on threshold).');
+        const initialPos = initialMouseDownPosRef.current; // Note: This might be null AFTER the timeout if not careful, but accessed here before timeout
+        // If initial mousedown happened AND NO drag, marquee, or pan started during this interaction cycle
+        // AND it was a left click (button 0) - Right click on background is context menu handled by ZoomableContainer
+        if (initialPos && !interactionStartedRef.current && mouseButton === 0) {
+             console.log('[DEBUG] MouseUp detected as a click (no drag/marquee/pan started based on threshold).');
 
-             const { clientX: startX, clientY: startY, clickedTokenId, isAdditiveSelection } = initialPos;
-              const currentX = e.clientX; // Use final mouse position for click location
-              const currentY = e.clientY;
+             const { clickedTokenId } = initialPos;
+             // const currentX = e.clientX; // Use final mouse position for click location - not strictly needed here
+             // const currentY = e.clientY;
 
-             // Check if the click was on a token
+             // Check if the click was on a token (already handled selection in handleMouseDown)
              if (clickedTokenId) {
                 // It was a click on a token. Selection was already handled in handleMouseDown.
                 console.log('[DEBUG] Token click finalized (selection handled).');
                 // No further action needed here other than cleanup handled by the timeout.
                 // Prevent default/stop propagation for the handled click event
-                e.preventDefault();
-                e.stopPropagation();
-
+                e.preventDefault(); // Important to prevent context menu on some buttons if not handled by button === 2 logic
+                e.stopPropagation(); // Important to prevent background click logic
              } else {
-                // It was a click on the background (no token, no drag/marquee started)
-                console.log('[DEBUG] Background click finalized. Creating ping.');
+                // It was a click on the background (left click, no token, no drag/marquee/pan started)
+                console.log('[DEBUG] Background (left) click finalized. Creating ping.');
                 // Prevent default/stop propagation for the handled click event
                 e.preventDefault();
                 e.stopPropagation();
 
                 // Create a ping at the *final* mouse up screen coordinates
-                createPing(currentX, currentY); // Use stable ref or dependency
+                createPing(e.clientX, e.clientY); // Use final mouse position for ping location
              }
-        } else {
-            // If initial mousedown happened and a drag/marquee *did* start, the hook's mouseup handler took over.
-            console.log('[DEBUG] MouseUp handled by hook (drag/marquee completed).');
-            // The hook's mouseup handler should have already handled state updates and its own listener cleanup.
+        } else if (interactionStartedRef.current || isDragging || isSelecting || isPanning) {
+            // If initial mousedown happened and an interaction *did* start (drag, marquee, or pan),
+            // the hook's mouseup handler or the local pan logic took over.
+            console.log('[DEBUG] MouseUp handled by hook/pan logic (drag/marquee/pan completed).');
             // Ensure preventDefault/stopPropagation runs for the event that ended the interaction.
-             if (interactionStartedRef.current || isDragging || isSelecting) {
-                 e.preventDefault();
-                 e.stopPropagation();
-             }
+             // This check covers the case where the interaction started (interactionStartedRef.current is true)
+             // OR if the state flags somehow got set without the flag being true yet (less likely but safe).
+             e.preventDefault();
+             e.stopPropagation();
         }
+        // If it was a right-click (button 2) and no pan started (i.e. just a right-click without drag)
+        // and it wasn't on a token (handled by ContextMenu), we do nothing here.
+        // ZoomableContainer's onContextMenu prop handles the context menu trigger for background right-clicks.
+
     }, [
-        createPing, // Callback needed
+        createPing, // Callback needed for left-click background
         isDragging, // State flag from hook
         isSelecting, // State flag from hook
-        // Dependencies for recursive call in cleanup (removed, cleanup is explicit now)
+        isPanning, // --- ADDED State ---
+        setIsPanning, // --- ADDED Dependency ---
+        handleGlobalMouseMove, handleGlobalMouseUp // Needed for cleanup listeners (using stable refs below)
     ]); // Dependencies for handleGlobalMouseUp
 
 
     // Define a global keydown handler for cancelling interactions (Escape key)
-    const handleGlobalKeyDown = useCallback((e) => {
+    const handleGlobalKeyDownLogic = useCallback((e) => { // Renamed to Logic for consistency
         if (e.key === 'Escape') {
              console.log('[DEBUG] Escape key pressed globally in VT.');
              // Check if any interaction that can be cancelled is currently active
@@ -558,13 +667,16 @@ const { startDrag, isDragging } = useTokenDrag({
                  console.log('[DEBUG] Drag active, useTokenDrag should handle Escape.');
                  // useTokenDrag hook attaches its OWN Escape handler during drag.
                  // We rely on it handling the Escape key and its own cleanup.
+                 // Prevent default/stop prop defensively here just in case hook doesn't.
+                  e.preventDefault();
+                  e.stopPropagation();
              } else if (isSelecting) { // Check selecting state from hook
                  console.log('[DEBUG] Marquee active, cancelling via useTokenSelection.');
                  e.preventDefault();
                  e.stopPropagation(); // Stop propagation
 
-                  // Call the cancel function exposed by useTokenSelection
-                 cancelMarquee(); // <<< Use stable hook function
+                  // Call the cancel function exposed by useTokenSelection using stable ref
+                 cancelMarqueeRef.current?.(); // Use ref!
 
                  // Also clean up VT's local interaction state/listeners
                  // This is needed because the marquee mousemove/mouseup are global,
@@ -573,28 +685,88 @@ const { startDrag, isDragging } = useTokenDrag({
                  if (initialMouseDownPosRef.current || interactionStartedRef.current) {
                      initialMouseDownPosRef.current = null;
                      interactionStartedRef.current = false;
-                     // Remove the temporary mouse listeners added in handleMouseDown
-                     document.removeEventListener('mousemove', handleGlobalMouseMove, { capture: true });
-                     document.removeEventListener('mouseup', handleGlobalMouseUp, { capture: true });
+                     // Remove the temporary mouse listeners added in handleMouseDown using stable refs
+                     document.removeEventListener('mousemove', handleGlobalMouseMoveRef.current, { capture: true });
+                     document.removeEventListener('mouseup', handleGlobalMouseUpRef.current, { capture: true });
                      console.log('[DEBUG] Cleared interaction refs and removed temporary mouse listeners.');
                  }
 
+             } else if (isPanning) { // --- ADDED Pan Cancel Logic ---
+                 console.log('[DEBUG] Pan active, cancelling.');
+                 e.preventDefault();
+                 e.stopPropagation(); // Stop propagation
+
+                 // Reset local pan state and refs
+                 setIsPanning(false);
+                 panStartMousePosRef.current = { x: 0, y: 0 };
+                 panStartVTStatePosRef.current = { x: 0, y: 0 };
+
+                 // Restore default cursor
+                 document.body.style.cursor = '';
+
+                 // Also clean up VT's local interaction state/listeners if they were added
+                 if (initialMouseDownPosRef.current || interactionStartedRef.current) {
+                     initialMouseDownPosRef.current = null;
+                     interactionStartedRef.current = false;
+                     // Remove the temporary mouse listeners added in handleMouseDown using stable refs
+                     document.removeEventListener('mousemove', handleGlobalMouseMoveRef.current, { capture: true });
+                     document.removeEventListener('mouseup', handleGlobalMouseUpRef.current, { capture: true });
+                     console.log('[DEBUG] Cleared interaction refs and removed temporary mouse listeners.');
+                 }
+                 // --- End Added ---
+
              }
-             // If neither isDragging nor isSelecting, let the Escape event propagate for other uses.
+             // If neither isDragging nor isSelecting nor isPanning, let the Escape event propagate for other uses.
         }
     }, [
         isDragging, // State flag from hook
         isSelecting, // State flag from hook
-        cancelMarquee, // Stable hook function
-         handleGlobalMouseMove, // Needed for cleanup listener
-         handleGlobalMouseUp, // Needed for cleanup listener
-    ]); // Dependencies for handleGlobalKeyDown
+        isPanning, // --- ADDED State ---
+        setIsPanning, // --- ADDED Dependency ---
+        cancelMarqueeRef, // Stable hook function ref
+        handleGlobalMouseMoveRef, handleGlobalMouseUpRef // Needed for cleanup listener refs
+    ]); // Dependencies for handleGlobalKeyDownLogic
+
+
+  // --- Refs for the actual global listener functions ---
+  // These refs will always point to the latest version of the handler logic defined above.
+   const handleGlobalMouseMoveRef = useRef(handleGlobalMouseMove);
+   const handleGlobalMouseUpRef = useRef(handleGlobalMouseUp);
+   // --- ADDED Ref for Keydown Handler ---
+   const handleGlobalKeyDownRef = useRef(handleGlobalKeyDownLogic);
+   // --- End Added ---
+   // Ref for cancelMarquee for use in cleanup/keydown
+   const cancelMarqueeRef = useRef(cancelMarquee);
+
+
+  // --- Effects to keep handler refs updated ---
+  // These effects run whenever the corresponding handler logic changes (i.e., when state dependencies like isDragging, isSelecting, isPanning change)
+  useEffect(() => {
+      handleGlobalMouseMoveRef.current = handleGlobalMouseMove;
+      // console.log('[DEBUG] useTokenDrag: handleMouseMoveLogic updated in ref.');
+  }, [handleGlobalMouseMove]); // Depends on the memoized logic
+
+  useEffect(() => {
+      handleGlobalMouseUpRef.current = handleGlobalMouseUp;
+       // console.log('[DEBUG] useTokenDrag: handleMouseUpLogic updated in ref.');
+  }, [handleGlobalMouseUp]); // Depends on the memoized logic
+
+  // --- ADDED Effect for Keydown Handler Ref ---
+  useEffect(() => {
+      handleGlobalKeyDownRef.current = handleGlobalKeyDownLogic;
+      // console.log('[DEBUG] useTokenDrag: handleKeyDownLogic updated in ref.');
+  }, [handleGlobalKeyDownLogic]); // Depends on the memoized logic
+   // --- End Added ---
+
+   // Effect to keep cancelMarquee ref updated
+   useEffect(() => {
+       cancelMarqueeRef.current = cancelMarquee;
+   }, [cancelMarquee]);
 
 
   // --- Unified Mouse Event Handling on Tabletop (#tabletop div) ---
   // This handler attaches global mousemove/mouseup/keydown listeners to track the interaction.
-  // ZoomableContainer handles primary pan/zoom (left/middle click drag on background)
-  // and right-click context menu triggering.
+  // ZoomableContainer handles primary pan/zoom (wheel) and right-click context menu triggering.
   // This handler focuses on interactions that *start* on the tabletop div itself
   // (tokens or background) and require more specific logic than just pan/zoom.
 
@@ -610,42 +782,66 @@ const { startDrag, isDragging } = useTokenDrag({
       id: e.target.id,
       isDragging: isDragging, // State from hook
       isSelecting: isSelecting, // State from hook
+      isPanning: isPanning, // --- ADDED State ---
     });
 
-    // Ignore right-clicks (button 2) - ZoomableContainer handles these for context menu
-    if (e.button === 2) {
-         hideMenu(); // Ensure our context menu is hidden on any right mousedown
-         // Let ZoomableContainer handle the rest for context menu
-         return;
-    }
-
-    // Ignore middle-clicks (button 1) - ZoomableContainer handles middle-click pan
+    // Ignore middle-clicks (button 1) - These are intended for the ZoomableContainer/useZoomToMouse hook
+    // although that hook only explicitly handles wheel, not middle-click *dragging*.
+    // Let's allow middle-click event propagation.
     if (e.button === 1) {
-        // Let ZoomableContainer handle middle-click pan
-        return;
+        // Allow middle-click to propagate. If ZoomableContainer/useZoomToMouse
+        // ever implements middle-click drag pan, it will handle it.
+        // hideMenu(); // Consider hiding menu on any mousedown
+        // e.preventDefault(); // Don't prevent default here, let it potentially trigger browser pan/scroll
+        // e.stopPropagation(); // Don't stop propagation
+        return; // Exit early for middle click
     }
 
-    // --- Handle Left Clicks (button 0) ---
-    hideMenu(); // Hide context menu on any left mouse down
+    // Ignore right-clicks (button 2) *on a token*. Context menu on tokens is handled after mouseup.
+     const tokenEl = e.target.closest('.token');
+     const clickedTokenId = tokenEl?.id || null;
 
-    const tokenEl = e.target.closest('.token');
-    const clickedTokenId = tokenEl?.id || null;
+     if (e.button === 2 && clickedTokenId) {
+          // Right-click on a token - do nothing on mousedown.
+          // Context menu logic happens on contextmenu event (usually after mouseup).
+          // hideMenu(); // Ensure our context menu is hidden on any right mousedown? Maybe not necessary if it hides on any mousedown.
+          // Prevent default context menu if this mousedown is the start of a right-click gesture
+          e.preventDefault();
+          // Don't stop propagation yet, let it bubble up to the contextmenu listener on ZoomableContainer if needed.
+          return; // Exit early for right click on token
+     }
+
+
+    // --- Handle Left Clicks (button 0) AND Right Clicks (button 2) on BACKGROUND ---
+    hideMenu(); // Hide context menu on any relevant mouse down (left click or right click on background)
+
     const isAdditiveSelection = e.metaKey || e.ctrlKey || e.shiftKey; // Check modifiers for additive selection
+
 
     // Store initial mouse position and context for threshold check and event handling
     initialMouseDownPosRef.current = {
       clientX: e.clientX,
       clientY: e.clientY,
       target: e.target, // The element where mousedown occurred
-      clickedTokenId: clickedTokenId,
-      isAdditiveSelection: isAdditiveSelection,
+      clickedTokenId: clickedTokenId, // Null if clicked on background
+      button: e.button, // --- Added: Store the button that was pressed ---
+      isAdditiveSelection: isAdditiveSelection, // Store additive state for marquee
     };
      // Reset interaction started flag
     interactionStartedRef.current = false;
 
-    // If clicked on a token, handle selection logic immediately
-    if (clickedTokenId) {
-        console.log('[DEBUG] Mousedown on token:', clickedTokenId);
+    // --- ADDED: Cursor Change for Potential Pan (Right Click on Background) ---
+     if (e.button === 2 && !clickedTokenId) {
+         // If it's a right click on the background, change cursor immediately
+         // and prevent default context menu here as we might pan.
+          document.body.style.cursor = 'grab'; // Indicate draggable surface
+           e.preventDefault(); // Prevent default browser context menu on mousedown
+     }
+    // --- End Added ---
+
+    // If clicked on a token (Left Click), handle selection logic immediately
+    if (clickedTokenId && e.button === 0) { // Only left click on token initiates immediate selection logic
+        console.log('[DEBUG] Mousedown (Left) on token:', clickedTokenId);
         // Prevent default browser drag on token images etc.
         e.preventDefault();
         // Do NOT stop propagation yet. Let the global mousemove handler below check threshold for drag.
@@ -659,89 +855,129 @@ const { startDrag, isDragging } = useTokenDrag({
         // Always select/toggle the clicked token
         selectTokenId(clickedTokenId, isAdditiveSelection); // <<< This uses the stable hook function
         // THIS IS LINE ~289 in the original file (line numbers shifted due to modifications)
+    } else if (!clickedTokenId && e.button === 0) { // Left click on background
+        console.log('[DEBUG] Mousedown (Left) on background.');
+        // Don't prevent default yet - need to distinguish click vs marquee drag based on threshold in mousemove.
+        // Don't stop propagation yet.
+    } else if (!clickedTokenId && e.button === 2) { // Right click on background
+         console.log('[DEBUG] Mousedown (Right) on background.');
+         // Cursor changed and default prevented above.
+         // Don't stop propagation yet. Let the global mousemove handler check threshold for pan.
     }
 
-    // Attach global listeners *immediately* on mousedown to track movement for threshold check
+
+    // Attach global listeners *immediately* on mousedown to track movement for threshold check and interaction handling
     // Use the .current property of the handler refs or the useCallback results directly if stable.
     // handleGlobalMouseMove and handleGlobalMouseUp are useCallback results, they are stable refs.
-    document.addEventListener('mousemove', handleGlobalMouseMove, { capture: true });
-    document.addEventListener('mouseup', handleGlobalMouseUp, { capture: true });
-    // Keydown listener is managed by a separate effect based on interaction flags.
+    // handleGlobalKeyDownLogic is also a useCallback result (renamed).
+    document.addEventListener('mousemove', handleGlobalMouseMoveRef.current, { capture: true });
+    document.addEventListener('mouseup', handleGlobalMouseUpRef.current, { capture: true });
+    // Keydown listener for Escape is managed by a separate effect based on interaction flags.
+    // (Actually, the Escape keydown handler is *also* added globally when interactions start now)
+
+     // --- ADDED Global Keydown Listener for Escape ---
+     // Add the Escape listener here on ANY mousedown that starts an interaction check
+     // It will only *do* something if isDragging, isSelecting, or isPanning is true when Escape is pressed.
+     // This is simpler than managing its attachment based on interaction state flags.
+     document.addEventListener('keydown', handleGlobalKeyDownRef.current, { capture: true });
+      console.log('[DEBUG] Attached temporary global mousemove, mouseup, keydown listeners.');
+     // --- End Added ---
 
 
   }, [ // <-- Dependency array for handleMouseDown
       hideMenu, // Used directly
       clearSelection, // Stable hook function
       selectTokenId, // Stable hook function
-      startDrag, // Stable hook function
-      startMarquee, // Stable hook function
       isDragging, // Used directly
       isSelecting, // Used directly
-      handleGlobalMouseMove, // Callback ref (stable)
-      handleGlobalMouseUp, // Callback ref (stable)
-       // tokens, selectedTokenIdsRef are used *inside* the attached handleGlobalMouseMove
-       // but handleGlobalMouseMove is a useCallback with its own dependencies/refs,
-       // so VT's handleMouseDown does not need to depend on them directly.
+      isPanning, // --- ADDED State ---
+      handleGlobalMouseMoveRef, // Stable ref
+      handleGlobalMouseUpRef, // Stable ref
+      handleGlobalKeyDownRef, // --- ADDED Stable ref ---
+       // startDrag, startMarquee are used inside the *global* mousemove handler, not directly here.
+       // tokens, selectedTokenIdsRef, scaleRef, positionRef are also used inside global handlers via refs.
+       // setIsPanning, panStartMousePosRef, panStartVTStatePosRef are used inside global handlers.
   ]); // Closing parenthesis follows bracket
 
 
    // Attach the global Escape listener ONLY when an interaction might be cancellable
    // This listener calls handleGlobalKeyDown which checks isSelecting and calls cancelMarquee.
+   // --- REMOVED the effect managing keydown listener here ---
+   // The keydown listener is now added and removed alongside mousemove/mouseup
+   // in handleMouseDown/handleGlobalMouseUp for simplicity.
+   // The handleGlobalKeyDownLogic still uses the state flags (isSelecting, isDragging, isPanning)
+   // to determine if it should cancel anything.
+   /*
   useEffect(() => {
       // Check if any interaction that can be cancelled by Escape is currently active
-      // Currently, only marquee cancellation is handled by VT's handleGlobalKeyDown.
+      // Currently, only marquee cancellation is handled by VT's handleGlobalKeyDownLogic.
       // Drag cancellation is handled internally by useTokenDrag's own keydown listener.
-      const isAnyCancellableInteractionActive = isSelecting;
+      // Pan cancellation is now handled by VT's handleGlobalKeyDownLogic.
+      const isAnyCancellableInteractionActive = isSelecting || isPanning; // --- ADDED isPanning ---
+
+      // Access latest state of the handler ref
+      const handlerRef = handleGlobalKeyDownRef.current;
 
       if (isAnyCancellableInteractionActive) {
-          console.log('[DEBUG] Attaching global Escape listener for marquee.');
+          console.log('[DEBUG] Attaching global Escape listener for marquee/pan.'); // --- Updated Log ---
            // Use the stable reference to the handler
-           document.addEventListener('keydown', handleGlobalKeyDown, { capture: true });
+           document.addEventListener('keydown', handlerRef, { capture: true });
       } else {
-           console.log('[DEBUG] Removing global Escape listener for marquee.');
+           console.log('[DEBUG] Removing global Escape listener for marquee/pan.'); // --- Updated Log ---
             // Use the stable reference to the handler
-           document.removeEventListener('keydown', handleGlobalKeyDown, { capture: true });
+           document.removeEventListener('keydown', handlerRef, { capture: true });
       }
 
       // Cleanup: Always ensure listener is removed on unmount
       return () => {
            console.log('[DEBUG] VirtualTabletop unmounting, removing global Escape listener.');
             // Use the stable reference to the handler
-           document.removeEventListener('keydown', handleGlobalKeyDown, { capture: true });
+           document.removeEventListener('keydown', handlerRef, { capture: true });
       };
-  }, [isSelecting, handleGlobalKeyDown]); // Re-run when isSelecting flag changes OR the handleGlobalKeyDown handler reference changes (which happens if its dependencies change)
+  }, [isSelecting, isPanning, handleGlobalKeyDownRef]); // Re-run when state flags change OR handler ref changes
+  */
 
 
    // Right-click handler for context menu - Called by ZoomableContainer's onContextMenu prop
+   // This handler is called on the 'contextmenu' event, which typically fires *after* mousedown/mouseup
+   // if the default context menu is not prevented on mousedown.
+   // Our handleMouseDown *does* prevent default context menu on right-click background,
+   // so this contextmenu event will likely *not* fire in that case if a drag started.
+   // It *will* fire for a simple right-click (mousedown followed immediately by mouseup without drag threshold)
+   // on the background, or potentially on tokens depending on event flow.
   const handleContextMenu = useCallback((e) => {
       console.log('[DEBUG-TABLETOP] ContextMenu event from ZoomableContainer:', {
           target: e.target,
           className: e.target.className,
           id: e.target.id,
-          defaultPrevented: e.defaultPrevented,
+          defaultPrevented: e.defaultPrevented, // Check if default was prevented upstream (e.g., in handleMouseDown)
           button: e.button,
       });
 
-    // ZoomableContainer already prevented default browser menu if it didn't pan.
-    // We just need to determine the context and show our custom menu.
+    // Prevent default browser context menu if it hasn't already been prevented.
+    // e.preventDefault(); // ZoomableContainer already does this if it didn't pan.
     e.stopPropagation(); // Stop propagation to prevent other context menu listeners
+
+    // Access latest state via refs
+    const currentScale = scaleRef.current || 1;
+    const currentPosition = positionRef.current || { x: 0, y: 0 };
+    const currentSelectedTokenIds = selectedTokenIdsRef.current;
 
     const tokenEl = e.target.closest('.token');
     const contextType = tokenEl ? 'token' : 'grid';
 
     let options = { type: contextType };
 
-    // Access latest selected tokens state via ref
-    const currentSelectedTokenIds = selectedTokenIdsRef.current;
-
     if (contextType === 'token' && tokenEl) {
         const clickedTokenId = tokenEl.id;
         // If right-clicked token is *already* in the current selection, offer actions on the *entire selection*.
         // Otherwise, select only this token and offer actions on just this one.
+        // Use ref for selectedTokenIds
         const tokenIdsToOperateOn = currentSelectedTokenIds?.has(clickedTokenId) ? Array.from(currentSelectedTokenIds) : [clickedTokenId];
 
         // Ensure the clicked token is selected if it wasn't already or if not additive.
         // This selection update happens *before* the menu is shown.
+        // Use ref for selectedTokenIds
         if (!(currentSelectedTokenIds?.has(clickedTokenId)) || (currentSelectedTokenIds?.size ?? 0) > 1) {
              // If the clicked token is not in the selection, OR if multiple tokens are selected
              // and the click is on just one, clear and select only the clicked one.
@@ -772,8 +1008,8 @@ const { startDrag, isDragging } = useTokenDrag({
           const screenX = e.clientX - containerRect.left;
           const screenY = e.clientY - containerRect.top;
           // Access latest position and scale via refs
-          const currentScale = scaleRef.current || 1;
-          const currentPosition = positionRef.current || { x: 0, y: 0 };
+          // const currentScale = scaleRef.current || 1; // Already accessed above
+          // const currentPosition = positionRef.current || { x: 0, y: 0 }; // Already accessed above
 
           const gridX = (screenX - currentPosition.x) / currentScale;
           const gridY = (screenY - currentPosition.y) / currentScale;
@@ -786,11 +1022,9 @@ const { startDrag, isDragging } = useTokenDrag({
     showMenu(e, options);
 
   }, [
-      showMenu, clearSelection, selectTokenId,
-      // Dependencies needed for calculations/logic inside:
-      // scale, position, selectedTokenIds are now accessed via refs.
-      // Need callbacks as dependencies:
-      selectedTokenIdsRef, scaleRef, positionRef // Add refs here
+      showMenu, clearSelection, selectTokenId, // Stable callbacks
+      // Dependencies needed for calculations/logic inside (using refs):
+      selectedTokenIdsRef, scaleRef, positionRef
    ]);
 
 
@@ -805,7 +1039,7 @@ const { startDrag, isDragging } = useTokenDrag({
        minScale: MIN_SCALE,
        maxScale: MAX_SCALE, // Corrected typo here
        zoomFactor: ZOOM_FACTOR,
-       isPanDisabled: isDragging || isSelecting, // Pass the disabled flag
+       isPanDisabled: isDragging || isSelecting || isPanning, // --- ADDED: Pass isPanning state ---
    });
 
    // Pass the button handlers down
@@ -825,17 +1059,27 @@ const { startDrag, isDragging } = useTokenDrag({
   useEffect(() => {
       return () => {
           console.log('[DEBUG] VirtualTabletop unmounting, cleaning up global listeners and refs.');
-          // Ensure temporary global mousemove/mouseup listeners added in handleMouseDown are removed
-          document.removeEventListener('mousemove', handleGlobalMouseMove, { capture: true }); // Use stable ref
-          document.removeEventListener('mouseup', handleGlobalMouseUp, { capture: true });   // Use stable ref
-           // Global Keydown listener cleanup handled by its own effect
+          // Ensure temporary global mousemove/mouseup/keydown listeners added in handleMouseDown are removed
+          // Use the latest state of the refs during cleanup
+          document.removeEventListener('mousemove', handleGlobalMouseMoveRef.current, { capture: true }); // Use stable ref
+          document.removeEventListener('mouseup', handleGlobalMouseUpRef.current, { capture: true });   // Use stable ref
+          document.removeEventListener('keydown', handleGlobalKeyDownRef.current, { capture: true }); // --- ADDED Keydown cleanup ---
 
           // Clear refs
           initialMouseDownPosRef.current = null;
           interactionStartedRef.current = false;
+          // --- ADDED Pan Refs Cleanup ---
+          panStartMousePosRef.current = { x: 0, y: 0 };
+          panStartVTStatePosRef.current = { x: 0, y: 0 };
+          // --- End Added ---
+
           updateGridDimensions.cancel(); // Cancel debounced function
+
+           // Restore default cursor if cleanup happens mid-interaction
+           document.body.style.cursor = '';
+           document.body.style.userSelect = ''; // Should be restored by hooks too, but defensively here
       };
-  }, [handleGlobalMouseMove, handleGlobalMouseUp, updateGridDimensions]); // Depend on memoized handlers and debounced function
+  }, [handleGlobalMouseMoveRef, handleGlobalMouseUpRef, handleGlobalKeyDownRef, updateGridDimensions]); // Depend on memoized handlers and debounced function
 
 
   return (
@@ -863,6 +1107,7 @@ const { startDrag, isDragging } = useTokenDrag({
 
 
       {/* The main container for panning and zooming */}
+      {/* Mouse events like wheel (zoom) and contextmenu (right-click) are handled by this container */}
       <ZoomableContainer
         containerId="tabletop-container" // ID is important for hooks and internal logic
         scale={scale} // Pass scale from state
@@ -873,35 +1118,36 @@ const { startDrag, isDragging } = useTokenDrag({
         minScale={MIN_SCALE}
         maxScale={MAX_SCALE} // Corrected typo here
         zoomFactor={ZOOM_FACTOR}
-        onContextMenu={handleContextMenu} // Context menu trigger from ZoomableContainer
+        onContextMenu={handleContextMenu} // Context menu trigger from ZoomableContainer (for background right-clicks not resulting in pan)
         gridWidth={totalWidth} // Pass calculated grid size
         gridHeight={totalHeight} // Pass calculated grid size
         // useZoomToMouse hook handles wheel listener attachment internally if not passed via prop.
         // Let's pass it explicitly to make the flow clearer, although the hook already adds it.
         onWheel={handleWheel} // Pass wheel handler from hook
 
-        // Pass isDragging/isSelecting to ZoomableContainer so it can disable pan
-        // when a token drag or marquee is in progress.
-         isPanDisabled={isDragging || isSelecting} // Disable pan if dragging or selecting
+        // Pass isDragging/isSelecting/isPanning to ZoomableContainer so it can disable its own pan/zoom
+        // when a drag-pan (left-click token, left-click marquee, or right-click pan) is in progress.
+         isPanDisabled={isDragging || isSelecting || isPanning} // --- ADDED isPanning ---
       >
         {/* Content INSIDE the zoomable container */}
         {/* Attach core mouse handlers to the tabletop div */}
         <div
           id="tabletop" // Give the content div the id expected by other components/hooks
           className={isHexGrid ? 'hex-grid' : 'square-grid'} // Use state value
-          onMouseDown={handleMouseDown} // Our central mousedown handler
-          // Global mousemove/mouseup/keydown are attached/managed by handlers/hooks
+          onMouseDown={handleMouseDown} // Our central mousedown handler on the *content* div
+          // Global mousemove/mouseup/keydown are attached/managed by handlers/hooks attached to *document*
           style={{
             width: totalWidth,
             height: totalHeight,
             position: 'relative',
-            // Cursor handled by useZoomToMouse hook during pan and useTokenDrag during drag
-            // Pointer events might be controlled by ZoomableContainer during pan
+            // Cursor handled by useZoomToMouse hook during pan (mouse wheel/middle click)
+            // and useTokenDrag during drag (left click token)
+            // Panning cursor is also now handled by VT's mouse handlers when isPanning is true
             userSelect: 'none', // Already in CSS, but good practice here too
             MozUserSelect: 'none',
             WebkitUserSelect: 'none',
             msUserSelect: 'none',
-            // Disable pointer events on the content *while dragging or selecting* via ZoomableContainer prop
+            // Pointer events might be controlled by ZoomableContainer during pan
              pointerEvents: 'auto', // Let mouse handlers determine behavior instead of blocking
           }}
         >
