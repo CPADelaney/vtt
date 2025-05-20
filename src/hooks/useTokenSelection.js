@@ -55,6 +55,41 @@ export function useTokenSelection({ getTokens, scale, position, tokenSize }) {
   }, [setSelectedTokenIds]); // setSelectedTokenIds is a stable setter, additive is an arg. Dependencies are correct ([]).
 
 
+  // For single token click selection/toggle
+  const selectTokenId = useCallback((tokenId, additive = false) => {
+      console.log('[DEBUG] useTokenSelection: selectTokenId called for:', tokenId, { additive });
+      setSelectedTokenIds(prev => {
+          const newSet = new Set(prev);
+          const wasSelected = newSet.has(tokenId);
+
+          if (wasSelected) {
+              if (additive) {
+                  newSet.delete(tokenId);
+                  console.log('[DEBUG] Toggling off token:', tokenId);
+              } else {
+                  // Already selected, non-additive click. No change to selection.
+                  console.log('[DEBUG] Token already selected (non-additive), no change.');
+                  return prev; // Return previous set for performance
+              }
+          } else {
+              // Not selected, add it.
+              newSet.add(tokenId);
+              console.log('[DEBUG] Toggling on token:', tokenId);
+          }
+
+          // Only return the new set if a change actually occurred
+          // (This check covers both additive toggling and non-additive replace scenarios)
+          if (newSet.size === prev.size && Array.from(newSet).every(id => prev.has(id))) {
+               // console.log('[DEBUG] Selection content unchanged, returning previous set.'); // Too verbose
+               return prev; // Return previous set if content is identical
+          }
+
+          console.log('[DEBUG] Selection changed to:', Array.from(newSet));
+          return newSet; // Return the new set if content changed
+      });
+  }, [setSelectedTokenIds]); // Dependency on the setter
+
+
    // --- Marquee Functions ---
 
   /**
@@ -101,18 +136,13 @@ export function useTokenSelection({ getTokens, scale, position, tokenSize }) {
         // Get the latest position of the container on screen
         const containerRect = container.getBoundingClientRect();
 
-        // Update the current mouse position relative to container's *current* top-left
+        // Update the current mouse position relative to container's *initial* top-left
         // Note: If the container moves while dragging (e.g. parent pane resizing),
         // this calculation needs to account for the *initial* container position vs *current*.
         // Storing initial screen pos and using latest containerRect is one way.
         // A simpler way is to store initial mouse screen pos and calculate relative to *current* container rect.
         // Let's refine this: Store start mouse X/Y in SCREEN coords in startMarquee.
         // In move/up, use current mouse screen X/Y and calculate relative to current container rect.
-
-        // For now, let's stick to the original model storing start/current relative to container.
-        // This implies the container itself is static or its movement isn't accounted for during marquee.
-        // If container moves, the startX/Y stored in marqueeState might be stale relative to the new container position.
-        // Let's assume container is static during marquee for now, or that its initialRect stored is sufficient.
 
         // Sticking to original model: start/current are relative to the container's *initial* top-left (stored in marqueeState.containerRect).
         // Calculate the mouse position relative to the initial container top-left
@@ -175,7 +205,9 @@ export function useTokenSelection({ getTokens, scale, position, tokenSize }) {
 
         // Check which tokens intersect with the marquee rectangle
         const intersectingTokenIds = new Set();
-        const tokenRadius = currentTokenSize / 2;
+        // Calculate token visual radius scaled by current zoom
+        const tokenRadiusScaled = (currentTokenSize / 2) * currentScale;
+
 
         currentTokens.forEach(token => {
             // Get token's center position in ABSOLUTE SCREEN coordinates.
@@ -185,10 +217,10 @@ export function useTokenSelection({ getTokens, scale, position, tokenSize }) {
             const tokenCenterYAbs = (token.position.y * currentScale) + currentPosition.y + currentContainerRect.top;
 
              // Token's bounding box in ABSOLUTE SCREEN coordinates.
-            const tokenLeftAbs = tokenCenterXAbs - tokenRadius;
-            const tokenRightAbs = tokenCenterXAbs + tokenRadius;
-            const tokenTopAbs = tokenCenterYAbs - tokenRadius;
-            const tokenBottomAbs = tokenCenterYAbs + tokenRadius;
+            const tokenLeftAbs = tokenCenterXAbs - tokenRadiusScaled;
+            const tokenRightAbs = tokenCenterXAbs + tokenRadiusScaled;
+            const tokenTopAbs = tokenCenterYAbs - tokenRadiusScaled;
+            const tokenBottomAbs = tokenCenterYAbs + tokenRadiusScaled;
 
 
             // Check for intersection between marquee rectangle and token bounding box (AABB intersection)
@@ -300,15 +332,14 @@ export function useTokenSelection({ getTokens, scale, position, tokenSize }) {
        const currentTokenIds = new Set(currentTokens.map(t => t.id));
 
        // Check if any token in the selection set no longer exists in the current tokens list
-       // Access selectedTokenIds state directly as it's in dependencies
        const selectionNeedsCleanup = Array.from(selectedTokenIds).some(id => !currentTokenIds.has(id));
 
        if (selectionNeedsCleanup) {
-            console.log('[DEBUG] Selected token(s) removed by external action, cleaning up selection.');
+            console.log('[DEBUG] useTokenSelection: Selected token(s) removed externally, cleaning up selection.');
             // Filter the selection set to only include existing tokens
             const newSelection = new Set(Array.from(selectedTokenIds).filter(id => currentTokenIds.has(id)));
-            // Update selection state using the setter
-            setSelectedTokenIds(newSelection); // Directly update state managed by this hook
+            // Update selection state using the setter managed by this hook
+            setSelectedTokenIds(newSelection);
        }
   }, [getTokens, selectedTokenIds, setSelectedTokenIds]); // Depend on getTokens, selectedTokenIds state, and its setter
 
@@ -335,7 +366,7 @@ export function useTokenSelection({ getTokens, scale, position, tokenSize }) {
     startMarquee, // Call this on mouse down for marquee
     marqueeState, // State to render the Marquee component (provides position/size)
     isSelecting, // Boolean flag indicating marquee is active
-    setSelectedTokenIds, // Expose internal setter for the cleanup effect within the hook (used in VT cleanup)
-    cancelMarquee, // <<< Expose the cancel function
+    // setSelectedTokenIds, // REMOVED: Not needed by parent and potentially related to ReferenceError
+    cancelMarquee, // Expose the cancel function
   };
 }
