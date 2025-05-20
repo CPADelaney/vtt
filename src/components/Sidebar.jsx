@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MessageSquare, History, Settings, Swords, ChevronLeft, ChevronRight, Dice5 } from 'lucide-react'; // Import icons
 import { useDiceManager } from '../hooks/useDiceManager'; // Import the dice manager hook
 import { useSystemManager } from '../hooks/useSystemManager'; // Import the system manager hook
-import '../css/styles.css'; // Ensure CSS is imported
+import '../../css/styles.css'; // Ensure CSS is imported - CORRECTED PATH
 
 // Helper component for messages to handle different types
 const ChatMessage = ({ message }) => {
@@ -299,7 +299,7 @@ export const Sidebar = ({
 
 
                                         return (
-                                            <div key={`history-step-${index}`} className="combat-log-item">
+                                            <div key={`history-step-${historyInfo.history.indexOf(state)}`} className="combat-log-item"> {/* Use original index */}
                                                 <div>History Step {historyInfo.history.indexOf(state)}</div> {/* Use original index */}
                                                  {/* Replace with actual event type and details if logging explicit events */}
                                                 <div className="text-xs">{actionDetails}</div>
