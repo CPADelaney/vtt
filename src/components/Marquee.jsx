@@ -1,5 +1,5 @@
 import React from 'react';
-import '../css/styles.css'; // Import CSS for the .marquee class
+import '../../css/styles.css'; // Corrected import path
 
 /**
  * Renders the selection marquee box based on state.
