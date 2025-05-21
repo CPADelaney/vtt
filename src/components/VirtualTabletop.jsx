@@ -565,7 +565,7 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
   useEffect(() => {
       handleGlobalKeyDownRef.current = handleGlobalKeyDownLogic;
       // console.log('[DEBUG] useTokenDrag: handleKeyDownLogic updated in ref.');
-  }, [handleGlobalKeyDownLogic]); // Depends on the memoized logic
+  }, [handleGlobalKeyDownLogic]);
    // --- End Added ---
 
    // Effect to keep cancelMarquee ref updated
