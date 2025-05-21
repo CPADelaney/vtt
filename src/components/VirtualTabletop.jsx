@@ -175,7 +175,7 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
       onDragMoveRef.current = handleDragMove;
       onDragEndRef.current = handleDragEnd;
   }, [handleDragMove, handleDragEnd]); // Depend on the stable callbacks
-  // --- END ADDED ---
+  // --- End Added ---
 
 
   // Token selection hook - Expose `isSelecting` state and selection methods
@@ -680,9 +680,10 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
              e.preventDefault();
              e.stopPropagation();
         }
-        // If it was a right-click (button 2) and no pan started (i.e. just a right-click without drag)
-        // and it wasn't on a token (handled by ContextMenu), we do nothing here.
-        // ZoomableContainer's onContextMenu prop handles the context menu trigger for background right-clicks.
+        // If it was a right-click (button 2) and no pan started (i.e. just a quick right-click)
+        // and it wasn't on a token (handled by ContextMenu), the contextmenu event will fire
+        // and be handled by ZoomableContainer's listener -> handleContextMenu. This is the desired flow.
+        // If a right-click pan *did* start, e.preventDefault/stopPropagation above prevents the contextmenu event.
 
     }, [
         createPing, // Callback needed for left-click background
@@ -754,8 +755,12 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
     const additive       = e.metaKey || e.ctrlKey || e.shiftKey;
 
     /* Rightâ€‘click directly on a token: defer to onContextMenu later       */
+    // Prevent the native context menu immediately on mousedown
     if (e.button === 2 && clickedTokenId) {
       e.preventDefault();                 // kill native menu on mousedown
+      // Do NOT return here if you want to initiate a special right-click drag on token
+      // but based on current code, there's no right-click drag on token defined.
+      // So, returning here prevents global listeners from attaching, which is fine.
       return;
     }
 
@@ -774,27 +779,27 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
     };
 
     /* Special cursor hint for a potential pan (rightâ€‘click on background) */
+    // Prevent native context menu immediately for right-click background too
     if (e.button === 2 && !clickedTokenId) {
       document.body.style.cursor = 'grab';
       e.preventDefault();               // block browser context menu
     }
 
     /* Immediate selection update on LEFTâ€‘click token -------------------- */
+    // This happens immediately on mousedown, before any drag threshold
     if (clickedTokenId && e.button === 0) {
       e.preventDefault();               // stop imageâ€‘drag start
-      // If it's not additive, clear *before* selecting the new one
-      // If it IS additive, selectTokenId handles the toggle logic
-      if (!additive) {
-           selectionHandlersRef.current.clearSelection?.();
-           // No need to call selectTokenId after clearing if additive is false,
-           // because selectTokenId with additive=false on an unselected token
-           // *replaces* the selection anyway. Let's simplify.
-           // Just call selectTokenId; it handles additive logic.
-      }
       // Use the selectTokenId function from the combined ref
       selectionHandlersRef.current.selectTokenId?.(clickedTokenId, additive); // Pass additive state
+      // If it was a non-additive click on a token, and the token was ALREADY selected
+      // (e.g. clicking the same token twice, or clicking a token that was already part of a multi-selection),
+      // we *don't* want to start a drag unless additive is true (for toggling off).
+      // However, useTokenDrag's `startDrag` is called *after* the mousemove threshold.
+      // The logic in handleGlobalMouseMoveLogic checks selectedTokenIdsRef.current.has(t.id) to decide which tokens to drag.
+      // If the clicked token was already selected, and it's a non-additive click, selectTokenId won't change the set.
+      // When handleGlobalMouseMoveLogic runs, it will initiate drag for the *current* selection set. This seems correct.
     } else if (!clickedTokenId && e.button === 0 && !additive) {
-        // Left click on background, non-additive: clear selection
+        // Left click on background, non-additive: clear selection immediately
         console.log('[DEBUG] Left click on background (non-additive), clearing selection.');
          selectionHandlersRef.current.clearSelection?.(); // Use the clearSelection function from the combined ref
     }
@@ -803,6 +808,7 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
     /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
     /* 4.  Attach global listeners    */
     /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+     // Attach global listeners for ALL mouse buttons unless returned early
      // Use the .current property of the handler refs for attachment
     document.addEventListener('mousemove', handleGlobalMouseMoveRef.current, { capture: true });
     document.addEventListener('mouseup',   handleGlobalMouseUpRef.current,   { capture: true });
@@ -829,10 +835,11 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
    // Right-click handler for context menu - Called by ZoomableContainer's onContextMenu prop
    // This handler is called on the 'contextmenu' event, which typically fires *after* mousedown/mouseup
    // if the default context menu is not prevented on mousedown.
-   // Our handleMouseDown *does* prevent default context menu on right-click background,
-   // so this contextmenu event will likely *not* fire in that case if a drag started.
-   // It *will* fire for a simple right-click (mousedown followed immediately by mouseup without drag threshold)
-   // on the background, or potentially on tokens depending on event flow.
+   // Our handleMouseDown *does* prevent default context menu on right-click background and token,
+   // so this contextmenu event *will* fire later after mouseup because preventDefault on mousedown
+   // does not prevent the 'contextmenu' event itself, only the browser's handling of it.
+   // The ZoomableContainer's listener then catches the 'contextmenu' event and calls this function.
+   // *** FIX: Add a check here to prevent showing the menu if an interaction (drag/select/pan) was active. ***
   const handleContextMenu = useCallback((e) => {
       console.log('[DEBUG-TABLETOP] ContextMenu event from ZoomableContainer:', {
           target: e.target,
@@ -841,6 +848,21 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
           defaultPrevented: e.defaultPrevented, // Check if default was prevented upstream (e.g., in handleMouseDown)
           button: e.button,
       });
+
+    // *** FIX START: Suppress context menu if an interaction was active ***
+    // Check if any drag, selection (marquee), or pan was active.
+    // These states indicate the right-click was part of an interactive gesture, not a context menu request.
+    if (isDragging || isSelecting || isPanning) {
+        console.log('[DEBUG-TABLETOP] Context menu suppressed due to active interaction (drag, select, or pan).');
+        // Prevent default on the contextmenu event itself here,
+        // although ZoomableContainer's handler already does this *after* calling this function.
+        // Adding it here makes the intent clear within VT's logic.
+         e.preventDefault();
+         e.stopPropagation();
+        return; // Do not show the menu
+    }
+    // *** FIX END ***
+
 
     // Prevent default browser context menu - this is typically handled by the element
     // that calls this hook's `showMenu` function (e.g., ZoomableContainer or VirtualTabletop)
@@ -933,6 +955,9 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
      showMenu(e, options); // Pass event (for position) and options (for type/data)
 
   }, [
+      // *** FIX Dependencies Added ***
+      isDragging, isSelecting, isPanning, // Check state flags
+      // *** End FIX Dependencies Added ***
       showMenu, // Stable callbacks
       // --- MODIFIED Dependencies: Removed individual selectTokenIdRef, clearSelectionRef ---
       // Dependencies needed for calculations/logic inside (using refs):
