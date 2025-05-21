@@ -841,6 +841,11 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
    // The ZoomableContainer's listener then catches the 'contextmenu' event and calls this function.
    // *** FIX: Add a check here to prevent showing the menu if an interaction (drag/select/pan) was active. ***
   const handleContextMenu = useCallback((e) => {
+      /* If the user just finished panning, suppress the menu entirely */
+      if (isPanning || interactionStartedRef.current) {
+        e.preventDefault();
+        return;                       // ⬅ nothing else to do
+      }
       console.log('[DEBUG-TABLETOP] ContextMenu event from ZoomableContainer:', {
           target: e.target,
           className: e.target.className,
@@ -956,16 +961,8 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
 
   }, [
       // *** FIX Dependencies Added ***
-      isDragging, isSelecting, isPanning, // Check state flags
-      // *** End FIX Dependencies Added ***
-      showMenu, // Stable callbacks
-      // --- MODIFIED Dependencies: Removed individual selectTokenIdRef, clearSelectionRef ---
-      // Dependencies needed for calculations/logic inside (using refs):
-      selectedTokenIdsRef, scaleRef, positionRef,
-      // --- MODIFIED Dependencies: Added combined ref ---
-      selectionHandlersRef,
-      // --- END MODIFIED ---
-   ]);
+      ], [showMenu, selectedTokenIdsRef, scaleRef, positionRef, selectionHandlersRef,
+         isPanning, interactionStartedRef]);
 
 
    // Handlers for zoom buttons (passed to Controls component)
