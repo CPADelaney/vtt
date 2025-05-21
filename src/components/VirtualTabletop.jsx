@@ -255,6 +255,103 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
   const panStartVTStatePosRef = useRef({ x: 0, y: 0 }); // VirtualTabletop position (grid px) when pan started
   // --- End Added ---
 
+   // Define Global Keydown Handler Logic for Escape (cancel interactions)
+   const handleGlobalKeyDownLogic = useCallback((e) => {
+        // Access state directly via dependency array if needed, or use refs if state updates lag
+        // Using state directly inside useCallback is okay if useCallback dependencies are correct
+        if (e.key === 'Escape') {
+            if (isDragging) { // Check dragging state from hook
+                 console.log('[DEBUG] Drag cancelled via Escape key (global handler)');
+                 // Trigger cancellation logic within useTokenDrag
+                 // This requires useTokenDrag to expose a cancel function or for VT to manually
+                 // revert the drag state and call onDragEnd with start positions.
+                 // The current useTokenDrag already has handleKeyDownLogic internally.
+                 // The Escape key down listener is now added globally in handleMouseDown.
+                 // The logic for cancelling is inside useTokenDrag's handleKeyDownLogic.
+                 // So, simply allowing the event to propagate to useTokenDrag's listener is sufficient.
+                 // However, if we *must* manually cancel here without relying on useTokenDrag's listener:
+                 // Use ref to access useTokenDrag's state/logic if needed, or re-implement here.
+                 // Let's re-implement the revert logic here for clarity, accessing necessary state via refs.
+
+                 const dragState = dragStateRef.current; // Access drag state via ref
+                 if (dragState?.tokenStartPositions) {
+                      console.log('[DEBUG] Reverting tokens to start positions from Drag via Escape.');
+                      // Use onDragMove to visually move them back immediately using ref
+                       dragState.tokenIds.forEach(tokenId => {
+                           const startPos = dragState.tokenStartPositions.get(tokenId);
+                           if (startPos) {
+                               onDragMoveRef.current?.(tokenId, startPos); // Use ref
+                           }
+                       });
+                      // Then call onDragEnd with the start positions to finalize the state (adds to history) using ref
+                      onDragEndRef.current?.(dragState.tokenIds, dragState.tokenStartPositions); // Use ref
+                 }
+
+                 // Reset state and refs related to the interaction start
+                 setIsDragging(false); // Reset hook state flag
+                 dragStateRef.current = null; // Discard state
+                  interactionStartedRef.current = false; // Reset general interaction flag
+
+                 // Restore default cursor and user select globally
+                 document.body.style.cursor = '';
+                 document.body.style.userSelect = '';
+
+                  e.preventDefault(); // Prevent default browser behavior for Escape
+                  e.stopPropagation(); // Stop propagation
+
+            } else if (isSelecting) { // Check selecting state from hook
+                 console.log('[DEBUG] Marquee selection cancelled via Escape key (global handler)');
+                 // Trigger cancellation logic within useTokenSelection
+                 // useTokenSelection already has handleMarqueeMouseUp/MouseMove/cancelMarquee
+                 // Add keydown listener *to useTokenSelection* or trigger its cancel function here.
+                 // Let's trigger its cancel function using a ref to it.
+                 cancelMarqueeRef.current?.(); // Use ref to call the stable cancel function
+
+                 // Reset state and refs related to the interaction start
+                  interactionStartedRef.current = false; // Reset general interaction flag
+
+                 // Restore default cursor and user select globally (cancelMarquee handles this)
+                  // document.body.style.cursor = ''; // Handled by cancelMarquee
+                 // document.body.style.userSelect = ''; // Handled by cancelMarquee
+
+                 e.preventDefault(); // Prevent default browser behavior for Escape
+                 e.stopPropagation(); // Stop propagation
+
+            } else if (isPanning) { // Check panning state
+                 console.log('[DEBUG] Pan cancelled via Escape key (global handler)');
+                 // Reset panning state and refs
+                 setIsPanning(false); // Reset state flag
+                  panStartMousePosRef.current = { x: 0, y: 0 };
+                  panStartVTStatePosRef.current = { x: 0, y: 0 };
+                  interactionStartedRef.current = false; // Reset general interaction flag
+
+                 // Restore default cursor
+                  document.body.style.cursor = '';
+
+                  e.preventDefault(); // Prevent default browser behavior for Escape
+                  e.stopPropagation(); // Stop propagation
+            }
+
+             // Remove global listeners added by handleMouseDown if ANY interaction was cancelled
+             if (isDragging || isSelecting || isPanning) { // Check state *before* resetting
+                 // Use a slight delay similar to mouseup cleanup
+                setTimeout(() => {
+                     document.removeEventListener('mousemove', handleGlobalMouseMoveRef.current, { capture: true });
+                     document.removeEventListener('mouseup', handleGlobalMouseUpRef.current, { capture: true });
+                     document.removeEventListener('keydown', handleGlobalKeyDownRef.current, { capture: true }); // Use keydown ref
+                     console.log('[DEBUG] Removed temporary global mouse listeners after Escape cancellation.');
+                }, 0);
+             }
+        }
+   }, [
+       isDragging, isSelecting, isPanning, // State flags from hooks and local state
+       dragStateRef, tokensRef, // Refs for drag state and token data (used if manually reverting drag)
+       onDragMoveRef, onDragEndRef, // Refs for drag callbacks
+       cancelMarqueeRef, // Ref for useTokenSelection's cancelMarquee function
+       setIsDragging, setMarqueeState, setIsSelecting, setIsPanning, // Stable state setters
+       handleGlobalMouseMoveRef, handleGlobalMouseUpRef, handleGlobalKeyDownRef // Stable refs for listener cleanup
+   ]); // Dependencies for handleGlobalKeyDownLogic
+
 
   // Define handlers using useCallback to get stable references for add/removeEventListener
    const handleGlobalMouseMoveLogic = useCallback((e) => { // Renamed to Logic for consistency
@@ -1024,7 +1121,7 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
         // Pass isDragging/isSelecting/isPanning to ZoomableContainer so it can disable its own pan/zoom
         // when a drag-pan (left-click token, left-click marquee, or right-click pan) is in progress.
          isPanDisabled={isDragging || isSelecting || isPanning} // --- ADDED isPanning ---
-      >
+      > {/* <--- FIX: Added the missing closing '>' for the ZoomableContainer tag */}
         {/* Content INSIDE the zoomable container */}
         {/* Attach core mouse handlers to the tabletop div */}
         <div
@@ -1089,7 +1186,7 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
           {/* Other layers (map, drawing, etc.) would go here */}
 
         </div>
-      </ZoomableContainer>
+      </ZoomableContainer> {/* <--- UNCOMMENTED THE CLOSING TAG */}
 
         {/* Marquee component, rendered if marqueeState is active */}
         {/* This component is rendered by the Marquee.jsx file */}
