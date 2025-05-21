@@ -1181,7 +1181,7 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
           {/* Other layers (map, drawing, etc.) would go here */}
 
         </div>
-      </ZoomableContainer> {/* <--- UNCOMMENTED THE CLOSING TAG */}
+      </ZoomableContainer>{/* <--- UNCOMMENTED THE CLOSING TAG */}
 
         {/* Marquee component, rendered if marqueeState is active */}
         {/* This component is rendered by the Marquee.jsx file */}
