@@ -265,7 +265,6 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
                  // Trigger cancellation logic within useTokenDrag
                  // This requires useTokenDrag to expose a cancel function or for VT to manually
                  // revert the drag state and call onDragEnd with start positions.
-                 // The current useTokenDrag already has handleKeyDownLogic internally.
                  // The Escape key down listener is now added globally in handleMouseDown.
                  // The logic for cancelling is inside useTokenDrag's handleKeyDownLogic.
                  // So, simply allowing the event to propagate to useTokenDrag's listener is sufficient.
@@ -312,7 +311,7 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
 
                  // Restore default cursor and user select globally (cancelMarquee handles this)
                   // document.body.style.cursor = ''; // Handled by cancelMarquee
-                 // document.body.style.userSelect = ''; // Handled by cancelMarquee
+                 // document.body.userSelect = ''; // Handled by cancelMarquee
 
                  e.preventDefault(); // Prevent default browser behavior for Escape
                  e.stopPropagation(); // Stop propagation
@@ -970,13 +969,9 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
             // A hex grid of N rows has total height approx (N-1) * (hexHeight * 0.75) + hexHeight.
             // The Grid component calculates this correctly. Let's derive total size based on that.
             const width = dimensions.cols * gridConfig.hexWidth;
-            const height = dimensions.rows * (gridConfig.hexHeight * 0.75); // Simplified calculation based on grid drawing logic
-             // The actual drawn height might be slightly more due to the last row.
-             // For now, use this approximation or get it from the Grid component if it exposed it.
-             // Let's match the Grid component's calculation slightly better for total height.
-             const preciseHeight = dimensions.rows > 0 ? (dimensions.rows - 1) * (gridConfig.hexHeight * 0.75) + gridConfig.hexHeight : 0;
+            const height = dimensions.rows > 0 ? (dimensions.rows - 1) * (gridConfig.hexHeight * 0.75) + gridConfig.hexHeight : 0; // Corrected total height calculation
 
-            return { width: width, height: preciseHeight };
+            return { width: width, height: height };
 
         } else {
             // For square grids
@@ -1070,7 +1065,7 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
 
            // Restore default cursor if cleanup happens mid-interaction
            document.body.style.cursor = '';
-           document.body.style.userSelect = ''; // Should be restored by hooks too, but defensively here
+           document.body.userSelect = ''; // Should be restored by hooks too, but defensively here
       };
   }, [handleGlobalMouseMoveRef, handleGlobalMouseUpRef, handleGlobalKeyDownRef, updateGridDimensions]); // Depend on memoized handlers and debounced function
 
