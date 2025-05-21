@@ -652,7 +652,6 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
   }, [handleGlobalMouseMoveLogic]); // Depends on the memoized logic
 
   useEffect(() => {
-      // Corrected: This should update handleMouseUpRef, not handleMouseUpRef.current
       handleGlobalMouseUpRef.current = handleGlobalMouseUpLogic;
        // console.log('[DEBUG] useTokenDrag: handleMouseUpLogic updated in ref.');
   }, [handleGlobalMouseUpLogic]); // Depends on the memoized logic
@@ -1116,7 +1115,7 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
         // Pass isDragging/isSelecting/isPanning to ZoomableContainer so it can disable its own pan/zoom
         // when a drag-pan (left-click token, left-click marquee, or right-click pan) is in progress.
          isPanDisabled={isDragging || isSelecting || isPanning} // --- ADDED isPanning ---
-      > {/* <--- FIX: Added the missing closing '>' for the ZoomableContainer tag */}
+       > {/* CORRECTED: Added the missing closing '>' here */}
         {/* Content INSIDE the zoomable container */}
         {/* Attach core mouse handlers to the tabletop div */}
         <div
