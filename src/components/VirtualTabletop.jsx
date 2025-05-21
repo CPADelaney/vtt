@@ -387,7 +387,7 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
 
                  // Calculate mouse movement delta in screen coordinates
                  const dxScreen = currentMouseX - startMouseX;
-                 const dyScreen = currentMouseY - startMouseY; // Corrected variable
+                 const dyScreen = currentMouseY - startStartMouseY;
 
                  // Access the latest scale via ref
                  const currentScale = scaleRef.current || 1;
@@ -660,7 +660,7 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
   useEffect(() => {
       handleGlobalKeyDownRef.current = handleGlobalKeyDownLogic;
       // console.log('[DEBUG] useTokenDrag: handleKeyDownLogic updated in ref.');
-  }, [handleGlobalKeyDownLogic]);
+  }, [handleKeyDownLogic]);
    // --- End Added ---
 
    // Effect to keep cancelMarquee ref updated
@@ -1117,7 +1117,6 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
          isPanDisabled={isDragging || isSelecting || isPanning} // --- ADDED isPanning ---
        > {/* CORRECTED: Added the missing closing '>' here */}
         {/* Content INSIDE the zoomable container */}
-        {/* Attach core mouse handlers to the tabletop div */}
         <div
           id="tabletop" // Give the content div the id expected by other components/hooks
           className={isHexGrid ? 'hex-grid' : 'square-grid'} // Use state value
