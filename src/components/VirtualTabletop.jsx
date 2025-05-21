@@ -94,6 +94,21 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
    }, [tokens]);
    // --- END ADDED ---
 
+   // Grid Dimensions Calculation (Needed for snapping and grid rendering size)
+   const gridConfig = useMemo(() => ({
+       squareSize: DEFAULT_SQUARE_SIZE,
+       hexSize: DEFAULT_HEX_SIZE,
+       hexWidth: DEFAULT_HEX_SIZE * 2, // Pointy-top hex width
+       hexHeight: Math.sqrt(3) * DEFAULT_HEX_SIZE, // Pointy-top hex height
+   }), []);
+
+   const { getSnappedPosition } = useGridSnapping({
+        isHexGrid, // Pass current grid type from gameState
+        gridSize: gridConfig.squareSize, // Pass square size
+        hexWidth: gridConfig.hexWidth, // Pass hex size info (from memoized config)
+        hexHeight: gridConfig.hexHeight,
+   });
+
 
   // Callbacks to toggle grid type and combat status, updating gameState
   // These are passed to the Sidebar (although sidebar prop passing from App is not fully functional yet)
@@ -105,24 +120,21 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
     updateGameState(prev => ({ ...prev, inCombat: !prev.inCombat }));
   }, [updateGameState]);
 
-  // Token drag hook - Expose `isDragging` state
-  const { startDrag, isDragging, dragStateRef } = useTokenDrag({ // Added dragStateRef
-    scale: scale, // Pass current scale from state
-    getSnappedPosition, // Pass the snapping function
-    // onDragMove and onDragEnd update gameState directly using setDirectState/updateGameState
-    onDragMove: useCallback((tokenId, newPos) => {
-     // Callback receives snapped position, update state directly (no history)
-     // Ensure position structure is consistent {x, y}
-     setDirectState(prev => ({
-        ...prev,
-        tokens: prev.tokens.map(t =>
-            t.id === tokenId ? { ...t, position: { x: newPos.x, y: newPos.y } } : t
-        )
-     }));
-  }, [setDirectState]), // Depend on setDirectState
+  // --- Define handler callbacks for useTokenDrag using useCallback ---
+  // These are defined OUTSIDE the useTokenDrag call
+  const handleDragMove = useCallback((tokenId, newPos) => {
+   // Callback receives snapped position, update state directly (no history)
+   // Ensure position structure is consistent {x, y}
+   setDirectState(prev => ({
+      ...prev,
+      tokens: prev.tokens.map(t =>
+          t.id === tokenId ? { ...t, position: { x: newPos.x, y: newPos.y } } : t
+      )
+   }));
+  }, [setDirectState]); // Depend on setDirectState
 
-  onDragEnd: useCallback((tokenIds, finalPositions) => { // onDragEnd now receives map/array of {id, pos}
-      console.log('[DEBUG] VirtualTabletop: onDragEnd called with final positions:', Array.from(finalPositions.entries()));
+  const handleDragEnd = useCallback((tokenIds, finalPositions) => { // onDragEnd now receives map/array of {id, pos}
+    console.log('[DEBUG] VirtualTabletop: onDragEnd called with final positions:', Array.from(finalPositions.entries()));
     // Callback receives final snapped position, update state (adds to history)
      if (finalPositions.size > 0) {
       updateGameState(prev => ({
@@ -136,20 +148,33 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
     } else {
          console.log('[DEBUG] VirtualTabletop: onDragEnd called with no token final positions.');
     }
-  }, [updateGameState]) // Depend on updateGameState
-});
+  }, [updateGameState]); // Depend on updateGameState
+  // --- End Define handler callbacks for useTokenDrag ---
+
+
+  // Token drag hook - Expose `isDragging` state
+  // --- MODIFIED: Pass the defined callbacks handleDragMove/handleDragEnd ---
+  const { startDrag, isDragging, dragStateRef } = useTokenDrag({
+    scale: scale, // Pass current scale from state
+    getSnappedPosition: getSnappedPosition, // Pass the snapping function
+    onDragMove: handleDragMove, // Pass the stable callback
+    onDragEnd: handleDragEnd // Pass the stable callback
+  });
+  // --- END MODIFIED ---
+
   // --- ADDED Refs for drag callbacks for use in Escape handler ---
-  const onDragMoveRef = useRef(null);
-  const onDragEndRef = useRef(null);
+  // Now that handleDragMove and handleDragEnd are defined via useCallback,
+  // the refs pointing to them can be simplified. They are already stable references.
+  // However, using refs for the handlers in the global keydown logic is a pattern
+  // seen elsewhere in this codebase (e.g. useTokenSelection) to handle potentially
+  // stale closures with global listeners, although with useCallback dependencies,
+  // it might be less necessary. Let's update these refs to point to the stable callbacks.
+  const onDragMoveRef = useRef(handleDragMove);
+  const onDragEndRef = useRef(handleDragEnd);
   useEffect(() => {
-      onDragMoveRef.current = useTokenDrag({}).onDragMove; // Get the stable callback from the hook instance
-      onDragEndRef.current = useTokenDrag({}).onDragEnd;   // Get the stable callback from the hook instance
-      // NOTE: This re-creates the hook instance just to get the callbacks.
-      // A better pattern would be for useTokenDrag to return these memoized callbacks directly.
-      // Assuming useTokenDrag's callbacks are stable because their dependencies are stable state setters.
-      // This approach works because useTokenDrag's returned functions are memoized.
-      // Let's update useTokenDrag to return onDragMove and onDragEnd directly.
-  }, [useTokenDrag().onDragMove, useTokenDrag().onDragEnd]); // Depend on the stable callbacks returned by the hook
+      onDragMoveRef.current = handleDragMove;
+      onDragEndRef.current = handleDragEnd;
+  }, [handleDragMove, handleDragEnd]); // Depend on the stable callbacks
   // --- END ADDED ---
 
 
@@ -296,12 +321,6 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
    }, [selectTokenId, clearSelection]); // Depend on the latest functions from the hook
    // --- END MODIFIED ---
 
-   const { getSnappedPosition } = useGridSnapping({
-        isHexGrid, // Pass current grid type
-        gridSize: DEFAULT_SQUARE_SIZE, // Pass square size
-        hexWidth: gridConfig?.hexWidth, // Pass hex size info (from memoized config)
-        hexHeight: gridConfig?.hexHeight,
-   });
 
   // Define Global Keydown Handler Logic for Escape (cancel interactions)
    const handleGlobalKeyDownLogic = useCallback((e) => {
@@ -721,25 +740,25 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
       isSelecting,
       isPanning,
     });
-  
+
     /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
     /* 1.  Ignore middleâ€‘click â€“ let ZoomableContainer handle wheel/middle */
     /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
     if (e.button === 1) return;
-  
+
     /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
     /* 2.  Figure out what we hit     */
     /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
     const tokenEl        = e.target.closest('.token');
     const clickedTokenId = tokenEl?.id ?? null;
     const additive       = e.metaKey || e.ctrlKey || e.shiftKey;
-  
+
     /* Rightâ€‘click directly on a token: defer to onContextMenu later       */
     if (e.button === 2 && clickedTokenId) {
       e.preventDefault();                 // kill native menu on mousedown
       return;
     }
-  
+
     /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
     /* 3.  Prep for possible action   */
     /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
@@ -753,13 +772,13 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
       button : e.button,
       isAdditiveSelection: additive,
     };
-  
+
     /* Special cursor hint for a potential pan (rightâ€‘click on background) */
     if (e.button === 2 && !clickedTokenId) {
       document.body.style.cursor = 'grab';
       e.preventDefault();               // block browser context menu
     }
-  
+
     /* Immediate selection update on LEFTâ€‘click token -------------------- */
     if (clickedTokenId && e.button === 0) {
       e.preventDefault();               // stop imageâ€‘drag start
@@ -788,7 +807,7 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
     document.addEventListener('mousemove', handleGlobalMouseMoveRef.current, { capture: true });
     document.addEventListener('mouseup',   handleGlobalMouseUpRef.current,   { capture: true });
     document.addEventListener('keydown',   handleGlobalKeyDownRef.current,   { capture: true });
-  
+
     console.log('[DEBUG] Attached temporary global mousemove/mouseup/keydown listeners.');
   }, [
     /* dependencies */
@@ -954,6 +973,8 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
 
     // --- Grid Dimensions Calculation ---
     // Calculate total size of the grid based on dimensions and cell size
+    // Moved this section up for better organization as gridConfig is used by getSnappedPosition
+    /*
     const gridConfig = useMemo(() => ({
         squareSize: DEFAULT_SQUARE_SIZE,
         hexSize: DEFAULT_HEX_SIZE,
@@ -961,6 +982,7 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
         hexWidth: DEFAULT_HEX_SIZE * 2,
         hexHeight: Math.sqrt(3) * DEFAULT_HEX_SIZE,
     }), []);
+    */
 
     // Calculate the number of rows and columns needed based on some arbitrary map size
     // TODO: Make map size configurable and responsive
@@ -1058,7 +1080,7 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
              // Add this initial state to history so undo/redo works immediately
              // We can't call updateGameState directly here during mount.
              // useStateWithHistory typically records the initial state on first render.
-             // The loadState logic above *replaces* the initial state if found, using setGameState,
+             // The loadState logic above *replaces* the current state if found, using setGameState,
              // which doesn't add to history. We need to manually add the *loaded* state as the first history entry.
              // useStateWithHistory needs a way to *initialize* history, or accept an initial history array.
              // Looking at useStateWithHistory, it initializes history with `initialState`.
