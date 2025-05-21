@@ -653,7 +653,7 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
 
   useEffect(() => {
       // Corrected: This should update handleMouseUpRef, not handleMouseUpRef.current
-      handleMouseUpRef.current = handleGlobalMouseUpLogic;
+      handleGlobalMouseUpRef.current = handleGlobalMouseUpLogic;
        // console.log('[DEBUG] useTokenDrag: handleMouseUpLogic updated in ref.');
   }, [handleGlobalMouseUpLogic]); // Depends on the memoized logic
 
@@ -1181,8 +1181,7 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
           {/* Other layers (map, drawing, etc.) would go here */}
 
         </div>
-      </ZoomableContainer>{/* <--- UNCOMMENTED THE CLOSING TAG */}
-
+      </ZoomableContainer>
         {/* Marquee component, rendered if marqueeState is active */}
         {/* This component is rendered by the Marquee.jsx file */}
         <Marquee marqueeState={marqueeState} /> {/* <-- marqueeState is now defined */}
