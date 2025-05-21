@@ -407,6 +407,7 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
              return;
         }
 
+        const { getSnappedPosition } = useGridSnapping();
 
         // --- Check Threshold to START an Interaction (if none started yet) ---
         const { clientX: startX, clientY: startY, target: startTarget, clickedTokenId, button, isAdditiveSelection } = initialPos;
@@ -660,7 +661,7 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
   useEffect(() => {
       handleGlobalKeyDownRef.current = handleGlobalKeyDownLogic;
       // console.log('[DEBUG] useTokenDrag: handleKeyDownLogic updated in ref.');
-  }, [handleKeyDownLogic]);
+  }, [handleGlobalKeyDownLogic]);
    // --- End Added ---
 
    // Effect to keep cancelMarquee ref updated
@@ -1177,7 +1178,6 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
           ))}
 
           {/* Other layers (map, drawing, etc.) would go here */}
-
         </div>
       </ZoomableContainer>
         {/* Marquee component, rendered if marqueeState is active */}
