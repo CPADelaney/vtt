@@ -350,7 +350,8 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
        setIsDragging, setMarqueeState, setIsSelecting, setIsPanning, // Stable state setters
        handleGlobalMouseMoveRef, handleGlobalMouseUpRef, handleGlobalKeyDownRef // Stable refs for listener cleanup
    ]); // Dependencies for handleGlobalKeyDownLogic
-
+  
+   const { getSnappedPosition } = useGridSnapping();
 
   // Define handlers using useCallback to get stable references for add/removeEventListener
    const handleGlobalMouseMoveLogic = useCallback((e) => { // Renamed to Logic for consistency
@@ -406,8 +407,6 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
              // If an interaction has started, stop further processing here.
              return;
         }
-
-        const { getSnappedPosition } = useGridSnapping();
 
         // --- Check Threshold to START an Interaction (if none started yet) ---
         const { clientX: startX, clientY: startY, target: startTarget, clickedTokenId, button, isAdditiveSelection } = initialPos;
@@ -676,8 +675,9 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
   // This handler focuses on interactions that *start* on the tabletop div itself
   // (tokens or background) and require more specific logic than just pan/zoom.
 
+  // --- Unified Mouse‑down handler on the #tabletop div ------------------------
   const handleMouseDown = useCallback((e) => {
-    console.log('[DEBUG-TABLETOP] handleMouseDown on #tabletop:', {
+    console.log('[DEBUG‑TABLETOP] handleMouseDown on #tabletop:', {
       button: e.button,
       target: e.target,
       ctrlKey: e.ctrlKey,
@@ -686,114 +686,76 @@ export default function VirtualTabletop() { // Removed props isHexGrid, onToggle
       defaultPrevented: e.defaultPrevented,
       className: e.target.className,
       id: e.target.id,
-      isDragging: isDragging, // State from hook
-      isSelecting: isSelecting, // State from hook
-      isPanning: isPanning, // --- ADDED State ---
+      isDragging,
+      isSelecting,
+      isPanning,
     });
-
-    // Ignore middle-clicks (button 1) - These are intended for the ZoomableContainer/useZoomToMouse hook
-    // although that hook only explicitly handles wheel, not middle-click *dragging*.
-    // Let's allow middle-click event propagation.
-    if (e.button === 1) {
-        // Allow middle-click to propagate. If ZoomableContainer/useZoomToMouse
-        // ever implements middle-click drag pan, it will handle it.
-        // hideMenu(); // Consider hiding menu on any mousedown
-        // e.preventDefault(); // Don't prevent default here, let it potentially trigger browser pan/scroll
-        // e.stopPropagation(); // Don't stop propagation
-        return; // Exit early for middle click
+  
+    /* ──────────────────────────────────────────────────────────────────── */
+    /* 1.  Ignore middle‑click – let ZoomableContainer handle wheel/middle */
+    /* ──────────────────────────────────────────────────────────────────── */
+    if (e.button === 1) return;
+  
+    /* ────────────────────────────── */
+    /* 2.  Figure out what we hit     */
+    /* ────────────────────────────── */
+    const tokenEl        = e.target.closest('.token');
+    const clickedTokenId = tokenEl?.id ?? null;
+    const additive       = e.metaKey || e.ctrlKey || e.shiftKey;
+  
+    /* Right‑click directly on a token: defer to onContextMenu later       */
+    if (e.button === 2 && clickedTokenId) {
+      e.preventDefault();                 // kill native menu on mousedown
+      return;
     }
-
-    // Ignore right-clicks (button 2) *on a token*. Context menu on tokens is handled after mouseup.
-     const tokenEl = e.target.closest('.token');
-     const clickedTokenId = tokenEl?.id || null;
-
-     if (e.button === 2 && clickedTokenId) {
-          // Right-click on a token - do nothing on mousedown.
-          // Context menu logic happens on contextmenu event (usually after mouseup).
-          // hideMenu(); // Ensure our context menu is hidden on any right mousedown? Maybe not necessary if it hides on any mousedown.
-          // Prevent default context menu if this mousedown is the start of a right-click gesture
-          e.preventDefault();
-          // Don't stop propagation yet. Let it bubble up to the contextmenu listener on ZoomableContainer if needed.
-          return; // Exit early for right click on token
-     }
-
-
-    // --- Handle Left Clicks (button 0) AND Right Clicks (button 2) on BACKGROUND ---
-    hideMenu(); // Hide context menu on any relevant mouse down (left click or right click on background)
-
-    const isAdditiveSelection = e.metaKey || e.ctrlKey || e.shiftKey; // Check modifiers for additive selection
-
-
-    // Store initial mouse position and context for threshold check and event handling
+  
+    /* ────────────────────────────── */
+    /* 3.  Prep for possible action   */
+    /* ────────────────────────────── */
+    hideMenu();                                   // hide any open menu
+    interactionStartedRef.current = false;        // reset drag/marquee flag
     initialMouseDownPosRef.current = {
       clientX: e.clientX,
       clientY: e.clientY,
-      target: e.target, // The element where mousedown occurred
-      clickedTokenId: clickedTokenId, // Null if clicked on background
-      button: e.button, // --- Added: Store the button that was pressed ---
-      isAdditiveSelection: isAdditiveSelection, // Store additive state for marquee
+      target : e.target,
+      clickedTokenId,
+      button : e.button,
+      isAdditiveSelection: additive,
     };
-     // Reset interaction started flag
-    interactionStartedRef.current = false;
-
-    // --- ADDED: Cursor Change for Potential Pan (Right Click on Background) ---
-     if (e.button === 2 && !clickedTokenId) {
-         // If it's a right click on the background, change cursor immediately
-         // and prevent default context menu here as we might pan.
-          document.body.style.cursor = 'grab'; // Indicate draggable surface
-           e.preventDefault(); // Prevent default browser context menu on mousedown
-     }
-    // --- End Added ---
-
-    // If clicked on a token (Left Click), handle selection logic immediately
-    if (clickedTokenId && e.button === 0) { // Only left click on token initiates immediate selection logic
-        console.log('[DEBUG] Mousedown (Left) on token:', clickedTokenId);
-        // Prevent default browser drag on token images etc.
-        e.preventDefault();
-        // Do NOT stop propagation yet. Let the global mousemove handler below check threshold for drag.
-        // The global handler attached by startDrag will stop propagation if drag starts.
-
-        // Handle selection update on token click
-        // If not additive, clear existing selection first
-        if (!isAdditiveSelection) {
-            // --- MODIFIED: Call clearSelection via combined ref ---
-            console.log('[DEBUG] Non-additive selection, attempting selectionHandlersRef.current.clearSelection?.()');
-            selectionHandlersRef.current.clearSelection?.(); // Access via combined ref
-            // --- END MODIFIED ---
-        }
-        // Always select/toggle the clicked token
-        // --- MODIFIED: Call selectTokenId via combined ref ---
-        console.log('[DEBUG] Attempting selectionHandlersRef.current.selectTokenId?.() for:', clickedTokenId);
-        selectionHandlersRef.current.selectTokenId?.(clickedTokenId, false); // Access via combined ref
-        // --- END MODIFIED ---
-        // THIS WAS APPROXIMATELY LINE 571 in the original file
-    } else if (!clickedTokenId && e.button === 0) { // Left click on background
-        console.log('[DEBUG] Mousedown (Left) on background.');
-        // Don't prevent default yet - need to distinguish click vs marquee drag based on threshold in mousemove.
-        // Don't stop propagation yet.
-    } else if (!clickedTokenId && e.button === 2) { // Right click on background
-         console.log('[DEBUG] Mousedown (Right) on background.');
-         // Cursor changed and default prevented above.
-         // Don't stop propagation yet. Let the global mousemove handler check threshold for pan.
+  
+    /* Special cursor hint for a potential pan (right‑click on background) */
+    if (e.button === 2 && !clickedTokenId) {
+      document.body.style.cursor = 'grab';
+      e.preventDefault();               // block browser context menu
     }
-
-
-    // Attach global listeners *immediately* on mousedown to track movement for threshold check and interaction handling
-    // Use the .current property of the handler refs or the useCallback results directly if stable.
-    // handleGlobalMouseMove and handleGlobalMouseUp are useCallback results, they are stable refs.
-    // handleGlobalKeyDownLogic is also a useCallback result (renamed).
+  
+    /* Immediate selection update on LEFT‑click token -------------------- */
+    if (clickedTokenId && e.button === 0) {
+      e.preventDefault();               // stop image‑drag start
+      if (!additive) selectionHandlersRef.current.clearSelection?.();
+      selectionHandlersRef.current.selectTokenId?.(clickedTokenId, false);
+    }
+  
+    /* ────────────────────────────── */
+    /* 4.  Attach global listeners    */
+    /* ────────────────────────────── */
     document.addEventListener('mousemove', handleGlobalMouseMoveRef.current, { capture: true });
-    document.addEventListener('mouseup', handleGlobalMouseUpRef.current, { capture: true });
-    // Keydown listener for Escape is managed by a separate effect based on interaction flags.
-    // (Actually, the Escape keydown handler is *also* added globally when interactions start now)
+    document.addEventListener('mouseup',   handleGlobalMouseUpRef.current,   { capture: true });
+    document.addEventListener('keydown',   handleGlobalKeyDownRef.current,   { capture: true });
+  
+    console.log('[DEBUG] Attached temporary global mousemove/mouseup/keydown listeners.');
+  }, [
+    /* dependencies */
+    isDragging,
+    isSelecting,
+    isPanning,
+    hideMenu,
+    selectionHandlersRef,
+    handleGlobalMouseMoveRef,
+    handleGlobalMouseUpRef,
+    handleGlobalKeyDownRef,
+  ]);
 
-     // --- ADDED Global Keydown Listener for Escape ---
-     // Add the Escape listener here on ANY mousedown that starts an interaction check
-     // It will only *do* something if isDragging, isSelecting, or isPanning is true when Escape is pressed.
-     // This is simpler than managing its attachment based on interaction state flags.
-     document.addEventListener('keydown', handleGlobalKeyDownRef.current, { capture: true });
-      console.log('[DEBUG] Attached temporary global mousemove, mouseup, keydown listeners.');
-     // --- End Added ---
 
 
    // Right-click handler for context menu - Called by ZoomableContainer's onContextMenu prop
